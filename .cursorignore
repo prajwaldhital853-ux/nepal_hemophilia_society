@@ -1,8 +1,8 @@
 ﻿node_modules/
-backend/.venv/
-backend/venv/
-patient-app/.dart_tool/
-patient-app/build/
+patient-app/node_modules/
+patient-app/.expo/
+patient-app/android/
+patient-app/ios/build/
 .next/
 out/
 .env

@@ -9,7 +9,7 @@ Step-by-step guide to run all parts of the monorepo on your machine.
 | Python | 3.12+ | [python.org](https://www.python.org/downloads/) |
 | Node.js | 20+ | [nodejs.org](https://nodejs.org/) |
 | PostgreSQL 16 | 16+ | Docker **or** [PostgreSQL winget](https://winget.run/pkg/PostgreSQL.PostgreSQL.17) |
-| Flutter | 3.5+ | [flutter.dev](https://docs.flutter.dev/get-started/install) |
+| React Native / Expo | Latest via Expo SDK 57 | For mobile app (Android + iOS) |
 | Docker Desktop | Optional | [docker.com](https://www.docker.com/products/docker-desktop/) |
 
 ## 1. Clone & environment
@@ -78,15 +78,19 @@ npm run dev
 
 Open: http://localhost:3001
 
-## 6. Patient App (Flutter)
+## 6. Patient App (React Native / Expo)
 
 ```powershell
 cd patient-app
-flutter pub get
-flutter run
+copy .env.example .env
+npm install
+npm start
 ```
 
-> **Note:** Flutter SDK was not detected during initial setup. Install Flutter and run `flutter doctor` before this step.
+- **Android:** `npm run android` (requires Android Studio or Expo Go)
+- **iOS:** `npm run ios` (macOS + Xcode, or Expo Go on iPhone)
+
+Code splitting: each feature screen loads via `React.lazy` when navigated to.
 
 ## Django Apps (backend/apps/)
 
@@ -112,8 +116,8 @@ Commit files first: `git add .` → `git commit -m "Initial project setup"` → 
 **PostgreSQL connection refused**  
 Ensure Docker postgres is running: `docker compose up -d`
 
-**Flutter not found**  
-Add Flutter to PATH after installing the SDK.
+**Expo / Metro bundler issues**  
+Clear cache: `npx expo start -c`
 
 **CORS errors from frontend**  
 Check `DJANGO_CORS_ALLOWED_ORIGINS` in `.env` includes `http://localhost:3000` and `http://localhost:3001`.

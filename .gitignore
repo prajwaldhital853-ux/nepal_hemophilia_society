@@ -53,22 +53,22 @@ pnpm-debug.log*
 .pnpm-store/
 
 # =========================
-# Flutter / Dart
+# React Native / Expo
 # =========================
-patient-app/.dart_tool/
-patient-app/.flutter-plugins
-patient-app/.flutter-plugins-dependencies
-patient-app/.packages
-patient-app/build/
-patient-app/.pub-cache/
-patient-app/.pub/
-patient-app/**/doc/api/
-patient-app/ios/Pods/
-patient-app/ios/.symlinks/
+patient-app/node_modules/
+patient-app/.expo/
+patient-app/dist/
+patient-app/web-build/
+patient-app/.env
+patient-app/.env.local
+patient-app/android/app/build/
 patient-app/android/.gradle/
-patient-app/android/app/debug/
-patient-app/android/app/profile/
-patient-app/android/app/release/
+patient-app/ios/build/
+patient-app/ios/Pods/
+patient-app/*.jks
+patient-app/*.p8
+patient-app/*.p12
+patient-app/*.mobileprovision
 *.iml
 *.ipr
 *.iws

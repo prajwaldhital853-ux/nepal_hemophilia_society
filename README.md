@@ -10,7 +10,7 @@ Nationwide digital platform for hemophilia patient care, treatment tracking, and
 | Database | PostgreSQL 16 |
 | Admin Panel | Next.js 15 (App Router, code splitting) |
 | Public Website | Next.js 15 |
-| Mobile App | Flutter (Android + iOS) |
+| Mobile App | React Native (Expo) — Android & iOS |
 
 ## Project Structure
 
@@ -31,7 +31,7 @@ nepal_hemophilia_digital_management_system/
 │       └── reports/
 ├── admin-panel/             # Next.js admin dashboard
 ├── website/                 # Next.js public website
-├── patient-app/             # Flutter mobile app
+├── patient-app/             # React Native mobile app (Expo)
 ├── docker-compose.yml       # PostgreSQL for local dev
 ├── plan.md                  # Full project plan
 └── .env.example             # Environment template
@@ -42,7 +42,7 @@ nepal_hemophilia_digital_management_system/
 - Python 3.12+ (3.14 supported)
 - Node.js 20+
 - PostgreSQL 16 (via Docker or local install)
-- Flutter SDK 3.x (for mobile app)
+- Expo CLI / React Native tooling (for mobile app)
 - Docker Desktop (recommended for PostgreSQL)
 
 ## Quick Start
@@ -96,13 +96,16 @@ npm run dev
 
 Website: http://localhost:3001
 
-### 6. Mobile App (Flutter)
+### 6. Mobile App (React Native)
 
 ```powershell
 cd patient-app
-flutter pub get
-flutter run
+copy .env.example .env
+npm install
+npm start
 ```
+
+Use `npm run android` or scan the QR code with Expo Go on your phone.
 
 ## Django Apps
 

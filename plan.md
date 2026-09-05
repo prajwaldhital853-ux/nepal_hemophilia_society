@@ -141,7 +141,7 @@ These must be designed before coding:
 ```
 Public Website
       ↓
-Patient App (Flutter/Android)
+Patient App (React Native — Android & iOS)
       ↓
 Central REST API + Database (PostgreSQL/MySQL)
       ↓
@@ -368,7 +368,7 @@ Hospital Admin searches patient
 
 **Rule:** No private patient medical data on the public website.
 
-### 7.2 Patient App (Flutter / Android)
+### 7.2 Patient App (React Native — Android & iOS)
 
 **Features:**
 - Login & Registration
@@ -822,7 +822,7 @@ Log every sensitive action in `audit_logs`:
 
 | Layer | Technology | Notes |
 |-------|------------|-------|
-| **Patient App** | Flutter (Android first, iOS later) | Cross-platform, good offline support |
+| **Patient App** | React Native (Expo) — Android & iOS | Cross-platform, lazy-loaded feature screens |
 | **Admin Panel** | Next.js + React + Tailwind CSS | Responsive web, shadcn/ui components |
 | **Public Website** | Next.js + React + Tailwind CSS | Can share components with admin |
 | **Backend API** | Node.js (Express) or Python (FastAPI/Django) | REST API |
@@ -885,7 +885,7 @@ nepal_hemophilia_digital_management_system/
 ├── website/
 │   └── (public pages)
 └── patient-app/
-    └── (Flutter project)
+    └── (React Native / Expo project)
 ```
 
 ---
@@ -1062,13 +1062,13 @@ PUT    /api/notifications/:id/read
 
 ### Phase 4 — Patient App (Weeks 11–13)
 
-**Goal:** Flutter Android app for patients.
+**Goal:** React Native patient app for Android and iOS.
 
 #### Week 11: App Foundation
 
 | Task | Priority |
 |------|----------|
-| Flutter project setup | P0 |
+| React Native / Expo project setup | P0 |
 | Login & registration screens | P0 |
 | API integration layer | P0 |
 | Auth token storage (secure) | P0 |
