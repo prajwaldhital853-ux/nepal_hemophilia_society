@@ -1,0 +1,13 @@
+﻿node_modules/
+backend/.venv/
+backend/venv/
+patient-app/.dart_tool/
+patient-app/build/
+.next/
+out/
+.env
+.env.local
+docker-data/
+postgres-data/
+*.log
+.git/

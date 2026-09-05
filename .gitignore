@@ -1,0 +1,100 @@
+# =========================
+# Environment & secrets
+# =========================
+.env
+.env.local
+.env.*.local
+.env.production
+*.pem
+*.key
+secrets/
+
+# =========================
+# Python / Django
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/.venv/
+backend/venv/
+backend/env/
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+db.sqlite3
+backend/staticfiles/
+backend/media/
+backend/.coverage
+
+# =========================
+# Node.js / Next.js
+# =========================
+node_modules/
+.next/
+out/
+.turbo/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# =========================
+# Flutter / Dart
+# =========================
+patient-app/.dart_tool/
+patient-app/.flutter-plugins
+patient-app/.flutter-plugins-dependencies
+patient-app/.packages
+patient-app/build/
+patient-app/.pub-cache/
+patient-app/.pub/
+patient-app/**/doc/api/
+patient-app/ios/Pods/
+patient-app/ios/.symlinks/
+patient-app/android/.gradle/
+patient-app/android/app/debug/
+patient-app/android/app/profile/
+patient-app/android/app/release/
+*.iml
+*.ipr
+*.iws
+
+# =========================
+# Docker & Database
+# =========================
+docker-data/
+postgres-data/
+*.sql.backup
+
+# =========================
+# IDE & OS
+# =========================
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.tmp
+*.temp
+
+# =========================
+# Misc
+# =========================
+docx_extract.txt
+agent-tools/

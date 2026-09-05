@@ -1,0 +1,8 @@
+from django.apps import AppConfig
+
+
+class FactorsConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "apps.factors"
+    label = "factors"
+    verbose_name = "Factors & Medicines"
