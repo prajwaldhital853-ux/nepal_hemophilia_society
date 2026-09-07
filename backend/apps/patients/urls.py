@@ -1,15 +1,10 @@
-from django.urls import path
-from rest_framework.response import Response
-from rest_framework.views import APIView
+from rest_framework.routers import DefaultRouter
 
-
-class PlaceholderView(APIView):
-    def get(self, request):
-        return Response({"detail": "Endpoint ready — implementation pending."})
-
+from apps.patients.views import PatientViewSet
 
 app_name = "patients"
 
-urlpatterns = [
-    path("", PlaceholderView.as_view(), name="list"),
-]
+router = DefaultRouter()
+router.register("", PatientViewSet, basename="patients")
+
+urlpatterns = router.urls

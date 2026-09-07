@@ -10,6 +10,8 @@ urlpatterns = [
     path("provinces/", include("apps.provinces.urls")),
     path("hospitals/", include("apps.hospitals.urls")),
     path("patients/", include("apps.patients.urls")),
+    path("patients/", include("apps.patients.clinical_urls")),
+    path("me/patient/", include("apps.patients.me_urls")),
     path("factors/", include("apps.factors.urls")),
     path("injections/", include("apps.injections.urls")),
     path("treatments/", include("apps.treatments.urls")),

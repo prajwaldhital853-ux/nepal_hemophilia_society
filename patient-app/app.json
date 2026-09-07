@@ -15,6 +15,7 @@
     },
     "android": {
       "package": "org.nepalhemophilia.patient",
+      "usesCleartextTraffic": true,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#DC2626",

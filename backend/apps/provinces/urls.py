@@ -1,17 +1,12 @@
 from django.urls import path
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
-
-class PlaceholderView(APIView):
-    """Placeholder until feature is implemented."""
-
-    def get(self, request):
-        return Response({"detail": "Endpoint ready — implementation pending."})
-
+from apps.provinces.admin_views import ProvinceAdminDetailView, ProvinceAdminListCreateView
+from apps.provinces.views import ProvinceListView
 
 app_name = "provinces"
 
 urlpatterns = [
-    path("", PlaceholderView.as_view(), name="list"),
+    path("", ProvinceListView.as_view(), name="list"),
+    path("admins/", ProvinceAdminListCreateView.as_view(), name="province-admins"),
+    path("admins/<str:display_id>/", ProvinceAdminDetailView.as_view(), name="province-admin-detail"),
 ]

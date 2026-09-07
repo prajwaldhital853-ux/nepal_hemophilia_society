@@ -6,7 +6,7 @@ Nationwide digital platform for hemophilia patient care, treatment tracking, and
 
 | Layer | Technology |
 |-------|------------|
-| Backend API | Django 5 + Django REST Framework |
+| Backend API | Django 6 + Django REST Framework |
 | Database | PostgreSQL 16 |
 | Admin Panel | Next.js 15 (App Router, code splitting) |
 | Public Website | Next.js 15 |
@@ -68,7 +68,7 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py createsuperuser
+python manage.py seed_nhms
 python manage.py runserver
 ```
 

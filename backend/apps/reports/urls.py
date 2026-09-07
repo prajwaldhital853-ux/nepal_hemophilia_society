@@ -1,15 +1,9 @@
 from django.urls import path
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
-
-class PlaceholderView(APIView):
-    def get(self, request):
-        return Response({"detail": "Endpoint ready — implementation pending."})
-
+from apps.reports.views import ReportSummaryView
 
 app_name = "reports"
 
 urlpatterns = [
-    path("", PlaceholderView.as_view(), name="list"),
+    path("", ReportSummaryView.as_view(), name="list"),
 ]

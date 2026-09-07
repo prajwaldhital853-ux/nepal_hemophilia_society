@@ -1,14 +1,11 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import type { RootStackParamList } from "@/core/navigation/RootNavigator";
 import { AuthTextField } from "@/features/auth/components/AuthTextField";
 import { useLoginLayout } from "@/features/auth/hooks/useLoginLayout";
 import { nhmsColors, nhmsRadii, nhmsTypography } from "@/features/auth/theme/nhmsTheme";
 
 type Props = {
-  navigation: NativeStackNavigationProp<RootStackParamList, "Login">;
   rememberMe: boolean;
   onToggleRememberMe: () => void;
   showPassword: boolean;
@@ -18,10 +15,11 @@ type Props = {
   onChangeUserId: (value: string) => void;
   onChangePassword: (value: string) => void;
   onLogin: () => void;
+  error?: string;
+  loading?: boolean;
 };
 
 export function LoginFormCard({
-  navigation,
   rememberMe,
   onToggleRememberMe,
   showPassword,
@@ -31,6 +29,8 @@ export function LoginFormCard({
   onChangeUserId,
   onChangePassword,
   onLogin,
+  error,
+  loading,
 }: Props) {
   const layout = useLoginLayout();
   const titleSize = Math.round(nhmsTypography.cardTitle * layout.scale);
@@ -65,7 +65,7 @@ export function LoginFormCard({
       <View style={[styles.formGap, { gap: formGap, marginTop: sectionGap }]}>
         <AuthTextField
           icon="person-outline"
-          placeholder="User ID / Email / Mobile Number"
+          placeholder="Email or Unique Patient ID"
           value={userId}
           onChangeText={onChangeUserId}
         />
@@ -92,18 +92,22 @@ export function LoginFormCard({
         </Pressable>
       </View>
 
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
       <Pressable
         style={[
           styles.loginButton,
           {
             marginTop: sectionGap,
             height: layout.buttonHeight,
+            opacity: loading ? 0.7 : 1,
           },
         ]}
         onPress={onLogin}
+        disabled={loading}
       >
         <MaterialCommunityIcons name="login" size={21} color="#FFFFFF" />
-        <Text style={[styles.loginButtonText, { fontSize: buttonSize }]}>Login</Text>
+        <Text style={[styles.loginButtonText, { fontSize: buttonSize }]}>{loading ? "Signing in…" : "Login"}</Text>
       </Pressable>
 
       <View style={[styles.dividerRow, { marginTop: sectionGap }]}>
@@ -114,12 +118,9 @@ export function LoginFormCard({
         <View style={styles.dividerLine} />
       </View>
 
-      <Pressable onPress={() => navigation.navigate("Register")}>
         <Text style={[styles.registerText, { fontSize: linkSize, marginTop: sectionGap }]}>
-          Don&apos;t have an account?{" "}
-          <Text style={styles.registerLink}>Register Now &gt;</Text>
+          Patient accounts are created by NHMS admins. Self-registration is not allowed.
         </Text>
-      </Pressable>
     </View>
   );
 }
@@ -189,6 +190,12 @@ const styles = StyleSheet.create({
   forgotText: {
     color: nhmsColors.primaryRed,
     fontWeight: "600",
+  },
+  errorText: {
+    marginTop: 10,
+    color: nhmsColors.primaryRed,
+    fontSize: 12,
+    textAlign: "center",
   },
   loginButton: {
     borderRadius: nhmsRadii.button,

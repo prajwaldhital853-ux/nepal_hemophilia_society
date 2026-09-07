@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
+import { useAuth } from "@/core/auth/AuthContext";
 import { mockPatient } from "@/features/home/data/mockPatientData";
 import { homeColors, homeRadii, homeSpacing } from "@/features/home/theme/homeTheme";
 
@@ -62,7 +63,19 @@ function StatsSidebar({ injections, iuUsed }: { injections: number; iuUsed: stri
 }
 
 export function ProfileSummaryCard() {
-  const p = mockPatient;
+  const { patient } = useAuth();
+  const p = {
+    name: patient?.fullName ?? mockPatient.name,
+    id: patient?.id ?? mockPatient.id,
+    status: (patient?.status as "Active") ?? mockPatient.status,
+    dob: patient?.dateOfBirth ?? mockPatient.dob,
+    factorType: patient ? `${patient.deficientFactor} · ${patient.severity}` : mockPatient.factorType,
+    location: patient ? `${patient.district}, ${patient.province}` : mockPatient.location,
+    bloodGroup: patient?.bloodGroup ?? mockPatient.bloodGroup,
+    totalInjections: mockPatient.totalInjections,
+    totalIuUsed: mockPatient.totalIuUsed,
+    photoUrl: patient?.photoUrl,
+  };
 
   return (
     <View style={styles.outer}>
@@ -70,7 +83,7 @@ export function ProfileSummaryCard() {
         <View style={styles.row}>
           <View style={styles.leftCol}>
             <View style={styles.avatarOuter}>
-              <Image source={PATIENT_PHOTO} style={styles.avatar} />
+              <Image source={p.photoUrl ? { uri: p.photoUrl } : PATIENT_PHOTO} style={styles.avatar} />
               <View style={styles.avatarBadge}>
                 <Ionicons name="water" size={10} color={homeColors.white} />
               </View>

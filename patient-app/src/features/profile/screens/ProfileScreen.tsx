@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import type { RootStackParamList } from "@/core/navigation/RootNavigator";
+import { useAuth } from "@/core/auth/AuthContext";
 import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
 import { HomeHeader } from "@/features/home/components/HomeHeader";
 import { ProfileSummaryCard } from "@/features/home/components/ProfileSummaryCard";
@@ -15,6 +16,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
 
 export default function ProfileScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { logout, patient } = useAuth();
 
   function handleMenuPress(item: ProfileMenuItem) {
     if (item.action === "notifications") {
@@ -22,7 +24,7 @@ export default function ProfileScreen({ navigation }: Props) {
       return;
     }
     if (item.action === "logout") {
-      navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+      void logout().then(() => undefined);
     }
   }
 
@@ -42,6 +44,16 @@ export default function ProfileScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <ProfileSummaryCard />
+        {(patient?.documents?.length ?? 0) > 0 ? (
+          <View style={{ marginHorizontal: 16, marginTop: 12, backgroundColor: "#fff", borderRadius: 12, padding: 12 }}>
+            <Text style={{ fontWeight: "700", marginBottom: 8, color: "#1E3A5F" }}>My documents</Text>
+            {patient?.documents.map((doc) => (
+              <Text key={doc.url || doc.name} style={{ color: "#C1121F", marginBottom: 6, fontSize: 12 }}>
+                {doc.name}
+              </Text>
+            ))}
+          </View>
+        ) : null}
 
         <View style={styles.sectionHead}>
           <Text style={styles.sectionTitle}>Person with Hemophilia</Text>

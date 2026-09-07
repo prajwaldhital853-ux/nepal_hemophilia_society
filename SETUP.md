@@ -47,7 +47,7 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 python manage.py makemigrations
 python manage.py migrate
-python manage.py createsuperuser
+python manage.py seed_nhms
 python manage.py runserver
 ```
 

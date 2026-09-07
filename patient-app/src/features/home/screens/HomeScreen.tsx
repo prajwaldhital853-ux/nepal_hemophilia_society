@@ -1,6 +1,10 @@
-import { ScrollView, StatusBar, StyleSheet, View } from "react-native";
+import { useCallback } from "react";
+import { ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+
+import { useAuth } from "@/core/auth/AuthContext";
 
 import type { RootStackParamList } from "@/core/navigation/RootNavigator";
 import { BleedingProfileCard } from "@/features/home/components/BleedingProfileCard";
@@ -17,6 +21,13 @@ type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
 export default function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { refreshPatient, patient } = useAuth();
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshPatient();
+    }, [refreshPatient]),
+  );
 
   return (
     <View style={styles.screen}>
@@ -35,6 +46,18 @@ export default function HomeScreen({ navigation }: Props) {
       >
         <ProfileSummaryCard />
         <OverviewSection />
+        <View style={styles.docsCard}>
+          <Text style={styles.docsTitle}>Diagnostic documents</Text>
+          {(patient?.documents?.length ?? 0) === 0 ? (
+            <Text style={styles.docsEmpty}>No documents uploaded by your care team yet.</Text>
+          ) : (
+            patient?.documents.map((doc) => (
+              <Text key={doc.url || doc.name} style={styles.docsItem}>
+                {doc.name}
+              </Text>
+            ))
+          )}
+        </View>
         <BleedingProfileCard />
         <FactorStockCard />
         <InjectionTrendsChart />
@@ -67,5 +90,27 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingTop: 12,
     paddingBottom: 72,
+  },
+  docsCard: {
+    marginTop: 12,
+    marginHorizontal: 16,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 12,
+  },
+  docsTitle: {
+    fontWeight: "700",
+    color: "#1E3A5F",
+    marginBottom: 8,
+  },
+  docsEmpty: {
+    color: "#6B7280",
+    fontSize: 12,
+  },
+  docsItem: {
+    color: "#C1121F",
+    fontSize: 12,
+    marginBottom: 6,
+    fontWeight: "600",
   },
 });
