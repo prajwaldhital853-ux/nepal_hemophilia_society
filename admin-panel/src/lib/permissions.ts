@@ -28,6 +28,8 @@ export const Perm = {
   websiteManage: "website.manage",
   usersManage: "users.manage",
   stockView: "stock.view",
+  stockManage: "stock.manage",
+  documentsAdd: "documents.add",
   adminsView: "admins.view",
 } as const;
 

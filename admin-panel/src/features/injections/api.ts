@@ -24,6 +24,7 @@ export type ApiInjection = {
   bleedSite?: string;
   notes?: string;
   administeredBy: string;
+  doctorName?: string;
   label: string;
 };
 

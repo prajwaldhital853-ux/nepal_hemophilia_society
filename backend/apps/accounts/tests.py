@@ -74,6 +74,18 @@ class RbacMatrixTests(APITestCase):
         self.assertTrue(has_perm(self.center, PERM_INJECTIONS_ADD))
         self.assertFalse(has_perm(self.center, PERM_PATIENTS_CREATE))
 
+    def test_stock_permissions_match_plan(self):
+        from apps.accounts.rbac import PERM_STOCK_MANAGE, PERM_STOCK_VIEW
+
+        self.assertTrue(has_perm(self.super, PERM_STOCK_VIEW))
+        self.assertTrue(has_perm(self.super, PERM_STOCK_MANAGE))
+        self.assertTrue(has_perm(self.treatment, PERM_STOCK_VIEW))
+        self.assertTrue(has_perm(self.treatment, PERM_STOCK_MANAGE))
+        self.assertTrue(has_perm(self.province_user, PERM_STOCK_VIEW))
+        self.assertFalse(has_perm(self.province_user, PERM_STOCK_MANAGE))
+        self.assertFalse(has_perm(self.patient, PERM_STOCK_VIEW))
+        self.assertFalse(has_perm(self.patient, PERM_STOCK_MANAGE))
+
     def test_patient_has_no_admin_permissions(self):
         self.assertFalse(has_perm(self.patient, PERM_PATIENTS_VIEW))
         self.assertNotIn(PERM_INJECTIONS_ADD, permissions_for(self.patient))

@@ -83,9 +83,9 @@ class InjectionListCreateView(APIView):
         serializer = InjectionCreateSerializer(data=request.data, context={"request": request})
         try:
             serializer.is_valid(raise_exception=True)
+            record = serializer.save()
         except ValidationError as exc:
             return Response({"error": _flatten_errors(exc.detail)}, status=400)
-        record = serializer.save()
         AuditLog.objects.create(
             actor=request.user.get_username(),
             action="Added injection record",
@@ -125,9 +125,9 @@ class InjectionDetailView(APIView):
         )
         try:
             serializer.is_valid(raise_exception=True)
+            record = serializer.save()
         except ValidationError as exc:
             return Response({"error": _flatten_errors(exc.detail)}, status=400)
-        record = serializer.save()
         AuditLog.objects.create(
             actor=request.user.get_username(),
             action=f"Updated injection status to {record.status}",
@@ -154,9 +154,9 @@ class InjectionCorrectView(APIView):
         )
         try:
             serializer.is_valid(raise_exception=True)
+            record = serializer.save()
         except ValidationError as exc:
             return Response({"error": _flatten_errors(exc.detail)}, status=400)
-        record = serializer.save()
         AuditLog.objects.create(
             actor=request.user.get_username(),
             action="Corrected injection record",

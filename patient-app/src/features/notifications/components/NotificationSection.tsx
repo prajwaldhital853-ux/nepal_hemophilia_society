@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { NotificationItem } from "@/features/notifications/data/mockNotificationsData";
+import type { NotificationItem } from "@/features/notifications/data/notificationsTypes";
 import { notificationsColors, notificationsSpacing } from "@/features/notifications/theme/notificationsTheme";
 import { NotificationCard } from "@/features/notifications/components/NotificationCard";
 

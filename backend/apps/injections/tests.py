@@ -55,6 +55,25 @@ class ClinicalWorkflowTests(APITestCase):
         self.patient_b = self._create_patient("HEM-0009002", "B", InhibitorStatus.NONE)
         self.patient_inhibitor = self._create_patient("HEM-0009003", "A", InhibitorStatus.CURRENT)
 
+        from apps.stock.models import FactorStock
+
+        FactorStock.objects.create(
+            hospital=self.hospital,
+            factor_medicine=self.factor_a,
+            batch_number="LOT-A1",
+            quantity=Decimal("100000"),
+            unit="IU",
+            created_by=self.treatment_admin,
+        )
+        FactorStock.objects.create(
+            hospital=self.hospital,
+            factor_medicine=self.factor_b,
+            batch_number="LOT-B1",
+            quantity=Decimal("100000"),
+            unit="IU",
+            created_by=self.treatment_admin,
+        )
+
         self.patient_user = User.objects.create_user(
             username=self.patient_a.unique_patient_id,
             password="Patient#2026",
@@ -194,6 +213,22 @@ class ClinicalWorkflowTests(APITestCase):
         self.assertEqual(res.status_code, 201)
         self.assertEqual(TreatmentRecord.objects.count(), 1)
         self.assertTrue(HospitalVisit.objects.filter(reason="treatment").exists())
+
+    def test_super_admin_uses_patient_assigned_center_when_treatment_center_omitted(self):
+        self.client.force_authenticate(self.super)
+        res = self.client.post(
+            "/api/v1/treatments/",
+            {
+                "patientId": self.patient_a.unique_patient_id,
+                "treatmentType": "Surgery",
+                "description": "completed treatment",
+                "treatmentDate": "2026-09-14",
+                "notes": "normal bleeding",
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual(res.data["treatment"]["hospitalName"], self.hospital.name)
 
     def test_patient_sees_own_injection_history(self):
         self.client.force_authenticate(self.treatment_admin)

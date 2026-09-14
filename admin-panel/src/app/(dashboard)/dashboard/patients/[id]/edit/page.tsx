@@ -22,5 +22,5 @@ export default function EditPatientPage({ params }: { params: Promise<{ id: stri
 
   if (error) return <p className="p-4 text-[12px] text-red-600">{error}</p>;
   if (!patient) return <p className="p-4 text-[12px] text-muted">Loading patient {id}…</p>;
-  return <PatientFormWizard mode="edit" initial={patient} />;
+  return <PatientFormWizard key={patient.id} mode="edit" initial={patient} />;
 }

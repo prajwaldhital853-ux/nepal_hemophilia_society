@@ -31,6 +31,7 @@ class InjectionRecordSerializer(serializers.ModelSerializer):
     factorMedicineName = serializers.CharField(source="factor_medicine.name", read_only=True)
     factorType = serializers.CharField(source="factor_type", read_only=True)
     administeredBy = serializers.SerializerMethodField()
+    doctorName = serializers.CharField(source="doctor_name", read_only=True)
     administeredAt = serializers.DateTimeField(source="administered_at")
     batchNumber = serializers.CharField(source="batch_number", read_only=True)
     bleedSite = serializers.CharField(source="bleed_site", read_only=True)
@@ -68,6 +69,7 @@ class InjectionRecordSerializer(serializers.ModelSerializer):
             "isCorrection",
             "label",
             "administeredBy",
+            "doctorName",
             "createdAt",
         )
 
@@ -75,6 +77,8 @@ class InjectionRecordSerializer(serializers.ModelSerializer):
         return f"INJ-{obj.administered_at.year}-{obj.id:04d}"
 
     def get_administeredBy(self, obj):
+        if obj.doctor_name:
+            return obj.doctor_name if obj.doctor_name.startswith("Dr") else f"Dr. {obj.doctor_name}"
         name = obj.administered_by.get_full_name() or obj.administered_by.username
         return name if name.startswith("Dr") else f"Dr. {name}"
 
@@ -99,6 +103,7 @@ class InjectionCreateSerializer(serializers.Serializer):
     bleedSite = serializers.CharField(required=False, allow_blank=True)
     notes = serializers.CharField(required=False, allow_blank=True)
     treatmentCenter = serializers.CharField(required=False, allow_blank=True)
+    doctorName = serializers.CharField(required=False, allow_blank=True)
     status = serializers.ChoiceField(choices=InjectionStatus.choices, required=False)
     acknowledgeInhibitorWarning = serializers.BooleanField(required=False, default=False)
 
@@ -120,7 +125,9 @@ class InjectionCreateSerializer(serializers.Serializer):
         if err:
             raise serializers.ValidationError({"patientId": err})
 
-        hospital, hospital_err = resolve_actor_hospital(request.user, attrs.get("treatmentCenter"))
+        hospital, hospital_err = resolve_actor_hospital(
+            request.user, attrs.get("treatmentCenter"), patient=patient
+        )
         if hospital_err:
             raise serializers.ValidationError({"treatmentCenter": hospital_err})
 
@@ -154,30 +161,39 @@ class InjectionCreateSerializer(serializers.Serializer):
                 status = InjectionStatus.SCHEDULED
             else:
                 status = InjectionStatus.COMPLETED
-        record = InjectionRecord.objects.create(
-            patient=validated_data["patient"],
-            hospital=validated_data["hospital"],
-            administered_by=request.user,
-            factor_medicine=validated_data["factor"],
-            factor_type=validated_data["factor"].factor_type,
-            dose=validated_data["dose"],
-            unit=validated_data["factor"].unit,
-            indication=validated_data["indication"],
-            status=status,
-            administered_at=administered_at,
-            batch_number=validated_data.get("batchNumber", ""),
-            bleed_site=validated_data.get("bleedSite", ""),
-            notes=validated_data.get("notes", ""),
-            inhibitor_warning=validated_data["inhibitor_warning"],
-        )
-        if status == InjectionStatus.COMPLETED:
-            create_hospital_visit(
-                patient=record.patient,
-                hospital=record.hospital,
-                visit_date=administered_at.date(),
-                reason=VisitReason.INJECTION,
-                injection=record,
+        from django.db import transaction
+        from apps.stock.services import consume_for_injection
+
+        with transaction.atomic():
+            record = InjectionRecord.objects.create(
+                patient=validated_data["patient"],
+                hospital=validated_data["hospital"],
+                administered_by=request.user,
+                factor_medicine=validated_data["factor"],
+                factor_type=validated_data["factor"].factor_type,
+                dose=validated_data["dose"],
+                unit=validated_data["factor"].unit,
+                indication=validated_data["indication"],
+                status=status,
+                administered_at=administered_at,
+                batch_number=validated_data.get("batchNumber", ""),
+                bleed_site=validated_data.get("bleedSite", ""),
+                doctor_name=validated_data.get("doctorName", ""),
+                notes=validated_data.get("notes", ""),
+                inhibitor_warning=validated_data["inhibitor_warning"],
             )
+            from apps.notifications.services import notify_injection_action
+
+            notify_injection_action(record, user=request.user)
+            if status == InjectionStatus.COMPLETED:
+                create_hospital_visit(
+                    patient=record.patient,
+                    hospital=record.hospital,
+                    visit_date=administered_at.date(),
+                    reason=VisitReason.INJECTION,
+                    injection=record,
+                )
+                consume_for_injection(record, user=request.user)
         return record
 
 
@@ -188,6 +204,7 @@ class InjectionUpdateSerializer(serializers.Serializer):
     administeredAt = serializers.DateTimeField(required=False)
     batchNumber = serializers.CharField(required=False, allow_blank=True)
     bleedSite = serializers.CharField(required=False, allow_blank=True)
+    doctorName = serializers.CharField(required=False, allow_blank=True)
     notes = serializers.CharField(required=False, allow_blank=True)
 
     def validate(self, attrs):
@@ -202,28 +219,46 @@ class InjectionUpdateSerializer(serializers.Serializer):
         return attrs
 
     def update(self, instance, validated_data):
+        from django.db import transaction
+        from apps.stock.services import apply_injection_status_change
+
+        request = self.context["request"]
         old_status = instance.status
-        for field, attr in (
-            ("status", "status"),
-            ("dose", "dose"),
-            ("indication", "indication"),
-            ("administeredAt", "administered_at"),
-            ("batchNumber", "batch_number"),
-            ("bleedSite", "bleed_site"),
-            ("notes", "notes"),
-        ):
-            if field in validated_data:
-                setattr(instance, attr, validated_data[field])
-        instance.save()
-        if old_status != InjectionStatus.COMPLETED and instance.status == InjectionStatus.COMPLETED:
-            if not instance.visit_log.exists():
-                create_hospital_visit(
-                    patient=instance.patient,
-                    hospital=instance.hospital,
-                    visit_date=instance.administered_at.date(),
-                    reason=VisitReason.INJECTION,
-                    injection=instance,
-                )
+        old_dose = instance.dose
+        old_batch = instance.batch_number
+        with transaction.atomic():
+            for field, attr in (
+                ("status", "status"),
+                ("dose", "dose"),
+                ("indication", "indication"),
+                ("administeredAt", "administered_at"),
+                ("batchNumber", "batch_number"),
+                ("bleedSite", "bleed_site"),
+                ("doctorName", "doctor_name"),
+                ("notes", "notes"),
+            ):
+                if field in validated_data:
+                    setattr(instance, attr, validated_data[field])
+            instance.save()
+            from apps.notifications.services import notify_injection_action
+
+            if old_status != instance.status:
+                notify_injection_action(instance, user=request.user)
+            if old_status != InjectionStatus.COMPLETED and instance.status == InjectionStatus.COMPLETED:
+                if not instance.visit_log.exists():
+                    create_hospital_visit(
+                        patient=instance.patient,
+                        hospital=instance.hospital,
+                        visit_date=instance.administered_at.date(),
+                        reason=VisitReason.INJECTION,
+                        injection=instance,
+                    )
+            if (
+                old_status != instance.status
+                or old_dose != instance.dose
+                or old_batch != instance.batch_number
+            ):
+                apply_injection_status_change(instance, old_status, request.user)
         return instance
 
 
@@ -258,26 +293,33 @@ class InjectionCorrectionSerializer(serializers.Serializer):
         return attrs
 
     def create(self, validated_data):
+        from django.db import transaction
+        from apps.stock.services import consume_for_injection, reverse_for_injection
+
         request = self.context["request"]
         original = validated_data["original"]
         administered_at = validated_data.get("administeredAt") or timezone.now()
-        original.is_void = True
-        original.save(update_fields=["is_void", "updated_at"])
-        record = InjectionRecord.objects.create(
-            patient=original.patient,
-            hospital=original.hospital,
-            administered_by=request.user,
-            factor_medicine=validated_data["factor"],
-            factor_type=validated_data["factor"].factor_type,
-            dose=validated_data["dose"],
-            unit=validated_data["factor"].unit,
-            indication=validated_data["indication"],
-            administered_at=administered_at,
-            batch_number=validated_data.get("batchNumber", ""),
-            bleed_site=validated_data.get("bleedSite", ""),
-            notes=f"{validated_data.get('notes', '')}\nCorrection: {validated_data['correctionReason']}".strip(),
-            inhibitor_warning=validated_data["inhibitor_warning"],
-            is_correction=True,
-            corrects_record=original,
-        )
+        with transaction.atomic():
+            if original.status == InjectionStatus.COMPLETED:
+                reverse_for_injection(original, request.user, reason="Injection corrected")
+            original.is_void = True
+            original.save(update_fields=["is_void", "updated_at"])
+            record = InjectionRecord.objects.create(
+                patient=original.patient,
+                hospital=original.hospital,
+                administered_by=request.user,
+                factor_medicine=validated_data["factor"],
+                factor_type=validated_data["factor"].factor_type,
+                dose=validated_data["dose"],
+                unit=validated_data["factor"].unit,
+                indication=validated_data["indication"],
+                administered_at=administered_at,
+                batch_number=validated_data.get("batchNumber", ""),
+                bleed_site=validated_data.get("bleedSite", ""),
+                notes=f"{validated_data.get('notes', '')}\nCorrection: {validated_data['correctionReason']}".strip(),
+                inhibitor_warning=validated_data["inhibitor_warning"],
+                is_correction=True,
+                corrects_record=original,
+            )
+            consume_for_injection(record, user=request.user)
         return record

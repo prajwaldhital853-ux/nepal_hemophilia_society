@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ChevronDown, Download, Search, ShieldAlert } from "lucide-react";
 
-import { auditModules, type AuditLog, type AuditSeverity } from "@/features/audit/data/mockAudit";
+import { AUDIT_MODULES, type AuditLog, type AuditSeverity } from "@/features/audit/types";
 import { apiFetch } from "@/lib/api";
 
 function severityClass(severity: AuditSeverity) {
@@ -112,7 +112,7 @@ export default function AuditModule() {
               </button>
               {openModule ? (
                 <div className="absolute z-20 mt-1 w-40 overflow-hidden panel shadow-lg">
-                  {auditModules.map((item) => (
+                  {AUDIT_MODULES.map((item) => (
                     <button
                       key={item}
                       type="button"

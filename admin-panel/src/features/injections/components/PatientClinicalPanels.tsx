@@ -43,14 +43,19 @@ function StatusSelect({
 export function PatientInjectionsPanel({
   patientId,
   hemophiliaType,
+  primaryHospital,
   compact = false,
   onViewAll,
 }: {
   patientId: string;
   hemophiliaType?: string;
+  primaryHospital?: string;
   compact?: boolean;
   onViewAll?: () => void;
 }) {
+  const { can } = useAuth();
+  const canAdd = can(Perm.injectionsAdd);
+  const canUpdate = can(Perm.injectionsUpdate);
   const [rows, setRows] = useState<ApiInjection[]>([]);
   const [loading, setLoading] = useState(true);
   const [showLog, setShowLog] = useState(false);
@@ -155,7 +160,7 @@ export function PatientInjectionsPanel({
                     )}
                   </td>
                   <td className="px-2 py-2 text-[11px]">
-                    {row.administeredBy}
+                    {row.doctorName || row.administeredBy || "—"}
                     <span className="block text-[10px] text-muted">{row.hospitalName}</span>
                   </td>
                 </tr>
@@ -168,6 +173,7 @@ export function PatientInjectionsPanel({
         <LogInjectionDialog
           patientId={patientId}
           hemophiliaType={hemophiliaType}
+          primaryHospital={primaryHospital}
           onClose={() => setShowLog(false)}
           onSaved={() => {
             setShowLog(false);
@@ -179,7 +185,13 @@ export function PatientInjectionsPanel({
   );
 }
 
-export function PatientTreatmentsPanel({ patientId }: { patientId: string }) {
+export function PatientTreatmentsPanel({
+  patientId,
+  primaryHospital,
+}: {
+  patientId: string;
+  primaryHospital?: string;
+}) {
   const { can } = useAuth();
   const canAdd = can(Perm.treatmentsAdd);
   const canUpdate = can(Perm.treatmentsUpdate);
@@ -272,6 +284,7 @@ export function PatientTreatmentsPanel({ patientId }: { patientId: string }) {
       {showLog ? (
         <LogTreatmentDialog
           patientId={patientId}
+          primaryHospital={primaryHospital}
           onClose={() => setShowLog(false)}
           onSaved={() => {
             setShowLog(false);

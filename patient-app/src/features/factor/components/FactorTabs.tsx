@@ -3,8 +3,9 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { factorDateRange, factorTabs } from "@/features/factor/data/mockFactorData";
 import { factorColors } from "@/features/factor/theme/factorTheme";
+
+const factorTabs = ["Overview", "Usage History", "Reports", "Stock Details"] as const;
 
 const tabIcons = {
   Overview: "stats-chart",
@@ -55,7 +56,7 @@ export function FactorTabs() {
       <View style={styles.dateRow}>
         <View style={styles.dateChip}>
           <MaterialCommunityIcons name="calendar-month-outline" size={14} color={factorColors.primary} />
-          <Text style={styles.dateText}>{factorDateRange}</Text>
+          <Text style={styles.dateText}>All time</Text>
           <Ionicons name="chevron-down" size={14} color="#0F172A" />
         </View>
       </View>

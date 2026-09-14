@@ -31,9 +31,14 @@ export async function apiFetch(path: string, init: ApiInit = {}) {
     window.location.href = "/login";
   }
   if (!res.ok) {
+    const detail = data.detail;
     const message =
       (typeof data.error === "string" && data.error) ||
-      (typeof data.detail === "string" && data.detail) ||
+      (typeof detail === "string" && detail) ||
+      (Array.isArray(detail) && typeof detail[0] === "string" && detail[0]) ||
+      (typeof detail === "object" && detail !== null && typeof (detail as { non_field_errors?: string[] }).non_field_errors?.[0] === "string"
+        ? (detail as { non_field_errors: string[] }).non_field_errors[0]
+        : null) ||
       "Request failed";
     throw new Error(message);
   }

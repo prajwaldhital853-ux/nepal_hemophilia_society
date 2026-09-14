@@ -17,13 +17,20 @@ const fieldClass =
 type Props = {
   patientId?: string;
   hemophiliaType?: string;
+  primaryHospital?: string;
   onClose: () => void;
   onSaved: () => void;
 };
 
-export default function LogInjectionDialog({ patientId: initialPatientId, hemophiliaType: initialType, onClose, onSaved }: Props) {
+export default function LogInjectionDialog({
+  patientId: initialPatientId,
+  hemophiliaType: initialType,
+  primaryHospital = "",
+  onClose,
+  onSaved,
+}: Props) {
   const [patientId, setPatientId] = useState(initialPatientId ?? "");
-  const [hemophiliaType, setHemophiliaType] = useState(initialType ?? "");
+  const hemophiliaType = initialType ?? "";
   const [factors, setFactors] = useState<{ id: number; name: string; unit: string }[]>([]);
   const [factorMedicineId, setFactorMedicineId] = useState("");
   const [dose, setDose] = useState("");
@@ -31,6 +38,7 @@ export default function LogInjectionDialog({ patientId: initialPatientId, hemoph
   const [status, setStatus] = useState<InjectionStatus>("Completed");
   const [administeredAt, setAdministeredAt] = useState("");
   const [bleedSite, setBleedSite] = useState("");
+  const [doctorName, setDoctorName] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -53,7 +61,9 @@ export default function LogInjectionDialog({ patientId: initialPatientId, hemoph
         status,
         administeredAt: administeredAt || undefined,
         bleedSite,
+        doctorName,
         notes,
+        treatmentCenter: primaryHospital || undefined,
         acknowledgeInhibitorWarning: acknowledge || needsAck,
       });
       onSaved();
@@ -155,6 +165,15 @@ export default function LogInjectionDialog({ patientId: initialPatientId, hemoph
               />
             </label>
           </div>
+          <label className="block text-[11px]">
+            <span className="font-medium text-muted">Doctor name</span>
+            <input
+              value={doctorName}
+              onChange={(e) => setDoctorName(e.target.value)}
+              className={fieldClass}
+              placeholder="e.g. Dr. Sharma"
+            />
+          </label>
           <label className="block text-[11px]">
             <span className="font-medium text-muted">Bleed site</span>
             <input value={bleedSite} onChange={(e) => setBleedSite(e.target.value)} className={fieldClass} placeholder="e.g. knee" />

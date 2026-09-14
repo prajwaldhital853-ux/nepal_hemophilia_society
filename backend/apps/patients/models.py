@@ -24,6 +24,14 @@ class InhibitorStatus(models.TextChoices):
     CURRENT = "Current", "Current"
 
 
+class TreatmentPlan(models.TextChoices):
+    PROPHYLAXIS = "Regular Prophylaxis", "Regular Prophylaxis"
+    ON_DEMAND = "On-demand", "On-demand"
+    ITI = "ITI", "ITI"
+    BYPASSING = "Bypassing / Specialist", "Bypassing / Specialist"
+    OTHER = "Other", "Other"
+
+
 class Gender(models.TextChoices):
     MALE = "Male", "Male"
     FEMALE = "Female", "Female"
@@ -77,6 +85,18 @@ class Patient(TimeStampedModel):
         max_length=20,
         choices=InhibitorStatus.choices,
         default=InhibitorStatus.NONE,
+    )
+    treatment_plan = models.CharField(
+        max_length=40,
+        choices=TreatmentPlan.choices,
+        default=TreatmentPlan.PROPHYLAXIS,
+    )
+    prescribed_factor_medicine = models.ForeignKey(
+        "factors.FactorMedicine",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="prescribed_patients",
     )
     diagnosis_date = models.DateField(null=True, blank=True)
     primary_hospital = models.ForeignKey(Hospital, on_delete=models.PROTECT, related_name="primary_patients")
@@ -142,6 +162,20 @@ class PatientDocument(TimeStampedModel):
     original_name = models.CharField(max_length=255)
     content_type = models.CharField(max_length=100, blank=True)
     size = models.PositiveIntegerField(default=0)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="patient_documents_uploaded",
+    )
+    hospital = models.ForeignKey(
+        Hospital,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="patient_documents",
+    )
 
     class Meta:
         db_table = "patient_documents"
@@ -149,3 +183,27 @@ class PatientDocument(TimeStampedModel):
 
     def __str__(self):
         return self.original_name
+
+
+class BleedingEpisode(TimeStampedModel):
+    patient = models.ForeignKey(Patient, on_delete=models.PROTECT, related_name="bleeding_episodes")
+    hospital = models.ForeignKey(Hospital, on_delete=models.PROTECT, related_name="bleeding_episodes")
+    episode_date = models.DateField(db_index=True)
+    site = models.CharField(max_length=128, blank=True)
+    severity = models.CharField(max_length=30, blank=True)
+    notes = models.TextField(blank=True)
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="bleeding_episodes_recorded",
+    )
+
+    class Meta:
+        db_table = "bleeding_episodes"
+        ordering = ["-episode_date", "-created_at"]
+        indexes = [
+            models.Index(fields=["patient", "episode_date"]),
+        ]
+
+    def __str__(self):
+        return f"{self.patient.unique_patient_id} — {self.site or 'bleed'} — {self.episode_date}"

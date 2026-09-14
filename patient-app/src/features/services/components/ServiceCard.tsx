@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 
-import type { ServiceItem } from "@/features/services/data/mockServicesData";
+import type { ServiceItem } from "@/features/services/data/servicesCatalog";
 
 type ServiceCardProps = {
   item: ServiceItem;

@@ -61,6 +61,7 @@ LOCAL_APPS = [
     "apps.factors",
     "apps.injections",
     "apps.treatments",
+    "apps.stock",
     "apps.notifications",
     "apps.audit",
     "apps.reports",
@@ -162,7 +163,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "30/minute",
-        "user": "120/minute",
+        "user": "300/minute" if DEBUG else "180/minute",
         "patient_login": "20/minute",
     },
     "DATETIME_FORMAT": "%Y-%m-%dT%H:%M:%S%z",

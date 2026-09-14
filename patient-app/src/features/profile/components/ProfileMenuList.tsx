@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { ProfileMenuItem } from "@/features/profile/data/mockProfileMenu";
-import { profileMenuItems } from "@/features/profile/data/mockProfileMenu";
+import type { ProfileMenuItem } from "@/features/profile/data/profileMenu";
+import { profileMenuItems } from "@/features/profile/data/profileMenu";
 import { homeColors } from "@/features/home/theme/homeTheme";
 
 const ICON_RED = "#B9020A";

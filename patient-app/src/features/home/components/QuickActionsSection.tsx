@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { mockQuickActions } from "@/features/home/data/mockPatientData";
+import { quickActions } from "@/features/home/data/quickActions";
 import { homeColors, homeRadii, homeSpacing } from "@/features/home/theme/homeTheme";
 
 const iconMap = {
@@ -18,7 +18,7 @@ export function QuickActionsSection() {
       <View style={styles.card}>
         <Text style={styles.title}>Quick Actions</Text>
         <View style={styles.row}>
-          {mockQuickActions.map((action) => (
+          {quickActions.map((action) => (
             <Pressable key={action.key} style={styles.actionItem}>
               <View style={[styles.iconWrap, { backgroundColor: action.bg }]}>
                 {iconMap[action.icon](action.color)}

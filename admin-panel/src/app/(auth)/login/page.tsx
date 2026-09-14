@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { homeForUser, persistUser, type AuthUser } from "@/lib/auth";
+import { homeForUser, type AuthUser, useAuth } from "@/lib/auth";
 import { apiFetch, setAccessToken } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { setSession } = useAuth();
   const [username, setUsername] = useState("superadmin");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -32,7 +33,7 @@ export default function LoginPage() {
         throw new Error("Patient accounts cannot use the admin panel");
       }
       setAccessToken(data.access);
-      if (data.user) persistUser(data.user as AuthUser);
+      if (data.user) setSession(data.user as AuthUser);
       if (data.mustChangePassword || data.user?.must_change_password) {
         router.push("/change-password");
         return;

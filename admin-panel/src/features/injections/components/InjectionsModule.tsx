@@ -165,7 +165,7 @@ export default function InjectionsModule() {
         <div className="flex items-center gap-2">
           <button type="button" className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-muted">
             <CalendarRange className="size-3.5" />
-            May 2025
+            {new Date().toLocaleString("en-US", { month: "long", year: "numeric" })}
           </button>
           {canAdd ? (
             <button
@@ -184,12 +184,12 @@ export default function InjectionsModule() {
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {[
-          ["Total logged", formatNumber(injectionStats.totalInjections)],
-          ["This month", String(injectionStats.thisMonth)],
-          ["Prophylaxis", String(injectionStats.prophylaxis)],
-          ["On-demand", String(injectionStats.onDemand)],
-          ["Emergency", String(injectionStats.emergency)],
-          ["Scheduled", String(injectionStats.scheduled)],
+          ["Total logged", formatNumber(liveStats.total)],
+          ["This month", String(liveStats.thisMonth)],
+          ["Prophylaxis", String(liveStats.prophylaxis)],
+          ["On-demand", String(liveStats.onDemand)],
+          ["Emergency", String(liveStats.emergency)],
+          ["Scheduled", String(liveStats.scheduled)],
         ].map(([label, value]) => (
           <article key={label} className="panel p-2.5">
             <p className="text-[10px] text-muted">{label}</p>

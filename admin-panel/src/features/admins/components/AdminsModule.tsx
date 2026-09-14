@@ -6,7 +6,7 @@ import { CalendarRange, ChevronDown, Download, Eye, Plus, Search, X } from "luci
 
 import { fetchProvinceAdmins, type ProvinceAdminRecord } from "@/features/admins/api";
 import AdminFormDialog from "@/features/admins/components/AdminFormDialog";
-import { provinces } from "@/features/admins/data/mockAdmins";
+import { NEPAL_PROVINCES } from "@/lib/constants/provinces";
 import { useAuth } from "@/lib/auth";
 import { formatNumber } from "@/lib/format";
 import { Perm } from "@/lib/permissions";
@@ -120,7 +120,7 @@ export default function AdminsModule() {
                 >
                   All Provinces
                 </button>
-                {provinces.map((item) => (
+                {NEPAL_PROVINCES.map((item) => (
                   <button
                     key={item}
                     type="button"

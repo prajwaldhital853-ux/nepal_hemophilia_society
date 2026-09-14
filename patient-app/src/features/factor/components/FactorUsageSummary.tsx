@@ -1,16 +1,38 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
-import { usageSummary } from "@/features/factor/data/mockFactorData";
+import { FactorEmptyState, FactorLoading } from "@/features/factor/components/FactorStates";
+import { usePatientInjections } from "@/features/factor/hooks/usePatientInjections";
 import { factorColors, factorSpacing } from "@/features/factor/theme/factorTheme";
 import { SectionTitle } from "@/features/factor/components/SectionTitle";
 
 export function FactorUsageSummary() {
+  const { injections, loading, totalIu } = usePatientInjections();
+
+  if (loading) return <FactorLoading />;
+  if (!injections.length) {
+    return (
+      <View style={styles.section}>
+        <SectionTitle title="Usage Summary" />
+        <FactorEmptyState
+          title="No usage data yet"
+          message="Injection records from your treatment center will populate this summary."
+        />
+      </View>
+    );
+  }
+
+  const items = [
+    { id: "injections", icon: "needle" as const, value: String(injections.length), label: "Total Injections", trend: "From your records" },
+    { id: "iu", icon: "water" as const, value: `${totalIu.toLocaleString()} IU`, label: "Total IU Used", trend: "All time" },
+    { id: "last", icon: "target" as const, value: injections[0]?.date ?? "—", label: "Last Injection", trend: injections[0]?.factorType ?? "—" },
+  ];
+
   return (
     <View style={styles.section}>
       <SectionTitle title="Usage Summary" />
       <View style={styles.grid}>
-        {usageSummary.map((item) => (
+        {items.map((item) => (
           <View key={item.id} style={styles.card}>
             <View style={styles.iconCircle}>
               {item.icon === "water" ? (
@@ -32,13 +54,8 @@ export function FactorUsageSummary() {
 }
 
 const styles = StyleSheet.create({
-  section: {
-    marginTop: factorSpacing.section,
-  },
-  grid: {
-    flexDirection: "row",
-    gap: 8,
-  },
+  section: { marginTop: factorSpacing.section },
+  grid: { flexDirection: "row", gap: 8 },
   card: {
     flex: 1,
     backgroundColor: factorColors.white,
@@ -47,11 +64,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 12,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
   },
   iconCircle: {
     width: 52,
@@ -62,12 +74,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 8,
   },
-  value: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: factorColors.navy,
-    textAlign: "center",
-  },
+  value: { fontSize: 14, fontWeight: "800", color: factorColors.navy, textAlign: "center" },
   label: {
     fontSize: 10.5,
     fontWeight: "600",
@@ -77,11 +84,5 @@ const styles = StyleSheet.create({
     lineHeight: 13,
     minHeight: 26,
   },
-  trend: {
-    fontSize: 9.5,
-    fontWeight: "700",
-    color: factorColors.greenText,
-    textAlign: "center",
-    marginTop: 5,
-  },
+  trend: { fontSize: 9.5, fontWeight: "700", color: factorColors.greenText, textAlign: "center", marginTop: 5 },
 });

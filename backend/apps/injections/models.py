@@ -49,6 +49,7 @@ class InjectionRecord(TimeStampedModel):
     administered_at = models.DateTimeField(db_index=True)
     batch_number = models.CharField(max_length=64, blank=True)
     bleed_site = models.CharField(max_length=128, blank=True)
+    doctor_name = models.CharField(max_length=128, blank=True)
     notes = models.TextField(blank=True)
     inhibitor_warning = models.BooleanField(default=False)
     is_correction = models.BooleanField(default=False)

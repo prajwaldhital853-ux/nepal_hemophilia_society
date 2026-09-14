@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { createProvinceAdmin } from "@/features/admins/api";
-import { provinces } from "@/features/admins/data/mockAdmins";
+import { NEPAL_PROVINCES } from "@/lib/constants/provinces";
 
 const fieldClass =
   "mt-1 w-full rounded border border-line-subtle bg-elevated px-2.5 py-1.5 text-[12px] text-ink outline-none focus:border-brand";
@@ -22,11 +22,11 @@ type Props = {
 };
 
 export default function AdminFormDialog({ takenProvinces, onClose, onCreated }: Props) {
-  const available = provinces.filter((p) => !takenProvinces.includes(p));
+  const available = NEPAL_PROVINCES.filter((p) => !takenProvinces.includes(p));
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [province, setProvince] = useState(available[0] || "");
+  const [province, setProvince] = useState<string>(available[0] || "");
   const [temporaryPassword, setTemporaryPassword] = useState(generateTempPassword());
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);

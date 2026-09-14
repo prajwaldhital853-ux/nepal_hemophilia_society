@@ -1,11 +1,13 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useRef, type RefObject } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { AuthTextField } from "@/features/auth/components/AuthTextField";
 import { useLoginLayout } from "@/features/auth/hooks/useLoginLayout";
 import { nhmsColors, nhmsRadii, nhmsTypography } from "@/features/auth/theme/nhmsTheme";
 
 type Props = {
+  passwordWrapRef?: RefObject<View | null>;
   rememberMe: boolean;
   onToggleRememberMe: () => void;
   showPassword: boolean;
@@ -15,11 +17,14 @@ type Props = {
   onChangeUserId: (value: string) => void;
   onChangePassword: (value: string) => void;
   onLogin: () => void;
+  onPasswordFocus?: () => void;
   error?: string;
+  connectionHint?: string;
   loading?: boolean;
 };
 
 export function LoginFormCard({
+  passwordWrapRef,
   rememberMe,
   onToggleRememberMe,
   showPassword,
@@ -29,10 +34,13 @@ export function LoginFormCard({
   onChangeUserId,
   onChangePassword,
   onLogin,
+  onPasswordFocus,
   error,
+  connectionHint,
   loading,
 }: Props) {
   const layout = useLoginLayout();
+  const passwordRef = useRef<TextInput>(null);
   const titleSize = Math.round(nhmsTypography.cardTitle * layout.scale);
   const subtitleSize = Math.round(nhmsTypography.cardSubtitle * layout.scale);
   const linkSize = Math.round(nhmsTypography.link * layout.scale);
@@ -68,16 +76,29 @@ export function LoginFormCard({
           placeholder="Email or Unique Patient ID"
           value={userId}
           onChangeText={onChangeUserId}
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          textContentType="username"
+          autoComplete="username"
         />
-        <AuthTextField
-          icon="lock-closed-outline"
-          placeholder="Password"
-          secureTextEntry={!showPassword}
-          showToggle
-          onToggleSecure={onTogglePassword}
-          value={password}
-          onChangeText={onChangePassword}
-        />
+        <View ref={passwordWrapRef} collapsable={false}>
+          <AuthTextField
+            ref={passwordRef}
+            icon="lock-closed-outline"
+            placeholder="Password"
+            secureTextEntry={!showPassword}
+            showToggle
+            onToggleSecure={onTogglePassword}
+            value={password}
+            onChangeText={onChangePassword}
+            onFocus={onPasswordFocus}
+            returnKeyType="done"
+            onSubmitEditing={onLogin}
+            textContentType="password"
+            autoComplete="password"
+          />
+        </View>
       </View>
 
       <View style={[styles.optionsRow, { marginTop: sectionGap }]}>
@@ -92,6 +113,7 @@ export function LoginFormCard({
         </Pressable>
       </View>
 
+      {connectionHint ? <Text style={styles.hintText}>{connectionHint}</Text> : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <Pressable
@@ -196,6 +218,13 @@ const styles = StyleSheet.create({
     color: nhmsColors.primaryRed,
     fontSize: 12,
     textAlign: "center",
+  },
+  hintText: {
+    marginTop: 10,
+    color: nhmsColors.textMuted,
+    fontSize: 11,
+    textAlign: "center",
+    lineHeight: 16,
   },
   loginButton: {
     borderRadius: nhmsRadii.button,

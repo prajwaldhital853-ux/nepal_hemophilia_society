@@ -1,11 +1,18 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
-function resolveApiBaseUrl() {
-  const fromEnv = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "");
-  if (fromEnv) return fromEnv;
+/** Fix common .env typos like 192.168.1.3.8000/qpi/v1 */
+export function normalizeApiBaseUrl(raw: string) {
+  let url = raw.trim().replace(/\/$/, "");
+  url = url.replace(/(\d+\.\d+\.\d+\.\d+)\.(\d{2,5})(?=\/|$)/, "$1:$2");
+  url = url.replace(/\/qpi\b/i, "/api");
+  return url;
+}
 
-  // Expo Go on a physical phone: reuse the Metro host IP for Django on port 8000.
+function resolveApiBaseUrl() {
+  const fromEnv = process.env.EXPO_PUBLIC_API_URL;
+  if (fromEnv) return normalizeApiBaseUrl(fromEnv);
+
   const debuggerHost =
     Constants.expoGoConfig?.debuggerHost?.split(":")[0] ??
     Constants.expoConfig?.hostUri?.split(":")[0];

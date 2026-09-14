@@ -2,11 +2,14 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { AuthProvider, useAuth } from "@/core/auth/AuthContext";
+import { PatientDataProvider } from "@/core/providers/PatientDataProvider";
 import {
   ChangePasswordScreen,
   FactorScreen,
   HomeScreen,
   InjectionsScreen,
+  BleedingHistoryScreen,
+  DocumentsScreen,
   LoginScreen,
   NotificationsScreen,
   ProfileScreen,
@@ -25,7 +28,9 @@ export type RootStackParamList = {
   Factor: undefined;
   Notifications: undefined;
   Profile: undefined;
+  Documents: undefined;
   Injections: undefined;
+  BleedingHistory: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -69,6 +74,8 @@ function AppStack() {
           <Stack.Screen name="Notifications" component={NotificationsScreen} options={mainTabOptions} />
           <Stack.Screen name="Profile" component={ProfileScreen} options={mainTabOptions} />
           <Stack.Screen name="Injections" component={InjectionsScreen} options={{ title: "Injection History" }} />
+          <Stack.Screen name="BleedingHistory" component={BleedingHistoryScreen} options={{ title: "Bleeding History" }} />
+          <Stack.Screen name="Documents" component={DocumentsScreen} options={{ title: "My documents" }} />
         </>
       )}
     </Stack.Navigator>
@@ -78,9 +85,11 @@ function AppStack() {
 export function RootNavigator() {
   return (
     <AuthProvider>
-      <NavigationContainer>
-        <AppStack />
-      </NavigationContainer>
+      <PatientDataProvider>
+        <NavigationContainer>
+          <AppStack />
+        </NavigationContainer>
+      </PatientDataProvider>
     </AuthProvider>
   );
 }

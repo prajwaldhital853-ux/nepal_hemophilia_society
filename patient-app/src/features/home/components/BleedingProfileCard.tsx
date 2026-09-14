@@ -1,9 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useMemo } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Line, Text as SvgText } from "react-native-svg";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import { mockBleeding } from "@/features/home/data/mockPatientData";
+import type { RootStackParamList } from "@/core/navigation/RootNavigator";
+import { usePatientClinicalStats } from "@/features/home/hooks/usePatientClinicalStats";
+import { buildBleedingProfile } from "@/features/home/utils/buildBleedingProfile";
+import type { BleedingCallout } from "@/features/home/utils/bleedingBodyMap";
 import { homeColors, homeRadii, homeSpacing } from "@/features/home/theme/homeTheme";
 
 const BLEEDING_BODY_MAP = require("../../../../assets/images/bleeding-body-map.png");
@@ -11,36 +17,14 @@ const BLEEDING_BODY_MAP = require("../../../../assets/images/bleeding-body-map.p
 const MAP_W = 178;
 const MAP_H = 168;
 
-type Callout = {
-  label: string;
-  jx: number;
-  jy: number;
-  ex: number;
-  ey: number;
-  fontSize?: number;
-};
-
-/**
- * White glow dots measured from the PNG pixels (682x1024, contain-fit in 178x168):
- *   right elbow dot  (394,361) -> (98, 59)   — at blood-drop height, line angles UP over the drop
- *   right knee dot   (307,676) -> (83, 111)
- *   left foot dot    (146,913) -> (57, 150)
- * Blood drop ring occupies roughly x 105-145, y 54-100 — lines/labels avoid it.
- */
-function BodyMapWithCallouts({ joints }: { joints: string[] }) {
-  const callouts: Callout[] = [
-    { label: joints[2] ?? "Elbow", jx: 98, jy: 59, ex: 146, ey: 40 },
-    { label: joints[0] ?? "Right Knee", jx: 83, jy: 111, ex: 100, ey: 111 },
-    { label: joints[1] ?? "Left Ankle", jx: 57, jy: 150, ex: 100, ey: 150 },
-  ];
-
+function BodyMapWithCallouts({ callouts }: { callouts: BleedingCallout[] }) {
   return (
     <View style={styles.mapWrap}>
       <Image source={BLEEDING_BODY_MAP} style={styles.bodyMapImage} resizeMode="contain" />
       <Svg width={MAP_W} height={MAP_H} viewBox={`0 0 ${MAP_W} ${MAP_H}`} style={styles.mapOverlay}>
-        {callouts.map((c) => (
+        {callouts.map((c, index) => (
           <Line
-            key={`line-${c.label}`}
+            key={`line-${index}`}
             x1={c.jx}
             y1={c.jy}
             x2={c.ex}
@@ -49,13 +33,13 @@ function BodyMapWithCallouts({ joints }: { joints: string[] }) {
             strokeWidth={1.2}
           />
         ))}
-        {callouts.map((c) => (
+        {callouts.map((c, index) => (
           <SvgText
-            key={`text-${c.label}`}
+            key={`text-${index}`}
             x={c.ex + 3}
             y={c.ey + 3}
             fill="#FFFFFF"
-            fontSize={c.fontSize ?? 8.5}
+            fontSize={8.5}
             fontWeight="600"
           >
             {c.label}
@@ -67,7 +51,9 @@ function BodyMapWithCallouts({ joints }: { joints: string[] }) {
 }
 
 export function BleedingProfileCard() {
-  const d = mockBleeding;
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { bleedingEpisodes } = usePatientClinicalStats();
+  const d = useMemo(() => buildBleedingProfile(bleedingEpisodes), [bleedingEpisodes]);
 
   return (
     <View style={styles.section}>
@@ -82,14 +68,14 @@ export function BleedingProfileCard() {
             <Ionicons name="water" size={15} color={homeColors.white} />
             <Text style={styles.title}>Bleeding Profile</Text>
           </View>
-          <Pressable style={styles.historyBtn}>
+          <Pressable style={styles.historyBtn} onPress={() => navigation.navigate("BleedingHistory")}>
             <Text style={styles.historyText}>View Bleeding History &gt;</Text>
           </Pressable>
         </View>
 
         <View style={styles.body}>
           <View style={styles.leftPanel}>
-            <BodyMapWithCallouts joints={d.joints} />
+            <BodyMapWithCallouts callouts={d.callouts} />
           </View>
 
           <View style={styles.statsPanel}>
@@ -97,18 +83,23 @@ export function BleedingProfileCard() {
               <Text style={styles.statLabel}>Most Affected Joint</Text>
               <View style={styles.jointRow}>
                 <Text style={styles.jointName}>{d.mostAffected}</Text>
-                <View style={styles.modBadge}>
-                  <Text style={styles.modBadgeText}>{d.severity}</Text>
-                </View>
+                {d.hasData && d.severity !== "—" ? (
+                  <View style={styles.modBadge}>
+                    <Text style={styles.modBadgeText}>{d.severity}</Text>
+                  </View>
+                ) : null}
               </View>
             </View>
             <View style={styles.statDivider} />
-            <StatLine label="Total Bleeding Episodes (This Year)" value={String(d.totalEpisodes)} />
+            <StatLine
+              label="Total Bleeding Episodes (This Year)"
+              value={d.hasData ? String(d.totalEpisodes) : "—"}
+            />
             <View style={styles.statDivider} />
             <StatLine label="Last Bleed" value={d.lastBleed} bold />
             <View style={styles.statDivider} />
             <View style={styles.severityRow}>
-              <Text style={styles.statLineLabel}>Severity</Text>
+              <Text style={styles.statLineLabel}>Last record severity</Text>
               <View style={styles.severityPill}>
                 <Text style={styles.severityPillText}>{d.severity}</Text>
               </View>

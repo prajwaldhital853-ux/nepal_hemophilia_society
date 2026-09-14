@@ -11,7 +11,7 @@ import Svg, {
   Text as SvgText,
 } from "react-native-svg";
 
-import { mockMonthlyTrends } from "@/features/home/data/mockPatientData";
+import { usePatientClinicalStats } from "@/features/home/hooks/usePatientClinicalStats";
 import { homeColors, homeRadii, homeSpacing } from "@/features/home/theme/homeTheme";
 
 type ChartPoint = { x: number; y: number; v: number };
@@ -38,11 +38,23 @@ function buildSmoothPath(points: ChartPoint[], startIdx: number, endIdx: number)
 
 export function InjectionTrendsChart() {
   const { width } = useWindowDimensions();
+  const { monthlyTrends, totalInjections } = usePatientClinicalStats();
   const chartWidth = width - homeSpacing.screen * 2 - homeSpacing.card * 2;
   const chartHeight = 168;
-  const d = mockMonthlyTrends;
+  const d = monthlyTrends;
   const currentIdx = d.currentMonthIndex;
   const yMax = d.yMax;
+
+  if (totalInjections === 0) {
+    return (
+      <View style={styles.section}>
+        <View style={styles.card}>
+          <Text style={styles.title}>Monthly Injection Trends</Text>
+          <Text style={styles.empty}>No injection records yet. Trends will appear after your first logged injection.</Text>
+        </View>
+      </View>
+    );
+  }
 
   const padding = { top: 20, bottom: 22, left: 38, right: 8 };
   const plotW = chartWidth - padding.left - padding.right;
@@ -249,5 +261,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "600",
     color: homeColors.primary,
+  },
+  empty: {
+    marginTop: 12,
+    fontSize: 12,
+    lineHeight: 18,
+    color: homeColors.textMuted,
   },
 });

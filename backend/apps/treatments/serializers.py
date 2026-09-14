@@ -62,7 +62,9 @@ class TreatmentCreateSerializer(serializers.Serializer):
         if err:
             raise serializers.ValidationError({"patientId": err})
 
-        hospital, hospital_err = resolve_actor_hospital(request.user, attrs.get("treatmentCenter"))
+        hospital, hospital_err = resolve_actor_hospital(
+            request.user, attrs.get("treatmentCenter"), patient=patient
+        )
         if hospital_err:
             raise serializers.ValidationError({"treatmentCenter": hospital_err})
 

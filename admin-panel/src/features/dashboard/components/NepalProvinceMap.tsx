@@ -2,13 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { provinceStats } from "@/features/dashboard/data/mockDashboard";
+import { NEPAL_PROVINCES } from "@/lib/constants/provinces";
 import { formatNumber } from "@/lib/format";
 
 type Ring = number[][];
 type Feature = {
   properties: { name: string };
   geometry: { type: "Polygon" | "MultiPolygon"; coordinates: Ring[] | Ring[][] };
+};
+
+const PROVINCE_COLORS: Record<string, string> = {
+  Koshi: "#93C5FD",
+  Madhesh: "#FCA5A5",
+  Bagmati: "#FDE68A",
+  Gandaki: "#86EFAC",
+  Lumbini: "#C4B5FD",
+  Karnali: "#FDBA74",
+  Sudurpashchim: "#67E8F9",
 };
 
 const W = 420;
@@ -38,7 +48,7 @@ function centroid(rings: Ring[]) {
   return [sx / n, sy / n] as const;
 }
 
-export function NepalProvinceMap() {
+export function NepalProvinceMap({ provinceCounts = {} }: { provinceCounts?: Record<string, number> }) {
   const [features, setFeatures] = useState<Feature[]>([]);
   const [ready, setReady] = useState(false);
 
@@ -77,7 +87,9 @@ export function NepalProvinceMap() {
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-[200px] w-full overflow-visible">
       {features.map((feature) => {
-        const stat = provinceStats.find((p) => p.name === feature.properties.name);
+        const name = feature.properties.name;
+        const count = provinceCounts[name] ?? 0;
+        const color = PROVINCE_COLORS[name] ?? "#E5E7EB";
         const rings = flattenRings(feature.geometry);
         const d = rings
           .map((ring) =>
@@ -93,7 +105,7 @@ export function NepalProvinceMap() {
         const [lx, ly] = project(clon, clat, bounds);
         return (
           <g
-            key={feature.properties.name}
+            key={name}
             style={{
               opacity: ready ? 1 : 0,
               transform: ready ? "scale(1)" : "scale(0.92)",
@@ -101,12 +113,12 @@ export function NepalProvinceMap() {
               transition: "opacity 700ms ease, transform 700ms ease",
             }}
           >
-            <path d={d} fill={stat?.color || "#93C5FD"} stroke="#FFFFFF" strokeWidth="1.2" />
+            <path d={d} fill={color} stroke="#FFFFFF" strokeWidth="1.2" />
             <text x={lx} y={ly - 4} textAnchor="middle" className="fill-navy-900" fontSize="8" fontWeight="700">
-              {feature.properties.name}
+              {name}
             </text>
             <text x={lx} y={ly + 6} textAnchor="middle" className="fill-navy-800" fontSize="9" fontWeight="800">
-              {stat ? formatNumber(stat.count) : ""}
+              {count ? formatNumber(count) : ""}
             </text>
           </g>
         );
@@ -114,3 +126,5 @@ export function NepalProvinceMap() {
     </svg>
   );
 }
+
+export { NEPAL_PROVINCES };

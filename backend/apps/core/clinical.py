@@ -13,21 +13,31 @@ def get_hospital_admin_profile(user):
     return getattr(user, "hospital_admin", None)
 
 
-def resolve_actor_hospital(user, hospital_name=None):
-    """Hospital admins always record at their assigned center; super admin may specify."""
+def resolve_actor_hospital(user, hospital_name=None, patient=None):
+    """Hospital admins always record at their assigned center.
+
+    Super admin may name a visiting center; if omitted, the patient's assigned
+    primary hospital (treatment center) is used.
+    """
     if user.role == UserRole.HOSPITAL_ADMIN:
         profile = get_hospital_admin_profile(user)
         if not profile:
             return None, "Your account is not linked to a treatment center."
         return profile.hospital, None
-    if user.role == UserRole.SUPER_ADMIN and hospital_name:
+    if user.role == UserRole.SUPER_ADMIN:
         from apps.hospitals.models import Hospital
 
-        hospital = Hospital.objects.filter(name=hospital_name, is_active=True).first()
-        if not hospital:
-            return None, "Unknown treatment center."
-        return hospital, None
-    if user.role == UserRole.SUPER_ADMIN:
+        name = (hospital_name or "").strip()
+        if name:
+            hospital = Hospital.objects.filter(name=name, is_active=True).first()
+            if not hospital:
+                return None, "Unknown treatment center."
+            return hospital, None
+        hospital = getattr(patient, "primary_hospital", None) if patient is not None else None
+        if hospital and hospital.is_active:
+            return hospital, None
+        if patient is not None:
+            return None, "This patient has no assigned treatment center."
         return None, "Super admin must specify treatmentCenter when adding records."
     return None, "Only hospital staff or super admin can add clinical records."
 

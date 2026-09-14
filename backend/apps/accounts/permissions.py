@@ -15,6 +15,9 @@ from apps.accounts.rbac import (
     PERM_PATIENTS_VERIFY,
     PERM_PATIENTS_VIEW,
     PERM_PROVINCE_ADMINS_MANAGE,
+    PERM_STOCK_MANAGE,
+    PERM_STOCK_VIEW,
+    PERM_DOCUMENTS_ADD,
     PERM_TREATMENTS_ADD,
     PERM_TREATMENTS_VIEW,
     has_perm,
@@ -144,3 +147,18 @@ class CanWriteHospitalStaff(BasePermission):
         if request.method in SAFE_METHODS:
             return has_perm(request.user, PERM_HOSPITAL_STAFF_VIEW)
         return has_perm(request.user, PERM_HOSPITAL_STAFF_MANAGE)
+
+
+class CanAddDocuments(HasPermission):
+    permission = PERM_DOCUMENTS_ADD
+    message = "You cannot add patient documents."
+
+
+class CanViewStock(HasPermission):
+    permission = PERM_STOCK_VIEW
+    message = "You cannot view stock."
+
+
+class CanManageStock(HasPermission):
+    permission = PERM_STOCK_MANAGE
+    message = "Province Admin can monitor stock but cannot add or adjust it (plan.md §5.5)."

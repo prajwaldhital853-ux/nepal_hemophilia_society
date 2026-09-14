@@ -1,48 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import { Image, StyleSheet, Text, View } from "react-native";
 
 import { useAuth } from "@/core/auth/AuthContext";
-import { mockPatient } from "@/features/home/data/mockPatientData";
+import { usePatientClinicalStats } from "@/features/home/hooks/usePatientClinicalStats";
 import { homeColors, homeRadii, homeSpacing } from "@/features/home/theme/homeTheme";
 
-const PATIENT_PHOTO = require("../../../../assets/images/mock-patient-photo.jpg");
-
-function SaferTomorrowSlogan() {
-  return (
-    <View style={styles.sloganWrap}>
-      <View style={styles.sloganTextCol}>
-        <Text style={styles.sloganLine}>Together</Text>
-        <Text style={styles.sloganLine}>
-          for a <Text style={styles.sloganBold}>Safer</Text>
-        </Text>
-        <Text style={styles.sloganLine}>Tomorrow</Text>
-        <Text style={styles.sloganSub}>SUPPORT • TREAT • AWARE</Text>
-      </View>
-      <Svg width={34} height={36} viewBox="0 0 34 36" style={styles.sloganPulse}>
-        <Path
-          d="M2 18 H8 L10 14 L12 22 L14 18 H18 L20 10 L22 26 L24 18 H30"
-          stroke={homeColors.primary}
-          strokeWidth={1.5}
-          fill="none"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <Path
-          d="M30 18 C30 15 32 13 34 15 C34 18 32 20 30 18 Z"
-          stroke={homeColors.primary}
-          strokeWidth={1.3}
-          fill="none"
-        />
-      </Svg>
-    </View>
-  );
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
 function StatsSidebar({ injections, iuUsed }: { injections: number; iuUsed: string }) {
   return (
-    <LinearGradient colors={["#C1121F", "#8B0E18", "#6B0E16"]} style={styles.statsCard}>
+    <View style={styles.statsCard}>
       <View style={styles.statsTopRow}>
         <View style={styles.statsDropWrap}>
           <Ionicons name="water" size={10} color={homeColors.white} />
@@ -54,66 +27,74 @@ function StatsSidebar({ injections, iuUsed }: { injections: number; iuUsed: stri
       <View style={styles.statsDivider} />
       <Text style={styles.statsIuLabel}>Total IU Used</Text>
       <Text style={styles.statsIu}>{iuUsed}</Text>
-      <View style={styles.statsFooterBox}>
-        <Ionicons name="people" size={14} color={homeColors.primary} />
-        <Text style={styles.statsFooterText}>EVERY INJECTION BUILDS A BRIGHTER TOMORROW</Text>
-      </View>
-    </LinearGradient>
+    </View>
   );
 }
 
 export function ProfileSummaryCard() {
   const { patient } = useAuth();
-  const p = {
-    name: patient?.fullName ?? mockPatient.name,
-    id: patient?.id ?? mockPatient.id,
-    status: (patient?.status as "Active") ?? mockPatient.status,
-    dob: patient?.dateOfBirth ?? mockPatient.dob,
-    factorType: patient ? `${patient.deficientFactor} · ${patient.severity}` : mockPatient.factorType,
-    location: patient ? `${patient.district}, ${patient.province}` : mockPatient.location,
-    bloodGroup: patient?.bloodGroup ?? mockPatient.bloodGroup,
-    totalInjections: mockPatient.totalInjections,
-    totalIuUsed: mockPatient.totalIuUsed,
-    photoUrl: patient?.photoUrl,
-  };
+  const { totalInjections, totalIuLabel, formatDob } = usePatientClinicalStats();
+
+  const name = patient?.fullName ?? "Patient";
+  const id = patient?.id ?? "—";
+  const status = patient?.status ?? "—";
+  const dob = patient?.dateOfBirth ? formatDob(patient.dateOfBirth) : "—";
+  const factorType = patient
+    ? `${patient.deficientFactor} · ${patient.severity}${patient.treatmentPlan ? ` · ${patient.treatmentPlan}` : ""}`
+    : "—";
+  const location = patient?.province ? `${patient.district || "—"}, ${patient.province}` : "—";
+  const treatmentCenter = patient?.primaryHospital || "—";
+  const bloodGroup = patient?.bloodGroup ?? "—";
 
   return (
     <View style={styles.outer}>
-      <View style={styles.card}>
+      <LinearGradient
+        colors={["#0A0A0A", "#1A0508", "#3A060C", "#7A1018", "#961018"]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={styles.card}
+      >
         <View style={styles.row}>
-          <View style={styles.leftCol}>
-            <View style={styles.avatarOuter}>
-              <Image source={p.photoUrl ? { uri: p.photoUrl } : PATIENT_PHOTO} style={styles.avatar} />
+          <View style={styles.midCol}>
+            <View style={styles.nameRow}>
+              <Text style={styles.name} numberOfLines={1}>{name}</Text>
+              {patient?.status ? (
+                <View style={styles.activeBadge}>
+                  <View style={styles.activeDot} />
+                  <Text style={styles.activeText}>{status}</Text>
+                </View>
+              ) : null}
+            </View>
+            <View style={styles.idRow}>
+              <Text style={styles.idText}>ID: {id}</Text>
+            </View>
+            <InfoRow icon="calendar-outline" label="Date of Birth" value={dob} />
+            <InfoRow icon="water" label="Factor Type" value={factorType} />
+            <InfoRow icon="location-outline" label="Location" value={location} />
+            <InfoRow icon="business-outline" label="Treatment Center" value={treatmentCenter} />
+            <InfoRow icon="water" label="Blood Group" value={bloodGroup} />
+          </View>
+
+          <View style={styles.rightCol}>
+            <View style={styles.avatarFrame}>
+              {patient?.photoUrl ? (
+                <Image source={{ uri: patient.photoUrl }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatar, styles.avatarFallback]}>
+                  <Text style={styles.avatarInitials}>{initials(name)}</Text>
+                </View>
+              )}
               <View style={styles.avatarBadge}>
                 <Ionicons name="water" size={10} color={homeColors.white} />
               </View>
             </View>
-            <SaferTomorrowSlogan />
+            <Text style={styles.taglineTop}>Together for a</Text>
+            <Text style={styles.taglineAccent}>Safer Tomorrow</Text>
+            <Text style={styles.taglineSub}>SUPPORT • TREAT • AWARE</Text>
+            <StatsSidebar injections={totalInjections} iuUsed={totalIuLabel} />
           </View>
-
-          <View style={styles.midCol}>
-            <View style={styles.nameRow}>
-              <Text style={styles.name}>{p.name}</Text>
-              <View style={styles.activeBadge}>
-                <View style={styles.activeDot} />
-                <Text style={styles.activeText}>{p.status}</Text>
-              </View>
-            </View>
-            <View style={styles.idRow}>
-              <Text style={styles.idText}>ID: {p.id}</Text>
-              <Pressable hitSlop={6}>
-                <Ionicons name="copy-outline" size={14} color={homeColors.primary} />
-              </Pressable>
-            </View>
-            <InfoRow icon="calendar-outline" label="Date of Birth" value={p.dob} />
-            <InfoRow icon="water" label="Factor Type" value={p.factorType} />
-            <InfoRow icon="location-outline" label="Location" value={p.location} />
-            <InfoRow icon="water" label="Blood Group" value={p.bloodGroup} />
-          </View>
-
-          <StatsSidebar injections={p.totalInjections} iuUsed={p.totalIuUsed} />
         </View>
-      </View>
+      </LinearGradient>
     </View>
   );
 }
@@ -134,7 +115,7 @@ function InfoRow({
       </View>
       <View style={styles.infoTextWrap}>
         <Text style={styles.infoLabel}>{label}</Text>
-        <Text style={styles.infoValue} numberOfLines={1}>
+        <Text style={styles.infoValue} numberOfLines={2}>
           {value}
         </Text>
       </View>
@@ -143,46 +124,40 @@ function InfoRow({
 }
 
 const styles = StyleSheet.create({
-  outer: {
-    marginHorizontal: homeSpacing.screen,
-  },
+  outer: { marginHorizontal: homeSpacing.screen },
   card: {
-    backgroundColor: homeColors.white,
     borderRadius: homeRadii.card,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: homeColors.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderColor: "#5C0A12",
   },
-  row: {
-    flexDirection: "row",
-    padding: 12,
-    gap: 8,
-    paddingBottom: 14,
-  },
-  leftCol: {
+  row: { flexDirection: "row", alignItems: "flex-start", padding: 12, gap: 8 },
+  midCol: { flex: 1, minWidth: 0 },
+  rightCol: { width: 118, alignItems: "center" },
+  avatarFrame: {
+    width: 78,
+    height: 78,
+    borderRadius: 14,
+    backgroundColor: "#C1121F",
     alignItems: "center",
-    width: 96,
-  },
-  avatarOuter: {
-    position: "relative",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.35)",
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 3,
+    width: 68,
+    height: 68,
+    borderRadius: 10,
+    borderWidth: 2,
     borderColor: homeColors.white,
     backgroundColor: "#FEE2E2",
   },
+  avatarFallback: { alignItems: "center", justifyContent: "center" },
+  avatarInitials: { fontSize: 22, fontWeight: "800", color: homeColors.primary },
   avatarBadge: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
+    bottom: -4,
+    right: -4,
     width: 22,
     height: 22,
     borderRadius: 11,
@@ -192,191 +167,78 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: homeColors.white,
   },
-  sloganWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 8,
-    gap: 2,
-  },
-  sloganTextCol: {
-    flexShrink: 1,
-  },
-  sloganLine: {
-    fontSize: 8.5,
-    color: homeColors.navy,
-    lineHeight: 11,
-  },
-  sloganBold: {
-    fontWeight: "800",
-    color: homeColors.primary,
-  },
-  sloganSub: {
-    fontSize: 6,
-    color: homeColors.textMuted,
-    letterSpacing: 0.8,
-    marginTop: 3,
-  },
-  sloganPulse: {
-    marginTop: -4,
-  },
-  midCol: {
-    flex: 1,
-    minWidth: 0,
-    paddingTop: 2,
-  },
-  nameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 5,
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: homeColors.navy,
-  },
+  taglineTop: { marginTop: 8, fontSize: 9, color: "rgba(255,255,255,0.85)", fontWeight: "600" },
+  taglineAccent: { fontSize: 11, fontWeight: "800", color: homeColors.white, textAlign: "center" },
+  taglineSub: { marginTop: 2, fontSize: 7.5, letterSpacing: 0.5, color: "rgba(255,255,255,0.55)", fontWeight: "600" },
+  nameRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 4 },
+  name: { fontSize: 15, fontWeight: "800", color: homeColors.white, flexShrink: 1 },
   activeBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: homeColors.greenBg,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    backgroundColor: "rgba(22,163,74,0.25)",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: homeRadii.pill,
   },
-  activeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: homeColors.green,
-  },
-  activeText: {
-    fontSize: 9,
-    fontWeight: "600",
-    color: homeColors.green,
-  },
+  activeDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: homeColors.green },
+  activeText: { fontSize: 8.5, fontWeight: "600", color: "#86EFAC" },
   idRow: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    gap: 6,
-    marginTop: 4,
-    marginBottom: 6,
-    backgroundColor: "#FEE2E2",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    marginTop: 3,
+    marginBottom: 4,
+    backgroundColor: "rgba(193,18,31,0.35)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: homeRadii.pill,
   },
-  idText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: homeColors.primary,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 6,
-    marginTop: 4,
-  },
+  idText: { fontSize: 10, fontWeight: "700", color: "#FECACA" },
+  infoRow: { flexDirection: "row", alignItems: "flex-start", gap: 5, marginTop: 2 },
   infoIconWrap: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "#F3F4F6",
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
     marginTop: 1,
   },
-  infoTextWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-  infoLabel: {
-    fontSize: 8.5,
-    color: homeColors.textMuted,
-    lineHeight: 11,
-  },
-  infoValue: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: homeColors.navy,
-    lineHeight: 14,
-  },
+  infoTextWrap: { flex: 1, minWidth: 0 },
+  infoLabel: { fontSize: 8, color: "rgba(255,255,255,0.55)", lineHeight: 10 },
+  infoValue: { fontSize: 10.5, fontWeight: "700", color: homeColors.white, lineHeight: 13 },
   statsCard: {
-    width: 118,
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingTop: 10,
-    paddingBottom: 8,
-    alignSelf: "stretch",
-    justifyContent: "space-between",
+    width: "100%",
+    marginTop: 10,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
   },
-  statsTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
+  statsTopRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   statsDropWrap: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.5)",
     alignItems: "center",
     justifyContent: "center",
   },
-  statsLabel: {
-    fontSize: 8,
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: "600",
-  },
+  statsLabel: { fontSize: 7.5, color: "rgba(255,255,255,0.9)", fontWeight: "600", flexShrink: 1 },
   statsValue: {
-    fontSize: 30,
+    fontSize: 22,
     fontWeight: "800",
     color: homeColors.white,
-    lineHeight: 32,
+    lineHeight: 24,
     textAlign: "center",
     marginTop: 2,
   },
-  statsSub: {
-    fontSize: 8,
-    color: "rgba(255,255,255,0.75)",
-    textAlign: "center",
-    marginTop: -2,
-  },
-  statsDivider: {
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.25)",
-    marginVertical: 6,
-  },
-  statsIuLabel: {
-    fontSize: 8,
-    color: "rgba(255,255,255,0.85)",
-    textAlign: "center",
-  },
-  statsIu: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: homeColors.white,
-    textAlign: "center",
-    marginTop: 2,
-    marginBottom: 6,
-  },
-  statsFooterBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(0,0,0,0.22)",
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 5,
-  },
-  statsFooterText: {
-    flex: 1,
-    fontSize: 5.5,
-    color: "rgba(255,255,255,0.85)",
-    lineHeight: 7,
-    letterSpacing: 0.15,
-    fontWeight: "600",
-  },
+  statsSub: { fontSize: 7.5, color: "rgba(255,255,255,0.75)", textAlign: "center" },
+  statsDivider: { height: 1, backgroundColor: "rgba(255,255,255,0.25)", marginVertical: 4 },
+  statsIuLabel: { fontSize: 7.5, color: "rgba(255,255,255,0.85)", textAlign: "center" },
+  statsIu: { fontSize: 11, fontWeight: "800", color: homeColors.white, textAlign: "center", marginTop: 1 },
 });

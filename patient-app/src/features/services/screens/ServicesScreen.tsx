@@ -9,7 +9,7 @@ import { ServiceCategorySection } from "@/features/services/components/ServiceCa
 import { ServicesHeroBanner } from "@/features/services/components/ServicesHeroBanner";
 import { ServicesQuoteBanner } from "@/features/services/components/ServicesQuoteBanner";
 import { ServicesSearchBar } from "@/features/services/components/ServicesSearchBar";
-import { mockServiceCategories } from "@/features/services/data/mockServicesData";
+import { serviceCategories } from "@/features/services/data/servicesCatalog";
 import { servicesColors, servicesSpacing } from "@/features/services/theme/servicesTheme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Services">;
@@ -37,7 +37,7 @@ export default function ServicesScreen({ navigation }: Props) {
           <ServicesSearchBar />
         </View>
 
-        {mockServiceCategories.map((category) => (
+        {serviceCategories.map((category) => (
           <ServiceCategorySection key={category.id} category={category} />
         ))}
 

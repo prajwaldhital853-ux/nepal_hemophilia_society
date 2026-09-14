@@ -138,18 +138,20 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) return;
-    if (!getAccessToken() || !user) {
+    const token = getAccessToken();
+    if (!token) {
       router.replace("/login");
       return;
     }
+    if (!user) return;
     if (!canOpen(pathname)) {
       router.replace(homeForUser(user));
     }
   }, [loading, user, pathname, canOpen, router]);
 
-  if (loading) {
+  if (loading || (getAccessToken() && !user)) {
     return <p className="p-6 text-[12px] text-muted">Checking access…</p>;
   }
-  if (!user) return null;
+  if (!getAccessToken() || !user) return null;
   return <>{children}</>;
 }

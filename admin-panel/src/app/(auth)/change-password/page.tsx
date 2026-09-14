@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { homeForUser, persistUser, type AuthUser } from "@/lib/auth";
+import { homeForUser, type AuthUser, useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
+  const { setSession } = useAuth();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -23,7 +24,7 @@ export default function ChangePasswordPage() {
         method: "POST",
         body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
       });
-      if (data.user) persistUser(data.user as AuthUser);
+      if (data.user) setSession(data.user as AuthUser);
       router.push(data.user ? homeForUser(data.user as AuthUser) : "/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update password");

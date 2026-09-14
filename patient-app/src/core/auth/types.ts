@@ -14,6 +14,19 @@ export type PatientRecord = {
   severity: string;
   baselineFactorLevel: string;
   photoUrl?: string;
-  documents: { id?: number; name: string; url?: string; size?: number; type?: string; uploadedAt?: string }[];
+  documents: {
+    id?: number;
+    name: string;
+    url?: string;
+    size?: number;
+    type?: string;
+    uploadedAt?: string;
+    uploadedBy?: string;
+    hospitalName?: string;
+    center?: string;
+  }[];
   status: string;
+  primaryHospital?: string;
+  treatmentPlan?: string;
+  prescribedFactorMedicineName?: string;
 };

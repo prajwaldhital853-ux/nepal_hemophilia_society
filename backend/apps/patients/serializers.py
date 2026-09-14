@@ -7,8 +7,9 @@ from django.db import transaction
 from rest_framework import serializers
 
 from apps.accounts.models import UserRole
+from apps.factors.models import FactorMedicine, FactorType
 from apps.hospitals.models import Hospital
-from apps.patients.models import Patient, PatientDocument
+from apps.patients.models import InhibitorStatus, Patient, PatientDocument, TreatmentPlan
 from apps.provinces.models import District, Province
 
 User = get_user_model()
@@ -16,6 +17,43 @@ User = get_user_model()
 NEPAL_MOBILE = re.compile(r"^(97|98)\d{8}$")
 ALLOWED_DOC_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/jpg"}
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+
+
+def serialize_patient_document(doc, request=None):
+    url = doc.file.url if doc.file else ""
+    if request and url:
+        url = request.build_absolute_uri(url)
+    uploaded_by = ""
+    uploaded_by_role = ""
+    if doc.uploaded_by:
+        uploaded_by = doc.uploaded_by.get_full_name() or doc.uploaded_by.username
+        uploaded_by_role = getattr(doc.uploaded_by, "role", "") or ""
+    return {
+        "id": doc.id,
+        "name": doc.original_name,
+        "size": doc.size,
+        "type": doc.content_type,
+        "url": url,
+        "uploadedAt": doc.created_at.isoformat() if doc.created_at else "",
+        "uploadedBy": uploaded_by,
+        "uploadedByRole": uploaded_by_role,
+        "hospitalName": doc.hospital.name if doc.hospital_id else "",
+        "center": doc.hospital.name if doc.hospital_id else "",
+    }
+
+
+def validate_document_upload(upload, image_only=False):
+    size = getattr(upload, "size", 0) or 0
+    if size > MAX_UPLOAD_BYTES:
+        raise serializers.ValidationError({"documents": "Each file must be 10MB or smaller."})
+    content_type = (getattr(upload, "content_type", "") or "").lower()
+    ext = os.path.splitext(upload.name or "")[1].lower()
+    if image_only:
+        if content_type not in {"image/jpeg", "image/png", "image/jpg"} and ext not in {".jpg", ".jpeg", ".png"}:
+            raise serializers.ValidationError({"photo": "Profile photo must be JPG or PNG."})
+        return
+    if content_type not in ALLOWED_DOC_TYPES and ext not in {".pdf", ".jpg", ".jpeg", ".png"}:
+        raise serializers.ValidationError({"documents": "Documents must be PDF, JPG, or PNG."})
 
 
 def normalize_mobile(value: str) -> str:
@@ -48,6 +86,13 @@ class PatientSerializer(serializers.ModelSerializer):
     deficientFactor = serializers.CharField(source="deficient_factor", read_only=True)
     baselineFactorLevel = serializers.CharField(source="baseline_factor_level")
     inhibitorStatus = serializers.CharField(source="inhibitor_status", required=False)
+    treatmentPlan = serializers.CharField(source="treatment_plan", required=False)
+    prescribedFactorMedicineId = serializers.IntegerField(
+        source="prescribed_factor_medicine_id", required=False, allow_null=True
+    )
+    prescribedFactorMedicineName = serializers.CharField(
+        source="prescribed_factor_medicine.name", read_only=True, default=""
+    )
     diagnosisDate = serializers.DateField(source="diagnosis_date", required=False, allow_null=True)
     primaryHospital = serializers.CharField(source="primary_hospital")
     emergencyContactName = serializers.CharField(source="emergency_contact_name")
@@ -86,6 +131,9 @@ class PatientSerializer(serializers.ModelSerializer):
             "severity",
             "baselineFactorLevel",
             "inhibitorStatus",
+            "treatmentPlan",
+            "prescribedFactorMedicineId",
+            "prescribedFactorMedicineName",
             "diagnosisDate",
             "primaryHospital",
             "emergencyContactName",
@@ -122,23 +170,8 @@ class PatientSerializer(serializers.ModelSerializer):
 
     def get_documents(self, obj):
         request = self.context.get("request")
-        items = []
         files = obj.files.all() if hasattr(obj, "files") else []
-        for doc in files:
-            url = doc.file.url if doc.file else ""
-            if request and url:
-                url = request.build_absolute_uri(url)
-            items.append(
-                {
-                    "id": doc.id,
-                    "name": doc.original_name,
-                    "size": doc.size,
-                    "type": doc.content_type,
-                    "url": url,
-                    "uploadedAt": doc.created_at.isoformat() if doc.created_at else "",
-                }
-            )
-        return items
+        return [serialize_patient_document(doc, request) for doc in files]
 
     def validate_mobile(self, value):
         mobile = normalize_mobile(value)
@@ -185,6 +218,39 @@ class PatientSerializer(serializers.ModelSerializer):
             except Exception as exc:
                 messages = getattr(exc, "messages", [str(exc)])
                 raise serializers.ValidationError({"temporaryPassword": " ".join(messages)})
+
+        inhibitor = attrs.get("inhibitor_status")
+        if inhibitor is None and self.instance:
+            inhibitor = self.instance.inhibitor_status
+        plan = attrs.get("treatment_plan")
+        if plan is None and self.instance:
+            plan = self.instance.treatment_plan
+        if plan == TreatmentPlan.BYPASSING and inhibitor != InhibitorStatus.CURRENT:
+            raise serializers.ValidationError(
+                {"treatmentPlan": "Bypassing / Specialist plan is only for patients with current inhibitors."}
+            )
+
+        factor_id = attrs.get("prescribed_factor_medicine_id")
+        hem_type = attrs.get("hemophilia_type") or (self.instance.hemophilia_type if self.instance else None)
+        if factor_id:
+            factor = FactorMedicine.objects.filter(pk=factor_id, is_active=True).first()
+            if not factor:
+                raise serializers.ValidationError({"prescribedFactorMedicineId": "Unknown or inactive factor product."})
+            if hem_type == "A" and factor.factor_type == FactorType.FIX:
+                raise serializers.ValidationError(
+                    {"prescribedFactorMedicineId": "Factor IX products cannot be prescribed for Hemophilia A."}
+                )
+            if hem_type == "B" and factor.factor_type == FactorType.FVIII:
+                raise serializers.ValidationError(
+                    {"prescribedFactorMedicineId": "Factor VIII products cannot be prescribed for Hemophilia B."}
+                )
+            if inhibitor == InhibitorStatus.CURRENT and factor.factor_type in (FactorType.FVIII, FactorType.FIX):
+                raise serializers.ValidationError(
+                    {
+                        "prescribedFactorMedicineId": "Patients with current inhibitors need a bypassing agent, not standard factor."
+                    }
+                )
+            attrs["prescribed_factor_medicine"] = factor
         return attrs
 
     def _resolve_geo_hospital(self, attrs):
@@ -248,31 +314,32 @@ class PatientSerializer(serializers.ModelSerializer):
             return
         photo = request.FILES.get("photo")
         if photo:
-            self._validate_upload(photo, image_only=True)
+            validate_document_upload(photo, image_only=True)
             patient.photo = photo
             patient.save(update_fields=["photo", "updated_at"])
+        actor_hospital = None
+        if request.user and getattr(request.user, "is_authenticated", False):
+            from apps.core.clinical import get_hospital_admin_profile
+
+            profile = get_hospital_admin_profile(request.user)
+            if profile:
+                actor_hospital = profile.hospital
+            elif patient.primary_hospital_id:
+                actor_hospital = patient.primary_hospital
         for upload in request.FILES.getlist("documents"):
-            self._validate_upload(upload)
+            validate_document_upload(upload)
             PatientDocument.objects.create(
                 patient=patient,
                 file=upload,
                 original_name=upload.name,
                 content_type=getattr(upload, "content_type", "") or "",
                 size=getattr(upload, "size", 0) or 0,
+                uploaded_by=request.user if request.user.is_authenticated else None,
+                hospital=actor_hospital,
             )
 
     def _validate_upload(self, upload, image_only=False):
-        size = getattr(upload, "size", 0) or 0
-        if size > MAX_UPLOAD_BYTES:
-            raise serializers.ValidationError({"documents": "Each file must be 10MB or smaller."})
-        content_type = (getattr(upload, "content_type", "") or "").lower()
-        ext = os.path.splitext(upload.name or "")[1].lower()
-        if image_only:
-            if content_type not in {"image/jpeg", "image/png", "image/jpg"} and ext not in {".jpg", ".jpeg", ".png"}:
-                raise serializers.ValidationError({"photo": "Profile photo must be JPG or PNG."})
-            return
-        if content_type not in ALLOWED_DOC_TYPES and ext not in {".pdf", ".jpg", ".jpeg", ".png"}:
-            raise serializers.ValidationError({"documents": "Documents must be PDF, JPG, or PNG."})
+        validate_document_upload(upload, image_only=image_only)
 
     def _provision_user(self, patient, temporary_password):
         first, last = split_name(patient.full_name)
@@ -341,6 +408,9 @@ class PatientSerializer(serializers.ModelSerializer):
         else:
             self._sync_user(patient, reset_value or None)
         self._save_uploads(patient)
+        from apps.notifications.services import notify_profile_updated
+
+        notify_profile_updated(patient, user=request.user if request else None)
         return patient
 
     def to_representation(self, instance):

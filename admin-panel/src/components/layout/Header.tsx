@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { Bell, ChevronDown, Mail, Menu, Moon, Search, Sun } from "lucide-react";
 
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 
@@ -34,17 +34,11 @@ export function Header() {
       </label>
 
       <div className="ml-auto flex items-center gap-1.5">
-        <button type="button" className="relative panel p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink" aria-label="Notifications">
+        <button type="button" className="panel p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink" aria-label="Notifications">
           <Bell className="size-4" />
-          <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-red text-[8px] font-bold text-white">
-            12
-          </span>
         </button>
-        <button type="button" className="relative panel p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink" aria-label="Messages">
+        <button type="button" className="panel p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink" aria-label="Messages">
           <Mail className="size-4" />
-          <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-red text-[8px] font-bold text-white">
-            7
-          </span>
         </button>
 
         <button
@@ -64,13 +58,7 @@ export function Header() {
         </button>
 
         <button type="button" className="flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-elevated">
-          <Image
-            src="/patient-ravi.jpg"
-            alt={displayName}
-            width={28}
-            height={28}
-            className="size-7 rounded-full object-cover"
-          />
+          <UserAvatar name={displayName} size={28} />
           <span className="hidden text-left sm:block">
             <span className="block text-[12px] font-semibold text-ink">{displayName}</span>
             <span className="block text-[10px] text-muted">{roleLabel}</span>

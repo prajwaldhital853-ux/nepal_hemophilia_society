@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Building2, Check, FileText, MoreHorizontal, Pencil, Shield } from "lucide-react";
 
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { fetchHospitalStaffProfile } from "@/features/hospitals/api";
 import { staffLabels, type HospitalStaffProfile, type HospitalStaffType } from "@/features/hospitals/types";
 import { useAuth } from "@/lib/auth";
@@ -37,13 +37,7 @@ function CardHeader({ title, action }: { title: string; action?: React.ReactNode
 function ProfileSidebar({ profile, labels }: { profile: HospitalStaffProfile; labels: (typeof staffLabels)[HospitalStaffType] }) {
   return (
     <aside className="profile-sidebar lg:row-span-2 lg:self-start">
-      <Image
-        src="/patient-ravi.jpg"
-        alt={profile.fullName}
-        width={80}
-        height={80}
-        className="size-20 rounded-md object-cover"
-      />
+      <UserAvatar name={profile.fullName} size={80} className="size-20 rounded-md text-[18px]" />
       <h2 className="mt-4 text-[14px] font-semibold">{profile.fullName}</h2>
       <p className="profile-sidebar-meta mt-1 text-[11px]">{profile.roleLabel ?? labels.singular}</p>
       <p className="profile-sidebar-meta text-[11px]">{profile.treatmentCenter}</p>

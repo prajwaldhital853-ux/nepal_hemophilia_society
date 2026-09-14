@@ -14,8 +14,8 @@ import {
   X,
 } from "lucide-react";
 
-import { provinces, type PatientRow } from "@/features/patients/data/mockPatients";
-import type { PatientRecord } from "@/features/patients/types";
+import type { PatientRecord, PatientRow } from "@/features/patients/types";
+import { NEPAL_PROVINCES } from "@/lib/constants/provinces";
 import { useAuth } from "@/lib/auth";
 import { formatNumber } from "@/lib/format";
 import { apiFetch } from "@/lib/api";
@@ -174,7 +174,7 @@ export default function PatientsModule() {
                   >
                     All Provinces
                   </button>
-                  {provinces.map((item) => (
+                  {NEPAL_PROVINCES.map((item) => (
                     <button
                       key={item}
                       type="button"

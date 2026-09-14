@@ -9,7 +9,7 @@ import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
 import { HomeHeader } from "@/features/home/components/HomeHeader";
 import { ProfileSummaryCard } from "@/features/home/components/ProfileSummaryCard";
 import { ProfileMenuList } from "@/features/profile/components/ProfileMenuList";
-import type { ProfileMenuItem } from "@/features/profile/data/mockProfileMenu";
+import type { ProfileMenuItem } from "@/features/profile/data/profileMenu";
 import { homeColors, homeSpacing } from "@/features/home/theme/homeTheme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
@@ -46,8 +46,13 @@ export default function ProfileScreen({ navigation }: Props) {
         <ProfileSummaryCard />
         {(patient?.documents?.length ?? 0) > 0 ? (
           <View style={{ marginHorizontal: 16, marginTop: 12, backgroundColor: "#fff", borderRadius: 12, padding: 12 }}>
-            <Text style={{ fontWeight: "700", marginBottom: 8, color: "#1E3A5F" }}>My documents</Text>
-            {patient?.documents.map((doc) => (
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+              <Text style={{ fontWeight: "700", color: "#1E3A5F" }}>My documents</Text>
+              <Text onPress={() => navigation.navigate("Documents")} style={{ color: "#C1121F", fontWeight: "700", fontSize: 12 }}>
+                See more
+              </Text>
+            </View>
+            {patient?.documents.slice(0, 4).map((doc) => (
               <Text key={doc.url || doc.name} style={{ color: "#C1121F", marginBottom: 6, fontSize: 12 }}>
                 {doc.name}
               </Text>

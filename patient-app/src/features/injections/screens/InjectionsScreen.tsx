@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 
-import { useAuth } from "@/core/auth/context";
+import { useAuth } from "@/core/auth/AuthContext";
 import { patientApi } from "@/core/api";
 import { colors, spacing } from "@/core/theme";
 
@@ -22,21 +22,37 @@ type InjectionItem = {
   indication: string;
   administeredAt: string;
   status: string;
+  doctorName?: string;
+  administeredBy?: string;
   inhibitorWarning?: boolean;
 };
 
+function statusStyle(status: string) {
+  switch (status) {
+    case "Scheduled":
+      return { bg: "#DCFCE7", color: "#15803D", label: "Scheduled" };
+    case "Pending":
+      return { bg: "#FEF9C3", color: "#A16207", label: "Pending" };
+    case "Cancelled":
+      return { bg: "#F3F4F6", color: "#6B7280", label: "Cancelled" };
+    case "Completed":
+    default:
+      return { bg: "#FEE2E2", color: "#B91C1C", label: "Completed" };
+  }
+}
+
 export default function InjectionsScreen() {
-  const { accessToken } = useAuth();
+  const { token } = useAuth();
   const [items, setItems] = useState<InjectionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    if (!accessToken) return;
+    if (!token) return;
     setError("");
     setLoading(true);
     try {
-      const data = await patientApi("/me/patient/injections/", { token: accessToken });
+      const data = await patientApi("/me/patient/injections/", { token });
       setItems(Array.isArray(data.injections) ? data.injections : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load injections");
@@ -44,7 +60,7 @@ export default function InjectionsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, [token]);
 
   useEffect(() => {
     void load();
@@ -70,16 +86,25 @@ export default function InjectionsScreen() {
             <Text style={styles.empty}>No injection records yet. Records added by your treatment center will appear here.</Text>
           ) : null
         }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.label}>{item.label}</Text>
-            <Text style={styles.meta}>
-              {item.hospitalName} · {item.factorType} · {item.dose} {item.unit} · {item.indication}
-            </Text>
-            <Text style={styles.status}>{item.status}</Text>
-            {item.inhibitorWarning ? <Text style={styles.warn}>Recorded with inhibitor caution flag</Text> : null}
-          </View>
-        )}
+        renderItem={({ item }) => {
+          const badge = statusStyle(item.status);
+          const doctor = item.doctorName || item.administeredBy || "—";
+          return (
+            <View style={styles.card}>
+              <View style={styles.cardHead}>
+                <Text style={styles.label}>{item.label}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
+                  <Text style={[styles.statusText, { color: badge.color }]}>{badge.label}</Text>
+                </View>
+              </View>
+              <Text style={styles.meta}>
+                {item.hospitalName} · {item.factorType} · {item.dose} {item.unit} · {item.indication}
+              </Text>
+              <Text style={styles.doctor}>Doctor: {doctor}</Text>
+              {item.inhibitorWarning ? <Text style={styles.warn}>Recorded with inhibitor caution flag</Text> : null}
+            </View>
+          );
+        }}
       />
     </View>
   );
@@ -98,8 +123,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  label: { fontSize: 14, fontWeight: "600", color: colors.text, lineHeight: 20 },
+  cardHead: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 },
+  label: { flex: 1, fontSize: 14, fontWeight: "600", color: colors.text, lineHeight: 20 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  statusText: { fontSize: 10, fontWeight: "700" },
   meta: { marginTop: 4, fontSize: 12, color: colors.textMuted },
-  status: { marginTop: 4, fontSize: 11, fontWeight: "600", color: colors.navy },
+  doctor: { marginTop: 4, fontSize: 11, fontWeight: "600", color: colors.navy },
   warn: { marginTop: 6, fontSize: 11, color: "#B45309" },
 });

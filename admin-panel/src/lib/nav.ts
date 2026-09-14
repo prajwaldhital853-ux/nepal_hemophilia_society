@@ -40,7 +40,7 @@ export const mainNav: NavItem[] = [
   { href: "/dashboard/injections", label: "Treatment & Injection", icon: "treatment" },
   { href: "/dashboard/users", label: "Users Management", icon: "users" },
   { href: "/dashboard/reports", label: "Reports & Analytics", icon: "reports" },
-  { href: "/dashboard/audit", label: "Audit Logs", icon: "audit", badge: 23 },
+  { href: "/dashboard/audit", label: "Audit Logs", icon: "audit" },
   { href: "/dashboard/settings", label: "System Settings", icon: "settings" },
 ];
 

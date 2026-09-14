@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
-import type { ServiceCategory } from "@/features/services/data/mockServicesData";
+import type { ServiceCategory } from "@/features/services/data/servicesCatalog";
 import { ServiceCard } from "@/features/services/components/ServiceCard";
 import { servicesColors, servicesSpacing } from "@/features/services/theme/servicesTheme";
 

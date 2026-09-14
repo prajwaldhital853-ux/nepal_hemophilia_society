@@ -10,7 +10,7 @@ export type AuthState = {
   login: (identifier: string, password: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
-  refreshPatient: () => Promise<void>;
+  refreshPatient: (force?: boolean) => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthState | null>(null);

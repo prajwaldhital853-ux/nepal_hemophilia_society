@@ -39,6 +39,8 @@ PERM_SETTINGS_SYSTEM = "settings.system"
 PERM_WEBSITE_MANAGE = "website.manage"
 PERM_USERS_MANAGE = "users.manage"
 PERM_STOCK_VIEW = "stock.view"
+PERM_STOCK_MANAGE = "stock.manage"
+PERM_DOCUMENTS_ADD = "documents.add"
 PERM_ADMINS_VIEW = "admins.view"
 
 SUPER_PERMS = frozenset(
@@ -70,6 +72,8 @@ SUPER_PERMS = frozenset(
         PERM_WEBSITE_MANAGE,
         PERM_USERS_MANAGE,
         PERM_STOCK_VIEW,
+        PERM_STOCK_MANAGE,
+        PERM_DOCUMENTS_ADD,
         PERM_ADMINS_VIEW,
     }
 )
@@ -88,6 +92,8 @@ PROVINCE_PERMS = frozenset(
         PERM_HOSPITAL_STAFF_MANAGE,
         PERM_HOSPITALS_MANAGE,
         PERM_FACTORS_VIEW,
+        PERM_STOCK_VIEW,
+        PERM_DOCUMENTS_ADD,
         PERM_REPORTS_PROVINCE,
         PERM_REPORTS_HOSPITAL,
     }
@@ -106,6 +112,9 @@ HOSPITAL_PERMS = frozenset(
         PERM_TREATMENTS_UPDATE,
         PERM_HOSPITAL_STAFF_VIEW,
         PERM_FACTORS_VIEW,
+        PERM_STOCK_VIEW,
+        PERM_STOCK_MANAGE,
+        PERM_DOCUMENTS_ADD,
         PERM_REPORTS_HOSPITAL,
     }
 )
@@ -117,6 +126,8 @@ PATIENT_PERMS = frozenset(
         "patient.profile",
         "patient.history",
         "patient.notifications",
+        "patient.documents",
+        "stock.view_own_center",
     }
 )
 

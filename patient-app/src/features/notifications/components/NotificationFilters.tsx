@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import {
   notificationFilters,
   type NotificationFilterId,
-} from "@/features/notifications/data/mockNotificationsData";
+} from "@/features/notifications/data/notificationsTypes";
 import { notificationsColors } from "@/features/notifications/theme/notificationsTheme";
 
 type Props = {
@@ -65,11 +65,6 @@ export function NotificationFilters({ active, onChange }: Props) {
             ) : (
               <View style={styles.chip}>{inner}</View>
             )}
-            {filter.badge && isActive ? (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{filter.badge}</Text>
-              </View>
-            ) : null}
           </Pressable>
         );
       })}

@@ -12,6 +12,7 @@ type TabId = "home" | "services" | "factor" | "notifications" | "profile";
 type HomeBottomNavProps = {
   activeTab?: TabId;
   variant?: "home" | "light";
+  notificationCount?: number;
   onTabPress?: (tab: TabId) => void;
 };
 
@@ -37,6 +38,7 @@ function ProfileNavIcon({ color }: { color: string }) {
 export function HomeBottomNav({
   activeTab = "home",
   variant = "home",
+  notificationCount = 0,
   onTabPress,
 }: HomeBottomNavProps) {
   const insets = useSafeAreaInsets();
@@ -128,7 +130,7 @@ export function HomeBottomNav({
             color={activeTab === "notifications" && isLight ? activeColor : inactiveColor}
           />
         }
-        badge={3}
+        badge={notificationCount > 0 ? notificationCount : undefined}
         lightBadge={isLight}
       />
       <NavItem

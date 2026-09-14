@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Check, MoreHorizontal, Shield } from "lucide-react";
 
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { fetchProvinceAdmin, updateProvinceAdmin, type ProvinceAdminRecord } from "@/features/admins/api";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
@@ -107,13 +107,7 @@ export default function AdminProfileView({ id }: { id: string }) {
       >
         {isOverview ? (
           <aside className="profile-sidebar lg:row-span-2 lg:self-start">
-            <Image
-              src="/patient-ravi.jpg"
-              alt={admin.fullName}
-              width={80}
-              height={80}
-              className="size-20 rounded-md object-cover"
-            />
+            <UserAvatar name={admin.fullName} size={80} className="size-20 rounded-md text-[18px]" />
             <h2 className="mt-4 text-[14px] font-semibold">{admin.fullName}</h2>
             <p className="profile-sidebar-meta mt-1 text-[11px]">Province Admin</p>
             <p className="profile-sidebar-meta text-[11px]">{admin.province} Province</p>

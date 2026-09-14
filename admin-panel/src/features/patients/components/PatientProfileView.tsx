@@ -1,18 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Droplets, FileText, MapPin, MoreHorizontal, Pencil, UserRound } from "lucide-react";
+import { CalendarDays, Droplets, MapPin, MoreHorizontal, Pencil, UserRound } from "lucide-react";
 
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import type { PatientRecord } from "@/features/patients/types";
 import { PatientInjectionsPanel, PatientTreatmentsPanel } from "@/features/injections/components/PatientClinicalPanels";
+import { PatientBleedingPanel } from "@/features/patients/components/PatientBleedingPanel";
+import PatientDocumentsPanel from "@/features/patients/components/PatientDocumentsPanel";
+import { fetchStockMovements, type StockMovementRow } from "@/features/stock/api";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
 
-const tabs = ["Overview", "Treatment History", "Injections", "Medicines / Stock", "Documents", "Notes"];
+const tabs = ["Overview", "Treatment History", "Injections", "Bleeding Episodes", "Medicines / Stock", "Documents", "Notes"];
 
 function InfoGrid({ items }: { items: [string, string][] }) {
   return (
@@ -164,13 +167,7 @@ export default function PatientProfileView({ id }: { id: string }) {
                   className="size-[72px] rounded-full object-cover ring-2 ring-brand-soft"
                 />
               ) : (
-                <Image
-                  src="/patient-ravi.jpg"
-                  alt={record.fullName}
-                  width={72}
-                  height={72}
-                  className="size-[72px] rounded-full object-cover ring-2 ring-brand-soft"
-                />
+                <UserAvatar name={record.fullName} size={72} className="size-[72px] text-[20px] ring-2 ring-brand-soft" />
               )}
               <p className="mt-2 text-[10px] font-semibold text-brand">{record.id}</p>
               <h2 className="text-[14px] font-semibold text-ink">{record.fullName}</h2>
@@ -231,8 +228,9 @@ export default function PatientProfileView({ id }: { id: string }) {
                 items={[
                   ["Diagnosis", `Hemophilia ${record.hemophiliaType} (${record.severity})`],
                   ["Factor Level", `${record.baselineFactorLevel}% ${record.deficientFactor}`],
-                  ["Treatment Plan", record.inhibitorStatus === "Current" ? "Bypassing / specialist plan" : "Regular Prophylaxis"],
-                  ["Factor Used", record.deficientFactor],
+                  ["Treatment Plan", record.treatmentPlan || (record.inhibitorStatus === "Current" ? "Bypassing / Specialist" : "Regular Prophylaxis")],
+                  ["Prescribed Factor", record.prescribedFactorMedicineName || record.deficientFactor],
+                  ["Deficient Factor", record.deficientFactor],
                   ["Inhibitor", record.inhibitorStatus],
                 ]}
               />
@@ -241,64 +239,106 @@ export default function PatientProfileView({ id }: { id: string }) {
             <PatientInjectionsPanel
               patientId={id}
               hemophiliaType={record.hemophiliaType}
+              primaryHospital={record.primaryHospital}
               compact
               onViewAll={() => setTab("Injections")}
             />
 
-            <article className="panel p-3 md:col-span-2">
-              <h3 className="text-[11px] font-semibold text-ink">Documents</h3>
-              <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
-                {(record.documents?.length ? record.documents : []).map((doc) => (
-                  <li key={doc.url || doc.name} className="panel-inset flex items-center gap-2 px-2.5 py-2 shadow-none">
-                    <FileText className="size-3.5 shrink-0 text-[#B9020A]" />
-                    <div className="min-w-0">
-                      {doc.url ? (
-                        <a href={doc.url} target="_blank" rel="noreferrer" className="truncate text-[11px] font-medium text-brand">
-                          {doc.name}
-                        </a>
-                      ) : (
-                        <p className="truncate text-[11px] font-medium text-ink">{doc.name}</p>
-                      )}
-                      <p className="text-[10px] text-faint">{doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : ""}</p>
-                    </div>
-                  </li>
-                ))}
-                {!record.documents?.length ? (
-                  <li className="text-[11px] text-muted">No diagnostic documents uploaded yet.</li>
-                ) : null}
-              </ul>
-            </article>
+            <PatientBleedingPanel patientId={id} primaryHospital={record.primaryHospital} compact />
+
+            <div className="md:col-span-2">
+              <PatientDocumentsPanel
+                patientId={id}
+                primaryHospital={record.primaryHospital}
+                compact
+                onViewAll={() => setTab("Documents")}
+              />
+            </div>
           </div>
         </div>
       ) : null}
       {tab === "Documents" ? (
-        <article className="panel p-3">
-          <h3 className="text-[11px] font-semibold text-ink">Diagnostic documents</h3>
-          <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
-            {(record.documents ?? []).map((doc) => (
-              <li key={doc.url || doc.name} className="panel-inset flex items-center gap-2 px-2.5 py-2 shadow-none">
-                <FileText className="size-3.5 shrink-0 text-[#B9020A]" />
-                {doc.url ? (
-                  <a href={doc.url} target="_blank" rel="noreferrer" className="text-[11px] font-medium text-brand">
-                    {doc.name}
-                  </a>
-                ) : (
-                  <span className="text-[11px]">{doc.name}</span>
-                )}
-              </li>
-            ))}
-            {!record.documents?.length ? <li className="text-[11px] text-muted">No documents on file.</li> : null}
-          </ul>
-        </article>
+        <PatientDocumentsPanel patientId={id} primaryHospital={record.primaryHospital} />
       ) : tab === "Injections" ? (
-        <PatientInjectionsPanel patientId={id} hemophiliaType={record.hemophiliaType} />
+        <PatientInjectionsPanel patientId={id} hemophiliaType={record.hemophiliaType} primaryHospital={record.primaryHospital} />
       ) : tab === "Treatment History" ? (
-        <PatientTreatmentsPanel patientId={id} />
+        <div className="flex flex-col gap-2">
+          <p className="rounded border border-line-subtle bg-elevated px-3 py-2 text-[11px] text-muted">
+            <span className="font-semibold text-ink">Treatment History</span> records non-injection care events
+            (physiotherapy, surgery, admission, ITI, counseling). Use the{" "}
+            <span className="font-semibold text-ink">Injections</span> tab to log factor doses — those update stock
+            and appear in the patient app injection history.
+          </p>
+          <PatientTreatmentsPanel patientId={id} primaryHospital={record.primaryHospital} />
+        </div>
+      ) : tab === "Bleeding Episodes" ? (
+        <PatientBleedingPanel patientId={id} primaryHospital={record.primaryHospital} />
+      ) : tab === "Medicines / Stock" ? (
+        <PatientDoseStockPanel patientId={id} />
       ) : tab !== "Overview" ? (
         <article className="panel p-3 text-[11px] text-muted">
           {tab} records for {record.fullName} will appear here.
         </article>
       ) : null}
     </div>
+  );
+}
+
+function PatientDoseStockPanel({ patientId }: { patientId: string }) {
+  const [rows, setRows] = useState<StockMovementRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    void fetchStockMovements({ patientId })
+      .then((data) => setRows(data.movements ?? []))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  }, [patientId]);
+
+  return (
+    <article className="panel overflow-x-auto p-3">
+      <h3 className="text-[11px] font-semibold text-ink">Doses taken from stock</h3>
+      <p className="mt-1 text-[10px] text-muted">Each completed injection automatically decrements that center&apos;s inventory.</p>
+      <table className="inner-table mt-2 w-full text-left">
+        <thead className="text-[11px] uppercase text-faint">
+          <tr>
+            {["When", "Product", "Qty", "Center", "By", "Reason"].map((h) => (
+              <th key={h} className="px-2 py-2">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? (
+            <tr>
+              <td colSpan={6} className="px-2 py-3 text-[11px] text-muted">
+                Loading…
+              </td>
+            </tr>
+          ) : rows.length === 0 ? (
+            <tr>
+              <td colSpan={6} className="px-2 py-3 text-[11px] text-muted">
+                No stock movements for this patient yet.
+              </td>
+            </tr>
+          ) : (
+            rows.map((row) => (
+              <tr key={row.id}>
+                <td className="px-2 py-2 text-[10px]">{row.recordedAt ? new Date(row.recordedAt).toLocaleString() : ""}</td>
+                <td className="px-2 py-2 text-[11px]">{row.factorMedicineName}</td>
+                <td className="px-2 py-2 text-[11px]">
+                  {row.quantityDelta} {row.unit}
+                </td>
+                <td className="px-2 py-2 text-[11px]">{row.hospitalName}</td>
+                <td className="px-2 py-2 text-[10px]">{row.recordedBy?.name}</td>
+                <td className="px-2 py-2 text-[11px]">{row.reason}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </article>
   );
 }

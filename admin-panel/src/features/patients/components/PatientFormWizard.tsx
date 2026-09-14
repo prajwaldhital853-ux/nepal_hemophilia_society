@@ -15,8 +15,9 @@ import {
 
 import { fetchHospitals } from "@/features/hospitals/api";
 import type { HospitalOption } from "@/features/hospitals/types";
+import { fetchFactors, type FactorOption } from "@/features/injections/api";
 import { bloodGroups, provinceDistricts } from "@/features/patients/data/geo";
-import { deriveFactor, emptyPatientForm, type PatientPayload, type PatientRecord } from "@/features/patients/types";
+import { deriveFactor, normalizePatientForm, type PatientPayload, type PatientRecord } from "@/features/patients/types";
 import { apiForm } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
@@ -35,10 +36,12 @@ const fieldClass =
 function Field({
   label,
   required,
+  error,
   children,
 }: {
   label: string;
   required?: boolean;
+  error?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -48,6 +51,7 @@ function Field({
         {required ? <span className="text-red-500"> *</span> : null}
       </span>
       {children}
+      {error ? <p className="mt-1 text-[10px] font-semibold text-red-600">{error}</p> : null}
     </label>
   );
 }
@@ -60,41 +64,58 @@ function generateTempPassword() {
 }
 
 function validateStep(step: number, form: PatientPayload, mode: "create" | "edit") {
-  const errors: string[] = [];
+  const fieldErrors: Record<string, string> = {};
   if (step === 1) {
-    if (!form.fullName.trim()) errors.push("Full name is required");
-    if (!form.dateOfBirth) errors.push("Date of birth is required");
-    if (!form.mobile.trim()) errors.push("Mobile number is required");
+    if (!form.fullName.trim()) fieldErrors.fullName = "Full name is required";
+    if (!form.dateOfBirth) fieldErrors.dateOfBirth = "Date of birth is required";
+    if (!form.mobile.trim()) fieldErrors.mobile = "Mobile number is required";
     const mobile = form.mobile.replace(/\s/g, "").replace(/^\+977/, "");
-    if (form.mobile && !/^(97|98)\d{8}$/.test(mobile)) errors.push("Use a Nepal mobile: 98/97 followed by 8 digits");
-    if (!form.email.trim()) errors.push("Email is required for patient app login");
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors.push("Enter a valid email address");
+    if (form.mobile && !/^(97|98)\d{8}$/.test(mobile)) {
+      fieldErrors.mobile = "Use a Nepal mobile: 98 or 97 followed by 8 digits";
+    }
+    if (!form.email.trim()) fieldErrors.email = "Email is required for patient app login";
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      fieldErrors.email = "Enter a valid email address";
+    }
     if (mode === "create" && !(form.temporaryPassword || "").trim()) {
-      errors.push("Create a temporary password for first-time app login");
+      fieldErrors.temporaryPassword = "Create a temporary password for first-time app login";
     }
     if ((form.temporaryPassword || "").trim() && (form.temporaryPassword || "").length < 8) {
-      errors.push("Temporary password must be at least 8 characters");
+      fieldErrors.temporaryPassword = "Temporary password must be at least 8 characters";
     }
   }
   if (step === 2) {
-    if (!form.province) errors.push("Province is required");
-    if (!form.district) errors.push("District is required");
-    if (!form.localLevel.trim()) errors.push("Local level is required");
-    if (!form.wardNumber.trim()) errors.push("Ward number is required");
-    if (!form.address.trim()) errors.push("Full address is required");
+    if (!form.province) fieldErrors.province = "Province is required";
+    if (!form.district) fieldErrors.district = "District is required";
+    if (!form.localLevel.trim()) fieldErrors.localLevel = "Local level is required";
+    if (!form.wardNumber.trim()) fieldErrors.wardNumber = "Ward number is required";
+    if (!form.address.trim()) fieldErrors.address = "Full address is required";
   }
   if (step === 3) {
-    if (!form.bloodGroup) errors.push("Blood group is required");
-    if (!form.baselineFactorLevel.trim()) errors.push("Baseline factor level is required");
+    if (!form.bloodGroup?.trim()) fieldErrors.bloodGroup = "Blood group is required";
+    if (!form.baselineFactorLevel.trim()) fieldErrors.baselineFactorLevel = "Baseline factor level is required";
     const level = Number(form.baselineFactorLevel);
-    if (Number.isNaN(level) || level < 0 || level > 40) errors.push("Factor level should be 0–40 IU/dL");
-    if (!form.primaryHospital) errors.push("Primary hospital is required");
+    if (form.baselineFactorLevel && (Number.isNaN(level) || level < 0 || level > 40)) {
+      fieldErrors.baselineFactorLevel = "Factor level should be 0–40 IU/dL";
+    }
+    if (!form.primaryHospital) fieldErrors.primaryHospital = "Primary hospital is required";
+    if (!form.treatmentPlan) fieldErrors.treatmentPlan = "Treatment plan is required";
+    if (mode === "create" && !form.prescribedFactorMedicineId) {
+      fieldErrors.prescribedFactorMedicineId = "Select the factor product this patient will use (for stock tracking)";
+    }
+    if (form.treatmentPlan === "Bypassing / Specialist" && form.inhibitorStatus !== "Current") {
+      fieldErrors.treatmentPlan = "Bypassing plan is only for patients with current inhibitors";
+    }
   }
   if (step === 4) {
-    if (!form.emergencyContactName.trim()) errors.push("Emergency contact name is required");
-    if (!form.emergencyContactPhone.trim()) errors.push("Emergency contact phone is required");
+    if (!form.emergencyContactName.trim()) fieldErrors.emergencyContactName = "Emergency contact name is required";
+    if (!form.emergencyContactPhone.trim()) fieldErrors.emergencyContactPhone = "Emergency contact phone is required";
+    const emergency = form.emergencyContactPhone.replace(/\s/g, "").replace(/^\+977/, "");
+    if (form.emergencyContactPhone && !/^(97|98)\d{8}$/.test(emergency)) {
+      fieldErrors.emergencyContactPhone = "Use a Nepal mobile: 98 or 97 followed by 8 digits";
+    }
   }
-  return errors;
+  return fieldErrors;
 }
 
 function appendUniqueFiles(existing: File[], incoming: File[]) {
@@ -136,12 +157,10 @@ export default function PatientFormWizard({
     email: string;
     temporaryPassword: string;
   } | null>(null);
-  const [errors, setErrors] = useState<string[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [factors, setFactors] = useState<FactorOption[]>([]);
   const [serverError, setServerError] = useState("");
-  const [form, setForm] = useState<PatientPayload>(() => {
-    const base = initial ? { ...initial } : emptyPatientForm();
-    return base;
-  });
+  const [form, setForm] = useState<PatientPayload>(() => normalizePatientForm(initial));
 
   useEffect(() => {
     if (mode === "create" && !can(Perm.patientsCreate)) {
@@ -162,6 +181,18 @@ export default function PatientFormWizard({
       }));
     }
   }, [lockedProvince]);
+
+  useEffect(() => {
+    void fetchFactors(undefined, form.hemophiliaType)
+      .then(setFactors)
+      .catch(() => setFactors([]));
+  }, [form.hemophiliaType]);
+
+  useEffect(() => {
+    if (form.treatmentPlan === "Bypassing / Specialist" && form.inhibitorStatus !== "Current") {
+      setForm((current) => ({ ...current, treatmentPlan: "Regular Prophylaxis" }));
+    }
+  }, [form.inhibitorStatus, form.treatmentPlan]);
 
   useEffect(() => {
     void fetchHospitals()
@@ -188,20 +219,33 @@ export default function PatientFormWizard({
   }, [form.baselineFactorLevel]);
 
   function patch(partial: Partial<PatientPayload>) {
-    setForm((current) => ({ ...current, ...partial }));
+    setForm((current) => {
+      const next = { ...current, ...partial };
+      if (partial.inhibitorStatus === "Current" && next.treatmentPlan === "Regular Prophylaxis") {
+        next.treatmentPlan = "Bypassing / Specialist";
+      }
+      if (partial.inhibitorStatus === "None" && next.treatmentPlan === "Bypassing / Specialist") {
+        next.treatmentPlan = "Regular Prophylaxis";
+      }
+      if (partial.hemophiliaType && partial.hemophiliaType !== current.hemophiliaType) {
+        next.prescribedFactorMedicineId = null;
+      }
+      return next;
+    });
+    setFieldErrors({});
   }
 
   function goNext() {
     const nextErrors = validateStep(step, form, mode);
-    setErrors(nextErrors);
-    if (nextErrors.length) return;
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
     setStep((s) => Math.min(5, s + 1));
   }
 
   async function submit() {
-    const firstInvalid = [1, 2, 3, 4].find((s) => validateStep(s, form, mode).length);
-    const allErrors = [1, 2, 3, 4].flatMap((s) => validateStep(s, form, mode));
-    setErrors(allErrors);
+    const firstInvalid = [1, 2, 3, 4].find((s) => Object.keys(validateStep(s, form, mode)).length);
+    const allErrors = [1, 2, 3, 4].reduce<Record<string, string>>((acc, s) => ({ ...acc, ...validateStep(s, form, mode) }), {});
+    setFieldErrors(allErrors);
     if (firstInvalid) {
       setStep(firstInvalid);
       return;
@@ -233,7 +277,6 @@ export default function PatientFormWizard({
         return;
       }
       router.push(`/dashboard/patients/${id}`);
-      router.refresh();
     } catch (error) {
       setServerError(error instanceof Error ? error.message : "Save failed");
     } finally {
@@ -289,10 +332,11 @@ export default function PatientFormWizard({
         </ol>
       </div>
 
-      {errors.length ? (
+      {Object.keys(fieldErrors).length ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
-          {errors.map((err) => (
-            <p key={err}>{err}</p>
+          <p className="font-semibold">Please fix the highlighted fields before continuing:</p>
+          {Object.values(fieldErrors).map((err) => (
+            <p key={err}>• {err}</p>
           ))}
         </div>
       ) : null}
@@ -338,7 +382,7 @@ export default function PatientFormWizard({
               <input className={fieldClass} value={form.fullName} onChange={(e) => patch({ fullName: e.target.value })} />
             </Field>
             <Field label="Date of birth" required>
-              <input type="date" className={fieldClass} value={form.dateOfBirth} onChange={(e) => patch({ dateOfBirth: e.target.value })} />
+              <input type="date" className={fieldClass} value={form.dateOfBirth ?? ""} onChange={(e) => patch({ dateOfBirth: e.target.value })} />
             </Field>
             <Field label="Gender" required>
               <select className={fieldClass} value={form.gender} onChange={(e) => patch({ gender: e.target.value as PatientPayload["gender"] })}>
@@ -347,13 +391,13 @@ export default function PatientFormWizard({
                 <option>Other</option>
               </select>
             </Field>
-            <Field label="Mobile number" required>
+            <Field label="Mobile number" required error={fieldErrors.mobile}>
               <input className={fieldClass} placeholder="98XXXXXXXX" value={form.mobile} onChange={(e) => patch({ mobile: e.target.value })} />
             </Field>
-            <Field label="Email" required>
+            <Field label="Email" required error={fieldErrors.email}>
               <input type="email" className={fieldClass} value={form.email} onChange={(e) => patch({ email: e.target.value })} />
             </Field>
-            <Field label={mode === "create" ? "Temporary app password" : "Reset temporary app password (optional)"}>
+            <Field label={mode === "create" ? "Temporary app password" : "Reset temporary app password (optional)"} error={fieldErrors.temporaryPassword}>
               <div className="mt-1 flex gap-2">
                 <input
                   type="text"
@@ -387,7 +431,7 @@ export default function PatientFormWizard({
 
         {step === 2 ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Province" required>
+            <Field label="Province" required error={fieldErrors.province}>
               <select
                 className={fieldClass}
                 value={form.province}
@@ -402,21 +446,21 @@ export default function PatientFormWizard({
                 ))}
               </select>
             </Field>
-            <Field label="District" required>
+            <Field label="District" required error={fieldErrors.district}>
               <select className={fieldClass} value={form.district} onChange={(e) => patch({ district: e.target.value })}>
                 {districts.map((item) => (
                   <option key={item}>{item}</option>
                 ))}
               </select>
             </Field>
-            <Field label="Local level (municipality / rural municipality)" required>
+            <Field label="Local level (municipality / rural municipality)" required error={fieldErrors.localLevel}>
               <input className={fieldClass} value={form.localLevel} onChange={(e) => patch({ localLevel: e.target.value })} />
             </Field>
-            <Field label="Ward number" required>
+            <Field label="Ward number" required error={fieldErrors.wardNumber}>
               <input className={fieldClass} inputMode="numeric" value={form.wardNumber} onChange={(e) => patch({ wardNumber: e.target.value })} />
             </Field>
             <div className="sm:col-span-2">
-              <Field label="Full address" required>
+              <Field label="Full address" required error={fieldErrors.address}>
                 <textarea className={`${fieldClass} min-h-[72px]`} value={form.address} onChange={(e) => patch({ address: e.target.value })} />
               </Field>
             </div>
@@ -434,10 +478,11 @@ export default function PatientFormWizard({
                 {typeBadge(form.hemophiliaType, form.severity)}
               </span>
             </div>
-            <Field label="Blood group" required>
-              <select className={fieldClass} value={form.bloodGroup} onChange={(e) => patch({ bloodGroup: e.target.value })}>
+            <Field label="Blood group" required error={fieldErrors.bloodGroup}>
+              <select className={fieldClass} value={form.bloodGroup ?? ""} onChange={(e) => patch({ bloodGroup: e.target.value })}>
+                <option value="">Select blood group</option>
                 {bloodGroups.map((item) => (
-                  <option key={item}>{item}</option>
+                  <option key={item} value={item}>{item}</option>
                 ))}
               </select>
             </Field>
@@ -458,7 +503,7 @@ export default function PatientFormWizard({
                 <option>Mild</option>
               </select>
             </Field>
-            <Field label="Baseline factor level (IU/dL %)" required>
+            <Field label="Baseline factor level (IU/dL %)" required error={fieldErrors.baselineFactorLevel}>
               <input
                 className={fieldClass}
                 placeholder="e.g. 0.5"
@@ -479,28 +524,72 @@ export default function PatientFormWizard({
               </select>
             </Field>
             <Field label="Diagnosis date">
-              <input type="date" className={fieldClass} value={form.diagnosisDate} onChange={(e) => patch({ diagnosisDate: e.target.value })} />
+              <input type="date" className={fieldClass} value={form.diagnosisDate ?? ""} onChange={(e) => patch({ diagnosisDate: e.target.value })} />
             </Field>
-            <Field label="Primary hospital / HTC" required>
-              <select className={fieldClass} value={form.primaryHospital} onChange={(e) => patch({ primaryHospital: e.target.value })}>
+            <Field label="Treatment plan" required error={fieldErrors.treatmentPlan}>
+              <select
+                className={fieldClass}
+                value={form.treatmentPlan ?? "Regular Prophylaxis"}
+                onChange={(e) => patch({ treatmentPlan: e.target.value as PatientPayload["treatmentPlan"] })}
+              >
+                <option value="Regular Prophylaxis">Regular Prophylaxis</option>
+                <option value="On-demand">On-demand</option>
+                <option value="ITI">ITI</option>
+                <option value="Bypassing / Specialist" disabled={form.inhibitorStatus !== "Current"}>
+                  Bypassing / Specialist (current inhibitors only)
+                </option>
+                <option value="Other">Other</option>
+              </select>
+              {form.inhibitorStatus !== "Current" ? (
+                <p className="mt-1 text-[10px] text-faint">
+                  Set inhibitor status to <span className="font-semibold">Current</span> to use a bypassing plan.
+                </p>
+              ) : null}
+            </Field>
+            <Field
+              label="Prescribed factor product (for stock & injections)"
+              required={mode === "create"}
+              error={fieldErrors.prescribedFactorMedicineId}
+            >
+              <select
+                className={fieldClass}
+                value={form.prescribedFactorMedicineId ?? ""}
+                onChange={(e) => patch({ prescribedFactorMedicineId: e.target.value ? Number(e.target.value) : null })}
+              >
+                <option value="">Select factor product</option>
+                {factors.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name} ({item.factorType} · {item.unit})
+                  </option>
+                ))}
+              </select>
+              {mode === "edit" && !form.prescribedFactorMedicineId ? (
+                <p className="mt-1 text-[10px] text-amber-700">
+                  Recommended: select the factor product this patient uses so stock and injections stay linked.
+                </p>
+              ) : null}
+            </Field>
+            <Field label="Primary hospital / HTC" required error={fieldErrors.primaryHospital}>
+              <select className={fieldClass} value={form.primaryHospital ?? ""} onChange={(e) => patch({ primaryHospital: e.target.value })}>
                 {(hospitals.length ? hospitals.map((h) => h.name) : [form.primaryHospital]).map((item) => (
                   <option key={item}>{item}</option>
                 ))}
               </select>
             </Field>
             <p className="sm:col-span-2 text-[11px] text-muted">
-              Deficient factor is auto-set to <span className="font-semibold text-ink">{factor}</span> from type. Type/severity
-              changes after verification are Super Admin only (audit).
+              Deficient factor is auto-set to <span className="font-semibold text-ink">{factor}</span> from hemophilia type.
+              The prescribed product above is what your center should stock and log for this patient.
+              Bypassing / Specialist is only for patients with <span className="font-semibold text-ink">current inhibitors</span> — not for all Type A or B patients.
             </p>
           </div>
         ) : null}
 
         {step === 4 ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Emergency contact name" required>
+            <Field label="Emergency contact name" required error={fieldErrors.emergencyContactName}>
               <input className={fieldClass} value={form.emergencyContactName} onChange={(e) => patch({ emergencyContactName: e.target.value })} />
             </Field>
-            <Field label="Emergency contact phone" required>
+            <Field label="Emergency contact phone" required error={fieldErrors.emergencyContactPhone}>
               <input className={fieldClass} value={form.emergencyContactPhone} onChange={(e) => patch({ emergencyContactPhone: e.target.value })} />
             </Field>
             <Field label="Relationship">
@@ -614,6 +703,8 @@ export default function PatientFormWizard({
                   ["Blood group", form.bloodGroup],
                   ["Factor level", `${form.baselineFactorLevel || "—"} IU/dL`],
                   ["Inhibitor", form.inhibitorStatus],
+                  ["Treatment plan", form.treatmentPlan],
+                  ["Prescribed factor", factors.find((f) => f.id === form.prescribedFactorMedicineId)?.name || "—"],
                   ["Hospital", form.primaryHospital],
                   ["Emergency", `${form.emergencyContactName} · ${form.emergencyContactPhone}`],
                   ["Documents", String(documentFiles.length + (form.documents?.filter((d) => d.url).length || 0))],

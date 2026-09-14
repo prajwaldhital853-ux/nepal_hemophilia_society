@@ -1,8 +1,25 @@
 export type HemophiliaType = "A" | "B";
 export type Severity = "Mild" | "Moderate" | "Severe";
 export type InhibitorStatus = "None" | "Past" | "Current";
+export type TreatmentPlan =
+  | "Regular Prophylaxis"
+  | "On-demand"
+  | "ITI"
+  | "Bypassing / Specialist"
+  | "Other";
 export type Gender = "Male" | "Female" | "Other";
 export type PatientRecordStatus = "Active" | "Pending" | "Rejected";
+
+export type PatientRow = {
+  id: string;
+  name: string;
+  province: string;
+  center: string;
+  bloodGroup: string;
+  age: number;
+  lastVisit: string;
+  status: PatientRecordStatus;
+};
 
 export type PatientDocumentMeta = {
   id?: number;
@@ -11,6 +28,10 @@ export type PatientDocumentMeta = {
   type: string;
   url?: string;
   uploadedAt?: string;
+  uploadedBy?: string;
+  uploadedByRole?: string;
+  hospitalName?: string;
+  center?: string;
 };
 
 export type PatientRecord = {
@@ -31,6 +52,9 @@ export type PatientRecord = {
   severity: Severity;
   baselineFactorLevel: string;
   inhibitorStatus: InhibitorStatus;
+  treatmentPlan: TreatmentPlan;
+  prescribedFactorMedicineId?: number | null;
+  prescribedFactorMedicineName?: string;
   diagnosisDate: string;
   primaryHospital: string;
   emergencyContactName: string;
@@ -55,6 +79,44 @@ export function deriveFactor(type: HemophiliaType): "FVIII" | "FIX" {
   return type === "A" ? "FVIII" : "FIX";
 }
 
+/** Ensures every form field is a defined value so React inputs stay controlled. */
+export function normalizePatientForm(source?: Partial<PatientRecord> | null): PatientPayload {
+  const defaults = emptyPatientForm();
+  if (!source) return defaults;
+
+  return {
+    ...defaults,
+    ...source,
+    fullName: source.fullName ?? "",
+    dateOfBirth: source.dateOfBirth ?? "",
+    gender: source.gender ?? defaults.gender,
+    mobile: source.mobile ?? "",
+    email: source.email ?? "",
+    province: source.province ?? "",
+    district: source.district ?? "",
+    localLevel: source.localLevel ?? "",
+    wardNumber: source.wardNumber ?? "",
+    address: source.address ?? "",
+    bloodGroup: source.bloodGroup ?? "",
+    hemophiliaType: source.hemophiliaType ?? defaults.hemophiliaType,
+    severity: source.severity ?? defaults.severity,
+    baselineFactorLevel: source.baselineFactorLevel ?? "",
+    inhibitorStatus: source.inhibitorStatus ?? defaults.inhibitorStatus,
+    treatmentPlan: source.treatmentPlan ?? defaults.treatmentPlan,
+    prescribedFactorMedicineId: source.prescribedFactorMedicineId ?? null,
+    diagnosisDate: source.diagnosisDate ?? "",
+    primaryHospital: source.primaryHospital ?? "",
+    emergencyContactName: source.emergencyContactName ?? "",
+    emergencyContactPhone: source.emergencyContactPhone ?? "",
+    emergencyContactRelation: source.emergencyContactRelation ?? "",
+    documents: source.documents ?? [],
+    notes: source.notes ?? "",
+    status: source.status ?? defaults.status,
+    createdBy: source.createdBy ?? "",
+    temporaryPassword: "",
+  };
+}
+
 export function emptyPatientForm(): PatientPayload {
   return {
     fullName: "",
@@ -62,25 +124,27 @@ export function emptyPatientForm(): PatientPayload {
     gender: "Male",
     mobile: "",
     email: "",
-    province: "Bagmati",
-    district: "Kathmandu",
+    province: "",
+    district: "",
     localLevel: "",
     wardNumber: "",
     address: "",
-    bloodGroup: "O+",
+    bloodGroup: "",
     hemophiliaType: "A",
     severity: "Severe",
     baselineFactorLevel: "",
     inhibitorStatus: "None",
+    treatmentPlan: "Regular Prophylaxis",
+    prescribedFactorMedicineId: null,
     diagnosisDate: "",
-    primaryHospital: "Kathmandu Hemophilia Center",
+    primaryHospital: "",
     emergencyContactName: "",
     emergencyContactPhone: "",
     emergencyContactRelation: "",
     documents: [],
     notes: "",
     status: "Active",
-    createdBy: "Super Admin",
+    createdBy: "",
     temporaryPassword: "",
   };
 }
