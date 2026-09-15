@@ -20,7 +20,9 @@ export type HospitalStaffProfile = HospitalStaffRow & {
   gender?: string;
   address?: string;
   permissions: string[];
+  permissionCodes?: string[];
   mustChangePassword?: boolean;
+  photoUrl?: string;
   username?: string;
   lastLogin?: string;
   roleLabel?: string;

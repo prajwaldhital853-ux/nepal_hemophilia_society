@@ -7,6 +7,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from apps.accounts.models import UserRole
+from apps.core.clinical import can_delete_patient, can_edit_patient
 from apps.factors.models import FactorMedicine, FactorType
 from apps.hospitals.models import Hospital
 from apps.patients.models import InhibitorStatus, Patient, PatientDocument, TreatmentPlan
@@ -110,6 +111,8 @@ class PatientSerializer(serializers.ModelSerializer):
     resetTemporaryPassword = serializers.CharField(write_only=True, required=False, allow_blank=True)
     photoUrl = serializers.SerializerMethodField()
     mustChangePassword = serializers.SerializerMethodField()
+    canEdit = serializers.SerializerMethodField()
+    canDelete = serializers.SerializerMethodField()
 
     class Meta:
         model = Patient
@@ -149,7 +152,21 @@ class PatientSerializer(serializers.ModelSerializer):
             "resetTemporaryPassword",
             "photoUrl",
             "mustChangePassword",
+            "canEdit",
+            "canDelete",
         )
+
+    def get_canEdit(self, obj):
+        request = self.context.get("request")
+        if not request or not getattr(request.user, "is_authenticated", False):
+            return False
+        return can_edit_patient(request.user, obj)
+
+    def get_canDelete(self, obj):
+        request = self.context.get("request")
+        if not request or not getattr(request.user, "is_authenticated", False):
+            return False
+        return can_delete_patient(request.user, obj)
 
     def get_createdBy(self, obj):
         if obj.created_by:
@@ -408,9 +425,6 @@ class PatientSerializer(serializers.ModelSerializer):
         else:
             self._sync_user(patient, reset_value or None)
         self._save_uploads(patient)
-        from apps.notifications.services import notify_profile_updated
-
-        notify_profile_updated(patient, user=request.user if request else None)
         return patient
 
     def to_representation(self, instance):

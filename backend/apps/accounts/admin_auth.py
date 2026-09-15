@@ -11,6 +11,7 @@ from apps.accounts.serializers import UserSerializer
 
 class AdminChangePasswordView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
+    allow_must_change_password = True
 
     def post(self, request):
         current = str(request.data.get("currentPassword") or "").strip()
@@ -39,4 +40,4 @@ class AdminChangePasswordView(APIView):
         user.must_change_password = False
         user.password_changed_at = timezone.now()
         user.save(update_fields=["password", "must_change_password", "password_changed_at"])
-        return Response({"user": UserSerializer(user).data}, status=status.HTTP_200_OK)
+        return Response({"user": UserSerializer(user, context={"request": request}).data}, status=status.HTTP_200_OK)

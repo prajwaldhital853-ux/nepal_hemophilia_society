@@ -19,7 +19,7 @@ import {
   type StockLot,
   type StockMovementRow,
 } from "@/features/stock/api";
-import { useAuth } from "@/lib/auth";
+import { isNationalScope, useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
 
 const fieldClass =
@@ -56,7 +56,8 @@ function movementTypeClass(type: string) {
 export default function StockModule() {
   const { can, user } = useAuth();
   const canManage = can(Perm.stockManage);
-  const isSuper = user?.role === "super_admin";
+  const canDeleteLot = can(Perm.stockDelete) && !user?.viewOnly;
+  const isSuper = isNationalScope(user);
   const [lots, setLots] = useState<StockLot[]>([]);
   const [movements, setMovements] = useState<StockMovementRow[]>([]);
   const [factors, setFactors] = useState<FactorOption[]>([]);
@@ -234,16 +235,18 @@ export default function StockModule() {
                         <button type="button" className="rounded border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-sky-700" onClick={() => { setActiveLot(lot); setMoveMode("adjust"); }}>
                           Update
                         </button>
-                        <button
-                          type="button"
-                          className="rounded border border-red-200 px-1.5 py-0.5 text-red-600"
-                          onClick={() => {
-                            if (!window.confirm("Delete this lot? Lots with remaining quantity can only be deleted by Super Admin.")) return;
-                            void deleteStockLot(lot.id).then(load).catch((err: Error) => setError(err.message));
-                          }}
-                        >
-                          Delete
-                        </button>
+                        {canDeleteLot ? (
+                          <button
+                            type="button"
+                            className="rounded border border-red-200 px-1.5 py-0.5 text-red-600"
+                            onClick={() => {
+                              if (!window.confirm("Delete this lot? Lots with remaining quantity can only be deleted by Super Admin.")) return;
+                              void deleteStockLot(lot.id).then(load).catch((err: Error) => setError(err.message));
+                            }}
+                          >
+                            Delete
+                          </button>
+                        ) : null}
                       </div>
                     ) : (
                       "View only"

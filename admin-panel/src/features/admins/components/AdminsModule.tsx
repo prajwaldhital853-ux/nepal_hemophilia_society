@@ -2,90 +2,140 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarRange, ChevronDown, Download, Eye, Plus, Search, X } from "lucide-react";
+import { CalendarRange, ChevronDown, Eye, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 
-import { fetchProvinceAdmins, type ProvinceAdminRecord } from "@/features/admins/api";
-import AdminFormDialog from "@/features/admins/components/AdminFormDialog";
+import {
+  deleteStaffAccount,
+  fetchStaffCatalog,
+  fetchStaffDirectory,
+  KIND_LABELS,
+  type StaffKind,
+  type StaffRecord,
+} from "@/features/admins/api";
+import StaffAccountForm from "@/features/admins/components/StaffAccountForm";
 import { NEPAL_PROVINCES } from "@/lib/constants/provinces";
 import { useAuth } from "@/lib/auth";
 import { formatNumber } from "@/lib/format";
 import { Perm } from "@/lib/permissions";
+import { usePageRbac } from "@/components/rbac/ReadOnlyBanner";
 
 function statusClass(status: string) {
   if (status === "Active") return "bg-status-green-soft text-status-green";
+  if (status === "Pending") return "bg-status-amber-soft text-status-amber";
   return "bg-elevated text-muted";
+}
+
+const TABS: { id: "" | StaffKind; label: string }[] = [
+  { id: "", label: "All" },
+  { id: "super_admin", label: "Super Admin" },
+  { id: "admin", label: "Admin" },
+  { id: "province_admin", label: "Province" },
+  { id: "center_admin", label: "Center" },
+  { id: "treatment_admin", label: "Treatment" },
+  { id: "website_manager", label: "Website" },
+];
+
+function profileHref(row: StaffRecord) {
+  if (row.kind === "treatment_admin") return `/dashboard/hospitals/treatment-admins/${row.id}`;
+  if (row.kind === "center_admin") return `/dashboard/hospitals/center-admins/${row.id}`;
+  return `/dashboard/admins/${row.id}`;
 }
 
 export default function AdminsModule() {
   const router = useRouter();
-  const { can } = useAuth();
-  const canManage = can(Perm.provinceAdminsManage);
+  const { can, user } = useAuth();
+  const { readOnly } = usePageRbac("admins");
+  const canManage = (can(Perm.adminsManage) || can(Perm.provinceAdminsManage) || can(Perm.hospitalStaffManage)) && !user?.viewOnly;
   const [query, setQuery] = useState("");
   const [province, setProvince] = useState("All");
+  const [kind, setKind] = useState<"" | StaffKind>("");
   const [openProvince, setOpenProvince] = useState(false);
-  const [rows, setRows] = useState<ProvinceAdminRecord[]>([]);
+  const [rows, setRows] = useState<StaffRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [roles, setRoles] = useState<StaffKind[]>([]);
   const [showForm, setShowForm] = useState(false);
 
   async function load() {
     setLoading(true);
     setError("");
     try {
-      const data = await fetchProvinceAdmins();
-      setRows(data.admins);
+      const data = await fetchStaffDirectory({ kind: kind || undefined, search: query, province });
+      setRows(data.staff);
     } catch (err) {
       setRows([]);
-      setError(err instanceof Error ? err.message : "Failed to load province admins");
+      setError(err instanceof Error ? err.message : "Failed to load admins");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    void load();
+    void fetchStaffCatalog()
+      .then((data) => setRoles(data.assignableRoles.map((role) => role.kind)))
+      .catch(() => setRoles([]));
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [kind, province]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows.filter((admin) => {
-      const matchProvince = province === "All" || admin.province === province;
       const matchQuery =
         !q ||
         admin.id.toLowerCase().includes(q) ||
         admin.fullName.toLowerCase().includes(q) ||
         admin.email.toLowerCase().includes(q) ||
-        (admin.phone || "").toLowerCase().includes(q);
-      return matchProvince && matchQuery;
+        (admin.phone || "").includes(q);
+      return matchQuery;
     });
-  }, [province, query, rows]);
+  }, [query, rows]);
 
   return (
     <div className="flex flex-col gap-2 pb-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-[15px] font-semibold text-ink">Province Admins</h1>
-          <p className="text-[11px] text-muted">Home &gt; Admin Management — Super Admin configures one admin per province</p>
+          <h1 className="text-[15px] font-semibold text-ink">Admin Management</h1>
+          <p className="text-[11px] text-muted">
+            Home &gt; Admin Management — create and control only the roles your account is allowed to manage
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-muted">
             <CalendarRange className="size-3.5" />
             {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </button>
-          {canManage ? (
+          {canManage && !readOnly ? (
             <button
               type="button"
               className="flex items-center gap-1.5 rounded bg-brand px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-blueDark"
               onClick={() => setShowForm(true)}
             >
               <Plus className="size-3.5" />
-              Add Province Admin
+              Add Admin
             </button>
           ) : null}
         </div>
       </div>
 
       {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
+
+      <div className="flex flex-wrap gap-1">
+        {TABS.filter((tab) => !tab.id || roles.includes(tab.id)).map((tab) => (
+          <button
+            key={tab.id || "all"}
+            type="button"
+            onClick={() => setKind(tab.id)}
+            className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+              kind === tab.id ? "bg-brand text-white" : "bg-elevated text-muted hover:text-ink"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
       <section className="panel overflow-hidden">
         <div className="filter-bar">
@@ -95,7 +145,7 @@ export default function AdminsModule() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
-              placeholder="Search by Name, Email or Phone..."
+              placeholder="Search by name, email, phone or ID..."
             />
           </label>
 
@@ -149,21 +199,15 @@ export default function AdminsModule() {
           ) : null}
 
           <p className="text-[11px] text-muted">
-            Province Admins: <span className="text-[15px] font-semibold text-ink">{formatNumber(visible.length)}</span>
-            <span className="ml-1 text-faint">/ 7</span>
+            Admins: <span className="text-[15px] font-semibold text-ink">{formatNumber(visible.length)}</span>
           </p>
-
-          <button type="button" className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none">
-            <Download className="size-3.5" />
-            Export
-          </button>
         </div>
 
         <div className="overflow-x-auto">
           <table className="data-table w-full min-w-[880px] text-left text-sm">
             <thead className="bg-elevated text-[11px] uppercase tracking-wide text-muted">
               <tr>
-                {["Admin ID", "Name", "Email", "Role", "Province", "Status", "Actions"].map((h) => (
+                {["Admin ID", "Name", "Email", "Role", "Scope", "Access", "Status", "Actions"].map((h) => (
                   <th key={h} className="px-3 py-3 font-medium">
                     {h}
                   </th>
@@ -173,14 +217,14 @@ export default function AdminsModule() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-[11px] text-muted">
+                  <td colSpan={8} className="px-3 py-8 text-center text-[11px] text-muted">
                     Loading…
                   </td>
                 </tr>
               ) : visible.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-[11px] text-muted">
-                    No Province Admins yet. Super Admin can add one for each of Nepal’s 7 provinces.
+                  <td colSpan={8} className="px-3 py-8 text-center text-[11px] text-muted">
+                    No admins in this filter. Add an admin with the roles you are allowed to create.
                   </td>
                 </tr>
               ) : (
@@ -189,22 +233,50 @@ export default function AdminsModule() {
                     <td className="px-3 py-3 font-medium text-brand">{row.id}</td>
                     <td className="px-3 py-3 font-semibold text-ink">{row.fullName}</td>
                     <td className="px-3 py-3 text-muted">{row.email}</td>
-                    <td className="px-3 py-3 text-ink">Province Admin</td>
-                    <td className="px-3 py-3 text-ink">{row.province}</td>
+                    <td className="px-3 py-3 text-ink">{KIND_LABELS[row.kind] || row.roleLabel}</td>
+                    <td className="px-3 py-3 text-ink">{row.treatmentCenter || row.province || "National"}</td>
+                    <td className="px-3 py-3 text-[11px] text-muted">{row.viewOnly ? "View only" : "Full"}</td>
                     <td className="px-3 py-3">
                       <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusClass(row.status)}`}>
                         {row.status}
                       </span>
                     </td>
                     <td className="px-3 py-3">
-                      <button
-                        type="button"
-                        className="rounded-lg p-1.5 text-brand hover:bg-brand-soft"
-                        aria-label={`View ${row.fullName}`}
-                        onClick={() => router.push(`/dashboard/admins/${row.id}`)}
-                      >
-                        <Eye className="size-[15px]" />
-                      </button>
+                      <div className="flex items-center gap-1 text-muted">
+                        <button
+                          type="button"
+                          className="rounded-lg p-1.5 text-brand hover:bg-brand-soft"
+                          aria-label={`View ${row.fullName}`}
+                          onClick={() => router.push(profileHref(row))}
+                        >
+                          <Eye className="size-[15px]" />
+                        </button>
+                        {canManage ? (
+                          <button
+                            type="button"
+                            className="rounded-lg p-1.5 hover:bg-elevated"
+                            aria-label={`Edit ${row.fullName}`}
+                            onClick={() => router.push(profileHref(row))}
+                          >
+                            <Pencil className="size-[15px]" />
+                          </button>
+                        ) : null}
+                        {row.canDelete ? (
+                          <button
+                            type="button"
+                            className="rounded-lg p-1.5 text-red-600 hover:bg-red-50"
+                            aria-label={`Delete ${row.fullName}`}
+                            onClick={() => {
+                              if (!window.confirm(`Delete admin ${row.id} (${row.fullName})? This cannot be undone.`)) return;
+                              void deleteStaffAccount(row.id)
+                                .then(() => setRows((current) => current.filter((item) => item.id !== row.id)))
+                                .catch((err: Error) => setError(err.message || "Could not delete admin"));
+                            }}
+                          >
+                            <Trash2 className="size-[15px]" />
+                          </button>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -215,10 +287,10 @@ export default function AdminsModule() {
       </section>
 
       {showForm ? (
-        <AdminFormDialog
-          takenProvinces={rows.map((row) => row.province)}
+        <StaffAccountForm
+          takenProvinces={rows.filter((row) => row.kind === "province_admin").map((row) => row.province)}
           onClose={() => setShowForm(false)}
-          onCreated={() => {
+          onSaved={() => {
             setShowForm(false);
             void load();
           }}

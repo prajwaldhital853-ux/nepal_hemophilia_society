@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import UserRole
 from apps.accounts.permissions import CanManageStock, CanViewStock, IsAdminRole, IsPatientRole, PatientPasswordUsable
-from apps.accounts.rbac import has_perm, hospital_id_for, province_id_for
+from apps.accounts.rbac import has_perm, hospital_id_for, is_national_scope, province_id_for
 from apps.audit.models import AuditLog
 from apps.patients.models import Patient
 from apps.patients.views import _flatten_errors, client_ip
@@ -44,7 +44,7 @@ def _movement_queryset():
 
 
 def _scope_movements(user, qs):
-    if user.role == UserRole.SUPER_ADMIN:
+    if is_national_scope(user):
         return qs
     if user.role == UserRole.PROVINCE_ADMIN:
         pid = province_id_for(user)
@@ -56,7 +56,7 @@ def _scope_movements(user, qs):
 
 
 def _scope_stock(user, qs):
-    if user.role == UserRole.SUPER_ADMIN:
+    if is_national_scope(user):
         return qs
     if user.role == UserRole.PROVINCE_ADMIN:
         pid = province_id_for(user)
@@ -75,7 +75,7 @@ def _scope_stock(user, qs):
 def _assert_can_manage_lot(user, stock):
     if not has_perm(user, "stock.manage"):
         raise PermissionDenied("You cannot add or adjust stock.")
-    if user.role == UserRole.SUPER_ADMIN:
+    if is_national_scope(user):
         return
     if user.role == UserRole.HOSPITAL_ADMIN:
         hid = hospital_id_for(user)

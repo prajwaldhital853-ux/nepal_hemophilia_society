@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { Image, StyleSheet, Text, View } from "react-native";
 
 import { useAuth } from "@/core/auth/AuthContext";
@@ -11,6 +10,17 @@ function initials(name: string) {
   if (!parts.length) return "?";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+function patientAgeYears(dob: string) {
+  if (!dob) return "—";
+  const date = new Date(dob);
+  if (Number.isNaN(date.getTime())) return "—";
+  const now = new Date();
+  let age = now.getFullYear() - date.getFullYear();
+  const m = now.getMonth() - date.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < date.getDate())) age -= 1;
+  return `${age} years old`;
 }
 
 function StatsSidebar({ injections, iuUsed }: { injections: number; iuUsed: string }) {
@@ -33,12 +43,12 @@ function StatsSidebar({ injections, iuUsed }: { injections: number; iuUsed: stri
 
 export function ProfileSummaryCard() {
   const { patient } = useAuth();
-  const { totalInjections, totalIuLabel, formatDob } = usePatientClinicalStats();
+  const { totalInjections, totalIuLabel } = usePatientClinicalStats();
 
   const name = patient?.fullName ?? "Patient";
   const id = patient?.id ?? "—";
   const status = patient?.status ?? "—";
-  const dob = patient?.dateOfBirth ? formatDob(patient.dateOfBirth) : "—";
+  const ageLabel = patient?.dateOfBirth ? patientAgeYears(patient.dateOfBirth) : "—";
   const factorType = patient
     ? `${patient.deficientFactor} · ${patient.severity}${patient.treatmentPlan ? ` · ${patient.treatmentPlan}` : ""}`
     : "—";
@@ -48,35 +58,10 @@ export function ProfileSummaryCard() {
 
   return (
     <View style={styles.outer}>
-      <LinearGradient
-        colors={["#0A0A0A", "#1A0508", "#3A060C", "#7A1018", "#961018"]}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={styles.card}
-      >
+      <View style={styles.card}>
         <View style={styles.row}>
-          <View style={styles.midCol}>
-            <View style={styles.nameRow}>
-              <Text style={styles.name} numberOfLines={1}>{name}</Text>
-              {patient?.status ? (
-                <View style={styles.activeBadge}>
-                  <View style={styles.activeDot} />
-                  <Text style={styles.activeText}>{status}</Text>
-                </View>
-              ) : null}
-            </View>
-            <View style={styles.idRow}>
-              <Text style={styles.idText}>ID: {id}</Text>
-            </View>
-            <InfoRow icon="calendar-outline" label="Date of Birth" value={dob} />
-            <InfoRow icon="water" label="Factor Type" value={factorType} />
-            <InfoRow icon="location-outline" label="Location" value={location} />
-            <InfoRow icon="business-outline" label="Treatment Center" value={treatmentCenter} />
-            <InfoRow icon="water" label="Blood Group" value={bloodGroup} />
-          </View>
-
-          <View style={styles.rightCol}>
-            <View style={styles.avatarFrame}>
+          <View style={styles.leftCol}>
+            <View style={styles.avatarOuter}>
               {patient?.photoUrl ? (
                 <Image source={{ uri: patient.photoUrl }} style={styles.avatar} />
               ) : (
@@ -88,13 +73,29 @@ export function ProfileSummaryCard() {
                 <Ionicons name="water" size={10} color={homeColors.white} />
               </View>
             </View>
-            <Text style={styles.taglineTop}>Together for a</Text>
-            <Text style={styles.taglineAccent}>Safer Tomorrow</Text>
-            <Text style={styles.taglineSub}>SUPPORT • TREAT • AWARE</Text>
-            <StatsSidebar injections={totalInjections} iuUsed={totalIuLabel} />
+            <Text style={styles.metaId}>{id}</Text>
+            <Text style={styles.metaBlood}>{bloodGroup}</Text>
+            <Text style={styles.metaAge}>{ageLabel}</Text>
           </View>
+
+          <View style={styles.midCol}>
+            <View style={styles.nameRow}>
+              <Text style={styles.name} numberOfLines={1}>{name}</Text>
+              {patient?.status ? (
+                <View style={styles.activeBadge}>
+                  <View style={styles.activeDot} />
+                  <Text style={styles.activeText}>{status}</Text>
+                </View>
+              ) : null}
+            </View>
+            <InfoRow icon="water" label="Factor Type" value={factorType} />
+            <InfoRow icon="location-outline" label="Location" value={location} />
+            <InfoRow icon="business-outline" label="Treatment Center" value={treatmentCenter} />
+          </View>
+
+          <StatsSidebar injections={totalInjections} iuUsed={totalIuLabel} />
         </View>
-      </LinearGradient>
+      </View>
     </View>
   );
 }
@@ -126,28 +127,19 @@ function InfoRow({
 const styles = StyleSheet.create({
   outer: { marginHorizontal: homeSpacing.screen },
   card: {
+    backgroundColor: homeColors.white,
     borderRadius: homeRadii.card,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#5C0A12",
+    borderColor: homeColors.border,
   },
-  row: { flexDirection: "row", alignItems: "flex-start", padding: 12, gap: 8 },
-  midCol: { flex: 1, minWidth: 0 },
-  rightCol: { width: 118, alignItems: "center" },
-  avatarFrame: {
-    width: 78,
-    height: 78,
-    borderRadius: 14,
-    backgroundColor: "#C1121F",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.35)",
-  },
+  row: { flexDirection: "row", alignItems: "flex-start", padding: 10, gap: 6 },
+  leftCol: { alignItems: "center", width: 86 },
+  avatarOuter: { position: "relative" },
   avatar: {
-    width: 68,
-    height: 68,
-    borderRadius: 10,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     borderWidth: 2,
     borderColor: homeColors.white,
     backgroundColor: "#FEE2E2",
@@ -156,67 +148,74 @@ const styles = StyleSheet.create({
   avatarInitials: { fontSize: 22, fontWeight: "800", color: homeColors.primary },
   avatarBadge: {
     position: "absolute",
-    bottom: -4,
-    right: -4,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    bottom: 0,
+    right: 0,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: homeColors.primary,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: homeColors.white,
   },
-  taglineTop: { marginTop: 8, fontSize: 9, color: "rgba(255,255,255,0.85)", fontWeight: "600" },
-  taglineAccent: { fontSize: 11, fontWeight: "800", color: homeColors.white, textAlign: "center" },
-  taglineSub: { marginTop: 2, fontSize: 7.5, letterSpacing: 0.5, color: "rgba(255,255,255,0.55)", fontWeight: "600" },
-  nameRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 4 },
-  name: { fontSize: 15, fontWeight: "800", color: homeColors.white, flexShrink: 1 },
+  metaId: {
+    marginTop: 4,
+    fontSize: 9.5,
+    fontWeight: "700",
+    color: homeColors.primary,
+    textAlign: "center",
+  },
+  metaBlood: {
+    marginTop: 2,
+    fontSize: 9.5,
+    fontWeight: "700",
+    color: homeColors.navy,
+    textAlign: "center",
+  },
+  metaAge: {
+    marginTop: 2,
+    fontSize: 9,
+    fontWeight: "600",
+    color: homeColors.textMuted,
+    textAlign: "center",
+  },
+  midCol: { flex: 1, minWidth: 0, paddingTop: 2 },
+  nameRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 4, marginBottom: 2 },
+  name: { fontSize: 15, fontWeight: "800", color: homeColors.navy, flexShrink: 1 },
   activeBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(22,163,74,0.25)",
+    backgroundColor: homeColors.greenBg,
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: homeRadii.pill,
   },
   activeDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: homeColors.green },
-  activeText: { fontSize: 8.5, fontWeight: "600", color: "#86EFAC" },
-  idRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    marginTop: 3,
-    marginBottom: 4,
-    backgroundColor: "rgba(193,18,31,0.35)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: homeRadii.pill,
-  },
-  idText: { fontSize: 10, fontWeight: "700", color: "#FECACA" },
-  infoRow: { flexDirection: "row", alignItems: "flex-start", gap: 5, marginTop: 2 },
+  activeText: { fontSize: 8.5, fontWeight: "600", color: homeColors.green },
+  infoRow: { flexDirection: "row", alignItems: "flex-start", gap: 5, marginTop: 3 },
   infoIconWrap: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "#F3F4F6",
     alignItems: "center",
     justifyContent: "center",
     marginTop: 1,
   },
   infoTextWrap: { flex: 1, minWidth: 0 },
-  infoLabel: { fontSize: 8, color: "rgba(255,255,255,0.55)", lineHeight: 10 },
-  infoValue: { fontSize: 10.5, fontWeight: "700", color: homeColors.white, lineHeight: 13 },
+  infoLabel: { fontSize: 8, color: homeColors.textMuted, lineHeight: 10 },
+  infoValue: { fontSize: 10.5, fontWeight: "700", color: homeColors.navy, lineHeight: 13 },
   statsCard: {
-    width: "100%",
-    marginTop: 10,
+    width: 104,
+    minHeight: 132,
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 8,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    alignSelf: "flex-start",
+    backgroundColor: homeColors.primary,
+    justifyContent: "space-between",
   },
   statsTopRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   statsDropWrap: {
@@ -230,10 +229,10 @@ const styles = StyleSheet.create({
   },
   statsLabel: { fontSize: 7.5, color: "rgba(255,255,255,0.9)", fontWeight: "600", flexShrink: 1 },
   statsValue: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: "800",
     color: homeColors.white,
-    lineHeight: 24,
+    lineHeight: 28,
     textAlign: "center",
     marginTop: 2,
   },

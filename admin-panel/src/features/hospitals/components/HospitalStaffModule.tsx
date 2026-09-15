@@ -25,6 +25,7 @@ import {
 import { formatNumber } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
+import { usePageRbac } from "@/components/rbac/ReadOnlyBanner";
 
 function statusClass(status: HospitalStaffRow["status"]) {
   if (status === "Active") return "bg-status-green-soft text-status-green";
@@ -41,7 +42,8 @@ function paginationPages(total: number, pageSize: number) {
 export default function HospitalStaffModule({ staffType }: { staffType: HospitalStaffType }) {
   const router = useRouter();
   const { can, user } = useAuth();
-  const canManage = can(Perm.hospitalStaffManage);
+  const { readOnly } = usePageRbac("hospitalStaff");
+  const canManage = can(Perm.hospitalStaffManage) && !readOnly && !user?.viewOnly;
   const labels = staffLabels[staffType];
   const lockProvince = user?.role === "province_admin" ? user.provinceAdmin?.province || "" : "";
   const hideProvince = user?.role === "hospital_admin" || Boolean(lockProvince);

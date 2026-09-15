@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { fetchHospitals } from "@/features/hospitals/api";
 import type { HospitalOption } from "@/features/hospitals/types";
 import { createTreatment, INJECTION_STATUSES } from "@/features/injections/api";
-import { useAuth } from "@/lib/auth";
+import { isNationalScope, useAuth } from "@/lib/auth";
 
 const fieldClass =
   "mt-1 w-full rounded border border-line-subtle bg-elevated px-2.5 py-1.5 text-[12px] text-ink outline-none focus:border-brand";
@@ -21,7 +21,7 @@ type Props = {
 
 export default function LogTreatmentDialog({ patientId, primaryHospital = "", onClose, onSaved }: Props) {
   const { user } = useAuth();
-  const isSuper = user?.role === "super_admin";
+  const isSuper = isNationalScope(user);
   const assignedCenter = user?.hospitalStaff?.treatmentCenter || primaryHospital;
   const [treatmentCenter, setTreatmentCenter] = useState(primaryHospital || assignedCenter);
   const [hospitals, setHospitals] = useState<HospitalOption[]>([]);

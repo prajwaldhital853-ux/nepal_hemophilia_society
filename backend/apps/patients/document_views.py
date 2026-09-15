@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import UserRole
 from apps.accounts.permissions import CanAddDocuments, IsAdminRole, IsPatientRole, PatientPasswordUsable
-from apps.accounts.rbac import province_id_for
+from apps.accounts.rbac import is_national_scope, province_id_for
 from apps.audit.models import AuditLog
 from apps.core.clinical import can_view_patient, resolve_actor_hospital
 from apps.hospitals.models import Hospital
@@ -19,7 +19,7 @@ from apps.patients.views import client_ip
 
 
 def resolve_document_center(user, patient, hospital_name=None):
-    if user.role in (UserRole.HOSPITAL_ADMIN, UserRole.SUPER_ADMIN):
+    if user.role == UserRole.HOSPITAL_ADMIN or is_national_scope(user):
         return resolve_actor_hospital(user, hospital_name, patient=patient)
     if user.role == UserRole.PROVINCE_ADMIN:
         name = (hospital_name or "").strip()
@@ -123,7 +123,7 @@ class PatientDocumentDetailView(APIView):
             pid = province_id_for(user)
             if patient.province_id != pid:
                 raise PermissionDenied()
-        elif user.role != UserRole.SUPER_ADMIN:
+        elif not is_national_scope(user):
             raise PermissionDenied()
         name = doc.original_name
         doc.file.delete(save=False)

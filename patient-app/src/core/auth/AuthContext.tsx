@@ -53,6 +53,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error instanceof ApiError && error.status === 403) {
           setMustChangePassword(true);
         } else if (error instanceof ApiError && error.status === 401) {
+          const session = await loadSession();
+          if (session.refresh) {
+            try {
+              const refreshed = await patientApi("/auth/refresh/", {
+                method: "POST",
+                body: JSON.stringify({ refresh: session.refresh }),
+                timeoutMs: AUTH_TIMEOUT_MS,
+              });
+              if (refreshed?.access) {
+                await saveSession(refreshed.access, refreshed.refresh ?? session.refresh);
+                setToken(refreshed.access);
+                const retry = await patientApi("/me/patient/", { token: refreshed.access, timeoutMs: AUTH_TIMEOUT_MS });
+                if (!cancelled) setPatient(retry.patient);
+                return;
+              }
+            } catch {
+              // fall through to clear session
+            }
+          }
           await clearSession();
           setToken("");
         }
@@ -123,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       changePassword,
       logout,
-      refreshPatient: (force = false) => refreshPatient(token, force),
+      refreshPatient: () => refreshPatient(),
     }),
     [ready, token, mustChangePassword, patient, login, changePassword, logout, refreshPatient],
   );

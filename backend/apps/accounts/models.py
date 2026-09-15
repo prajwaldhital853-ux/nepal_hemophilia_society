@@ -6,7 +6,9 @@ class UserRole(models.TextChoices):
     PATIENT = "patient", "Patient"
     HOSPITAL_ADMIN = "hospital_admin", "Hospital Admin"
     PROVINCE_ADMIN = "province_admin", "Province Admin"
+    ADMIN = "admin", "Admin"
     SUPER_ADMIN = "super_admin", "Super Admin"
+    WEBSITE_MANAGER = "website_manager", "Website Manager"
 
 
 class User(AbstractUser):
@@ -21,6 +23,17 @@ class User(AbstractUser):
     is_active_account = models.BooleanField(default=True)
     must_change_password = models.BooleanField(default=False)
     password_changed_at = models.DateTimeField(null=True, blank=True)
+    staff_id = models.CharField(max_length=20, unique=True, null=True, blank=True, db_index=True)
+    view_only = models.BooleanField(default=False)
+    extra_permissions = models.JSONField(default=list, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=20, blank=True)
+    designation = models.CharField(max_length=120, blank=True)
+    employee_id = models.CharField(max_length=40, blank=True)
+    national_id = models.CharField(max_length=40, blank=True)
+    office_address = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+    photo = models.ImageField(upload_to="admins/photos/", blank=True)
 
     class Meta:
         db_table = "users"
@@ -32,12 +45,20 @@ class User(AbstractUser):
         return self.role == UserRole.SUPER_ADMIN
 
     @property
+    def is_national_admin(self) -> bool:
+        return self.role == UserRole.ADMIN
+
+    @property
     def is_province_admin(self) -> bool:
         return self.role == UserRole.PROVINCE_ADMIN
 
     @property
     def is_hospital_admin(self) -> bool:
         return self.role == UserRole.HOSPITAL_ADMIN
+
+    @property
+    def is_website_manager(self) -> bool:
+        return self.role == UserRole.WEBSITE_MANAGER
 
     @property
     def is_patient(self) -> bool:

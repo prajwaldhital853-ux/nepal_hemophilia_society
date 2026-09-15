@@ -1,12 +1,7 @@
 """Create patient-facing notifications when admins take clinical actions."""
 
-from apps.core.realtime import publish_patient_event
 from apps.notifications.models import NotificationCategory, PatientNotification
 from apps.patients.models import Patient
-
-
-def _push(patient: Patient, event_type: str, **payload):
-    publish_patient_event(patient.unique_patient_id, event_type, **payload)
 
 
 def notify_patient(
@@ -19,7 +14,7 @@ def notify_patient(
     related_type: str = "",
     related_id: int | None = None,
 ):
-    note = PatientNotification.objects.create(
+    return PatientNotification.objects.create(
         patient=patient,
         category=category,
         title=title,
@@ -28,20 +23,6 @@ def notify_patient(
         related_type=related_type,
         related_id=related_id,
     )
-    _push(patient, "notification", category=category, notificationId=note.id)
-    return note
-
-
-def notify_profile_updated(patient, user=None, summary="Your profile was updated by your care team."):
-    notify_patient(
-        patient=patient,
-        category=NotificationCategory.SYSTEM,
-        title="Profile updated",
-        message=summary,
-        user=user,
-        related_type="patient_profile",
-    )
-    _push(patient, "profile")
 
 
 def notify_injection_action(injection, user=None):
@@ -67,7 +48,7 @@ def notify_injection_action(injection, user=None):
     else:
         title = f"Injection {status.lower()}"
         message = f"Injection status updated to {status} for {when} at {injection.hospital.name}."
-    note = notify_patient(
+    return notify_patient(
         patient=injection.patient,
         category=NotificationCategory.INJECTION,
         title=title,
@@ -76,8 +57,6 @@ def notify_injection_action(injection, user=None):
         related_type="injection",
         related_id=injection.id,
     )
-    _push(injection.patient, "injections")
-    return note
 
 
 def notify_center_stock_update(hospital, factor_name, quantity, unit, user=None):
@@ -98,12 +77,11 @@ def notify_center_stock_update(hospital, factor_name, quantity, unit, user=None)
                 related_type="stock",
             )
         )
-        _push(patient, "stock")
     return created
 
 
 def notify_bleeding_episode(episode, user=None):
-    note = notify_patient(
+    return notify_patient(
         patient=episode.patient,
         category=NotificationCategory.BLEEDING,
         title="Bleeding episode recorded",
@@ -116,5 +94,3 @@ def notify_bleeding_episode(episode, user=None):
         related_type="bleeding_episode",
         related_id=episode.id,
     )
-    _push(episode.patient, "bleeding")
-    return note

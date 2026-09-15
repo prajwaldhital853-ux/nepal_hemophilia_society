@@ -7,7 +7,7 @@ import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 import { NavIcon } from "@/components/layout/NavIcon";
-import { UserAvatar } from "@/components/ui/UserAvatar";
+import { OwnAvatar } from "@/components/ui/UserAvatar";
 import { useAuth } from "@/lib/auth";
 import { filterNav, mainNav, websiteNav, type NavItem } from "@/lib/nav";
 
@@ -100,11 +100,15 @@ export function Sidebar() {
   const roleLabel =
     user?.role === "super_admin"
       ? "Super Admin"
-      : user?.role === "province_admin"
-        ? `Province Admin${user.provinceAdmin?.province ? ` · ${user.provinceAdmin.province}` : ""}`
-        : user?.hospitalStaff
-          ? `${user.hospitalStaff.staffType === "center_admin" ? "Center Admin" : "Treatment Admin"} · ${user.hospitalStaff.treatmentCenter}`
-          : "Hospital Admin";
+      : user?.role === "admin"
+        ? "Admin"
+        : user?.role === "website_manager"
+          ? "Website Manager"
+          : user?.role === "province_admin"
+            ? `Province Admin${user.provinceAdmin?.province ? ` · ${user.provinceAdmin.province}` : ""}`
+            : user?.hospitalStaff
+              ? `${user.hospitalStaff.staffType === "center_admin" ? "Center Admin" : "Treatment Admin"} · ${user.hospitalStaff.treatmentCenter}`
+              : "Hospital Admin";
 
   return (
     <aside className="flex h-dvh w-[var(--sidebar-w)] shrink-0 flex-col overflow-hidden border-r border-sidebar-line bg-sidebar text-sidebar-ink">
@@ -147,7 +151,7 @@ export function Sidebar() {
 
       <div className="shrink-0 border-t border-sidebar-line px-2 py-2">
         <div className="flex items-center gap-2 rounded-lg bg-elevated/10 px-2 py-2">
-          <UserAvatar name={displayName} size={28} />
+          <OwnAvatar name={displayName} photoUrl={user?.photoUrl} size={28} />
           <div className="min-w-0">
             <p className="truncate text-[12px] font-semibold text-sidebar-ink">{displayName}</p>
             <p className="truncate text-[10px] text-sidebar-muted">{roleLabel}</p>

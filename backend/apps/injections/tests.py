@@ -126,6 +126,41 @@ class ClinicalWorkflowTests(APITestCase):
         self.assertIn("injection", res.data)
         self.assertTrue(HospitalVisit.objects.filter(patient=self.patient_a, hospital=self.hospital).exists())
 
+    def test_patient_profile_shows_all_injections_to_authorized_admins(self):
+        other_admin = User.objects.create_user(
+            username="other_tadmin", password="ChangeMe#2026", role=UserRole.HOSPITAL_ADMIN, email="other@test.com"
+        )
+        HospitalAdmin.objects.create(
+            user=other_admin,
+            hospital=self.other_hospital,
+            staff_type=HospitalStaffType.TREATMENT_ADMIN,
+            display_id="TADM-00100",
+        )
+        self.client.force_authenticate(self.super)
+        created = self.client.post(
+            "/api/v1/injections/",
+            {
+                "patientId": self.patient_a.unique_patient_id,
+                "factorMedicineId": self.factor_a.id,
+                "dose": "1500",
+                "indication": "On-demand",
+            },
+            format="json",
+        )
+        self.assertEqual(created.status_code, 201, created.data)
+        self.client.force_authenticate(other_admin)
+        cross_center = self.client.get(f"/api/v1/patients/{self.patient_a.unique_patient_id}/injections/")
+        self.assertEqual(cross_center.status_code, 200, cross_center.data)
+        self.assertEqual(len(cross_center.data["injections"]), 1)
+        self.client.force_authenticate(self.treatment_admin)
+        listed = self.client.get(f"/api/v1/patients/{self.patient_a.unique_patient_id}/injections/")
+        self.assertEqual(listed.status_code, 200, listed.data)
+        self.assertEqual(len(listed.data["injections"]), 1)
+        self.client.force_authenticate(self.province_admin_user)
+        province_list = self.client.get(f"/api/v1/patients/{self.patient_a.unique_patient_id}/injections/")
+        self.assertEqual(province_list.status_code, 200, province_list.data)
+        self.assertEqual(len(province_list.data["injections"]), 1)
+
     def test_reject_fix_for_type_a(self):
         self.client.force_authenticate(self.treatment_admin)
         res = self.client.post(
@@ -182,6 +217,16 @@ class ClinicalWorkflowTests(APITestCase):
         )
         self.assertEqual(res2.status_code, 201)
         self.assertTrue(res2.data["injection"]["inhibitorWarning"])
+
+    def test_website_manager_cannot_access_injections_by_url(self):
+        from apps.accounts.models import UserRole
+
+        wm = User.objects.create_user(username="webmgr", password="ChangeMe#2026", role=UserRole.WEBSITE_MANAGER)
+        self.client.force_authenticate(wm)
+        listed = self.client.get("/api/v1/injections/")
+        self.assertEqual(listed.status_code, 403)
+        patient_inj = self.client.get(f"/api/v1/patients/{self.patient_a.unique_patient_id}/injections/")
+        self.assertEqual(patient_inj.status_code, 403)
 
     def test_province_admin_cannot_add_injection(self):
         self.client.force_authenticate(self.province_admin_user)

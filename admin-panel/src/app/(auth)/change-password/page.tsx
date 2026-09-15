@@ -38,7 +38,7 @@ export default function ChangePasswordPage() {
       <div className="w-full max-w-md rounded border border-line bg-card p-6">
         <h1 className="text-[18px] font-semibold text-ink">Set a new password</h1>
         <p className="mt-1 text-[11px] text-muted">
-          Your administrator issued a temporary password. Choose a new one to continue using the admin panel.
+          Your administrator issued a temporary password. Choose a new one of your own to activate this account.
         </p>
         <form className="mt-4 space-y-3" onSubmit={onSubmit}>
           <div>

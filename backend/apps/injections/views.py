@@ -6,8 +6,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import UserRole
-from apps.accounts.permissions import CanAddInjections, CanCorrectInjections, CanViewClinical, IsAdminRole
-from apps.accounts.rbac import hospital_id_for, province_id_for
+from apps.accounts.permissions import (
+    CanAddInjections,
+    CanCorrectInjections,
+    CanUpdateInjections,
+    CanViewClinical,
+    IsAdminRole,
+)
+from apps.accounts.rbac import hospital_id_for, is_national_scope, province_id_for
 from apps.audit.models import AuditLog
 from apps.core.clinical import can_view_patient
 from apps.injections.models import InjectionRecord
@@ -32,7 +38,7 @@ def _injection_queryset():
 
 
 def _scope_injections(user, qs, patient_id=None):
-    if user.role == UserRole.SUPER_ADMIN:
+    if is_national_scope(user):
         return qs
     if user.role == UserRole.PROVINCE_ADMIN:
         pid = province_id_for(user)
@@ -100,7 +106,7 @@ class InjectionListCreateView(APIView):
 class InjectionDetailView(APIView):
     def get_permissions(self):
         if self.request.method == "PATCH":
-            return [IsAuthenticated(), IsAdminRole()]
+            return [IsAuthenticated(), IsAdminRole(), CanUpdateInjections()]
         return [IsAuthenticated(), CanViewClinical()]
 
     def get(self, request, pk):
@@ -109,11 +115,16 @@ class InjectionDetailView(APIView):
             raise NotFound("Injection record not found.")
         if not can_view_patient(request.user, record.patient):
             raise PermissionDenied("You cannot view this injection record.")
+        scoped = _scope_injections(
+            request.user,
+            _injection_queryset().filter(pk=pk),
+            patient_id=record.patient.unique_patient_id,
+        )
+        if not scoped.exists():
+            raise PermissionDenied("You cannot view this injection record.")
         return Response({"injection": InjectionRecordSerializer(record).data})
 
     def patch(self, request, pk):
-        if not IsAdminRole().has_permission(request, self):
-            raise PermissionDenied()
         record = _injection_queryset().filter(pk=pk).first()
         if not record:
             raise NotFound("Injection record not found.")

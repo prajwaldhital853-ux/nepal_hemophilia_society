@@ -135,10 +135,12 @@ class Command(BaseCommand):
                 "is_superuser": True,
                 "first_name": "Super",
                 "last_name": "Admin",
+                "staff_id": "SADM-00001",
             },
         )
         if created:
             user.set_password("ChangeMe#2026")
+            user.staff_id = user.staff_id or "SADM-00001"
             user.save()
             self.stdout.write(self.style.WARNING("Created superadmin / ChangeMe#2026 — change this password."))
         else:
@@ -146,6 +148,9 @@ class Command(BaseCommand):
                 user.role = UserRole.SUPER_ADMIN
                 user.is_staff = True
                 user.save(update_fields=["role", "is_staff"])
+            if not user.staff_id:
+                user.staff_id = "SADM-00001"
+                user.save(update_fields=["staff_id"])
             self.stdout.write("Super admin already exists.")
 
         self._seed_hospital_staff(User)

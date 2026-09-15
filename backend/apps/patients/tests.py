@@ -406,5 +406,19 @@ class PatientRbacScopeTests(APITestCase):
         self.assertEqual(len(searched.data["patients"]), 1)
         detail = self.client.get(f"/api/v1/patients/{other.data['patient']['id']}/")
         self.assertEqual(detail.status_code, 200)
+        self.assertFalse(detail.data["patient"]["canEdit"])
         update = self.client.put(f"/api/v1/patients/{own.data['patient']['id']}/", self.payload, format="json")
-        self.assertEqual(update.status_code, 403)
+        self.assertEqual(update.status_code, 200, update.data)
+        self.assertTrue(update.data["patient"]["canEdit"])
+        cross = self.client.put(
+            f"/api/v1/patients/{other.data['patient']['id']}/",
+            {
+                **self.payload,
+                "email": "other.center@example.com",
+                "province": "Koshi",
+                "district": "Morang",
+                "primaryHospital": "Biratnagar Hemophilia Center",
+            },
+            format="json",
+        )
+        self.assertIn(cross.status_code, (403, 404))

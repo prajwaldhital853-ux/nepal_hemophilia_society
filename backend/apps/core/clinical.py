@@ -1,6 +1,7 @@
 """Shared clinical workflow helpers — injection/treatment RBAC and validation."""
 
 from apps.accounts.models import UserRole
+from apps.accounts.rbac import has_perm, hospital_id_for, is_national_scope, PERM_PATIENTS_DELETE, PERM_PATIENTS_UPDATE
 from apps.factors.models import ApplicableType, FactorType
 from apps.hospitals.models import HospitalStaffType
 from apps.patients.models import InhibitorStatus, Patient, VerificationStatus
@@ -24,7 +25,7 @@ def resolve_actor_hospital(user, hospital_name=None, patient=None):
         if not profile:
             return None, "Your account is not linked to a treatment center."
         return profile.hospital, None
-    if user.role == UserRole.SUPER_ADMIN:
+    if is_national_scope(user):
         from apps.hospitals.models import Hospital
 
         name = (hospital_name or "").strip()
@@ -38,12 +39,12 @@ def resolve_actor_hospital(user, hospital_name=None, patient=None):
             return hospital, None
         if patient is not None:
             return None, "This patient has no assigned treatment center."
-        return None, "Super admin must specify treatmentCenter when adding records."
+        return None, "Specify treatmentCenter when adding records."
     return None, "Only hospital staff or super admin can add clinical records."
 
 
 def can_view_patient(user, patient: Patient) -> bool:
-    if user.role == UserRole.SUPER_ADMIN:
+    if is_national_scope(user):
         return True
     if user.role == UserRole.PATIENT:
         profile = getattr(user, "patient_profile", None)
@@ -56,8 +57,37 @@ def can_view_patient(user, patient: Patient) -> bool:
     return False
 
 
+def can_edit_patient(user, patient: Patient) -> bool:
+    """Edit/delete patient profile: national admins, same-province province admin, same-center hospital staff."""
+    if is_national_scope(user):
+        return has_perm(user, PERM_PATIENTS_UPDATE)
+    if user.role == UserRole.PROVINCE_ADMIN:
+        if not has_perm(user, PERM_PATIENTS_UPDATE):
+            return False
+        province_admin = getattr(user, "province_admin", None)
+        return bool(province_admin and patient.province_id == province_admin.province_id)
+    if user.role == UserRole.HOSPITAL_ADMIN:
+        profile = get_hospital_admin_profile(user)
+        return bool(profile and patient.primary_hospital_id == profile.hospital_id)
+    return False
+
+
+def can_delete_patient(user, patient: Patient) -> bool:
+    if is_national_scope(user):
+        return has_perm(user, PERM_PATIENTS_DELETE)
+    if user.role == UserRole.PROVINCE_ADMIN:
+        if not has_perm(user, PERM_PATIENTS_DELETE):
+            return False
+        province_admin = getattr(user, "province_admin", None)
+        return bool(province_admin and patient.province_id == province_admin.province_id)
+    if user.role == UserRole.HOSPITAL_ADMIN:
+        profile = get_hospital_admin_profile(user)
+        return bool(profile and patient.primary_hospital_id == profile.hospital_id)
+    return False
+
+
 def can_add_clinical_record(user) -> bool:
-    if user.role == UserRole.SUPER_ADMIN:
+    if is_national_scope(user):
         return True
     if user.role == UserRole.HOSPITAL_ADMIN:
         profile = get_hospital_admin_profile(user)
@@ -66,7 +96,7 @@ def can_add_clinical_record(user) -> bool:
 
 
 def can_update_clinical_record(user, hospital) -> bool:
-    if user.role == UserRole.SUPER_ADMIN:
+    if is_national_scope(user):
         return True
     if user.role == UserRole.HOSPITAL_ADMIN:
         profile = get_hospital_admin_profile(user)

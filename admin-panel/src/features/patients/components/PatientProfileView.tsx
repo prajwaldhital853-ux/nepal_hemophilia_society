@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Droplets, MapPin, MoreHorizontal, Pencil, UserRound } from "lucide-react";
+import { CalendarDays, Droplets, MapPin, MoreHorizontal, Pencil, Trash2, UserRound } from "lucide-react";
 
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import type { PatientRecord } from "@/features/patients/types";
@@ -11,7 +11,7 @@ import { PatientInjectionsPanel, PatientTreatmentsPanel } from "@/features/injec
 import { PatientBleedingPanel } from "@/features/patients/components/PatientBleedingPanel";
 import PatientDocumentsPanel from "@/features/patients/components/PatientDocumentsPanel";
 import { fetchStockMovements, type StockMovementRow } from "@/features/stock/api";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, resolveMediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
 
@@ -123,7 +123,7 @@ export default function PatientProfileView({ id }: { id: string }) {
               Reject
             </button>
           ) : null}
-          {can(Perm.patientsUpdate) ? (
+          {record.canEdit ? (
             <button
               type="button"
               className="panel flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium text-ink shadow-none"
@@ -131,6 +131,21 @@ export default function PatientProfileView({ id }: { id: string }) {
             >
               <Pencil className="size-3" />
               Edit Patient
+            </button>
+          ) : null}
+          {record.canDelete ? (
+            <button
+              type="button"
+              className="panel flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium text-red-600 shadow-none"
+              onClick={() => {
+                if (!window.confirm(`Delete patient ${record.id}? This cannot be undone if they have no clinical records.`)) return;
+                void apiFetch(`/patients/${encodeURIComponent(record.id)}/`, { method: "DELETE" })
+                  .then(() => router.push("/dashboard/patients"))
+                  .catch((err: Error) => setActionError(err.message));
+              }}
+            >
+              <Trash2 className="size-3" />
+              Delete
             </button>
           ) : null}
           <button type="button" className="panel p-1.5 shadow-none" aria-label="More">
@@ -157,10 +172,10 @@ export default function PatientProfileView({ id }: { id: string }) {
         <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
           <article className="panel flex h-full flex-col p-3">
             <div className="flex flex-col items-center text-center">
-              {record.photoUrl ? (
+              {resolveMediaUrl(record.photoUrl) ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={record.photoUrl}
+                  src={resolveMediaUrl(record.photoUrl)}
                   alt={record.fullName}
                   width={72}
                   height={72}
@@ -244,7 +259,14 @@ export default function PatientProfileView({ id }: { id: string }) {
               onViewAll={() => setTab("Injections")}
             />
 
-            <PatientBleedingPanel patientId={id} primaryHospital={record.primaryHospital} compact />
+            <div className="md:col-span-2">
+              <PatientBleedingPanel
+                patientId={id}
+                primaryHospital={record.primaryHospital}
+                compact
+                onViewAll={() => setTab("Bleeding Episodes")}
+              />
+            </div>
 
             <div className="md:col-span-2">
               <PatientDocumentsPanel
@@ -262,15 +284,7 @@ export default function PatientProfileView({ id }: { id: string }) {
       ) : tab === "Injections" ? (
         <PatientInjectionsPanel patientId={id} hemophiliaType={record.hemophiliaType} primaryHospital={record.primaryHospital} />
       ) : tab === "Treatment History" ? (
-        <div className="flex flex-col gap-2">
-          <p className="rounded border border-line-subtle bg-elevated px-3 py-2 text-[11px] text-muted">
-            <span className="font-semibold text-ink">Treatment History</span> records non-injection care events
-            (physiotherapy, surgery, admission, ITI, counseling). Use the{" "}
-            <span className="font-semibold text-ink">Injections</span> tab to log factor doses — those update stock
-            and appear in the patient app injection history.
-          </p>
-          <PatientTreatmentsPanel patientId={id} primaryHospital={record.primaryHospital} />
-        </div>
+        <PatientTreatmentsPanel patientId={id} primaryHospital={record.primaryHospital} />
       ) : tab === "Bleeding Episodes" ? (
         <PatientBleedingPanel patientId={id} primaryHospital={record.primaryHospital} />
       ) : tab === "Medicines / Stock" ? (

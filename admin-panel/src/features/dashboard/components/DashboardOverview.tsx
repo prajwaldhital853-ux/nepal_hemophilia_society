@@ -13,21 +13,19 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-import { CenterStatusChart, InjectionOverviewChart } from "@/features/dashboard/components/DashboardCharts";
+import { AdminActivityFeed } from "@/features/dashboard/components/AdminActivityFeed";
+import {
+  CenterStatusChart,
+  InjectionOverviewChart,
+  StockSummaryChart,
+} from "@/features/dashboard/components/DashboardCharts";
 import { NepalProvinceMap } from "@/features/dashboard/components/NepalProvinceMap";
+import { SystemOverviewSection } from "@/features/dashboard/components/SystemOverviewSection";
+import type { DashboardData } from "@/features/dashboard/types";
 import { apiFetch } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
+import { isNationalScope, useAuth } from "@/lib/auth";
 import { formatNumber } from "@/lib/format";
 import { Perm } from "@/lib/permissions";
-
-const statIcons = [Users, Users, MapPin, Building2, Package];
-const statWrap = {
-  blue: "bg-violet-500/10 text-violet-500",
-  sky: "bg-sky-500/10 text-sky-500",
-  green: "bg-emerald-500/10 text-emerald-500",
-  orange: "bg-orange-500/10 text-orange-500",
-  purple: "bg-violet-500/10 text-violet-500",
-};
 
 const actionTone = {
   blue: "bg-blue-500/10 text-blue-500",
@@ -50,13 +48,35 @@ type ReportTotals = {
 
 type RecentPatient = { id: string; fullName: string; province: string; status: string; updatedAt: string };
 
+const EMPTY_DASHBOARD: DashboardData = {
+  treatmentTrend: [],
+  stockByHospital: [],
+  stockUsageTrend: [],
+  provinceStats: [],
+  systemOverview: {
+    totalUsers: 0,
+    totalAdmins: 0,
+    superAdmins: 0,
+    provinceAdmins: 0,
+    hospitalAdmins: 0,
+    activeSessions: 0,
+    todaysVisits: 0,
+    totalStockUnits: 0,
+    totalProvinces: 7,
+    totalCenters: 0,
+    totalPatients: 0,
+    activePatients: 0,
+  },
+  recentActivity: [],
+};
+
 export default function DashboardOverview() {
   const { user, can } = useAuth();
   const [totals, setTotals] = useState<ReportTotals | null>(null);
   const [recent, setRecent] = useState<RecentPatient[]>([]);
   const [provinceCounts, setProvinceCounts] = useState<Record<string, number>>({});
-
   const [stockQty, setStockQty] = useState<string | number | null>(null);
+  const [dashboard, setDashboard] = useState<DashboardData>(EMPTY_DASHBOARD);
 
   useEffect(() => {
     void apiFetch("/reports/")
@@ -65,7 +85,7 @@ export default function DashboardOverview() {
     void apiFetch("/patients/")
       .then((data) => {
         const patients = (data.patients ?? []) as RecentPatient[];
-        setRecent(patients.slice(0, 5));
+        setRecent(patients.slice(0, 20));
         const counts: Record<string, number> = {};
         for (const row of patients) {
           if (!row.province) continue;
@@ -82,27 +102,100 @@ export default function DashboardOverview() {
         .then((data) => setStockQty(data.totalQuantity ?? 0))
         .catch(() => setStockQty(0));
     }
+    void apiFetch("/reports/dashboard/")
+      .then((data) => setDashboard(data as DashboardData))
+      .catch(() => setDashboard(EMPTY_DASHBOARD));
   }, [user?.permissions]);
 
   const title =
     user?.role === "super_admin"
       ? "Super Admin Dashboard"
-      : user?.role === "province_admin"
-        ? `Province Dashboard · ${user.provinceAdmin?.province || "Province"}`
-        : `Hospital Dashboard · ${user?.hospitalStaff?.treatmentCenter || "Hospital"}`;
+      : user?.role === "admin"
+        ? "Admin Dashboard"
+        : user?.role === "website_manager"
+          ? "Website Dashboard"
+          : user?.role === "province_admin"
+            ? `Province Dashboard · ${user.provinceAdmin?.province || "Province"}`
+            : `Hospital Dashboard · ${user?.hospitalStaff?.treatmentCenter || "Hospital"}`;
 
-  const scopedStats = [
-    { label: "Patients in scope", value: formatNumber(totals?.patients ?? 0), meta: `${totals?.activePatients ?? 0} active`, tone: "blue" as const },
-    { label: "Hospitals / centers", value: formatNumber(totals?.hospitals ?? 0), meta: user?.role === "super_admin" ? "Nationwide" : "Your scope", tone: "orange" as const },
-    { label: "Injections", value: formatNumber(totals?.injections ?? 0), meta: "Logged records", tone: "sky" as const },
-    { label: "Treatments", value: formatNumber(totals?.treatments ?? 0), meta: "Clinical notes", tone: "green" as const },
-    {
-      label: user?.role === "super_admin" ? "Provinces" : "Scope",
-      value: user?.role === "super_admin" ? "7" : "1",
-      meta: user?.role === "super_admin" ? "All Nepal" : user?.provinceAdmin?.province || user?.hospitalStaff?.province || "Assigned",
-      tone: "purple" as const,
-    },
-  ];
+  const overview = dashboard.systemOverview;
+  const isSuper = isNationalScope(user);
+
+  const topStats = isSuper
+    ? [
+        {
+          label: "Total Patients",
+          value: formatNumber(overview.totalPatients || totals?.patients || 0),
+          meta: "Active patients across Nepal",
+          icon: Users,
+          tone: "bg-blue-600",
+        },
+        {
+          label: "Total Admins",
+          value: formatNumber(overview.totalAdmins),
+          meta: `${overview.superAdmins || 1} Super Admin · ${overview.provinceAdmins || 7} Province Admins`,
+          icon: Users,
+          tone: "bg-[#2563EB]",
+        },
+        {
+          label: "Total Provinces",
+          value: formatNumber(overview.totalProvinces || 7),
+          meta: "All 7 provinces covered",
+          icon: MapPin,
+          tone: "bg-emerald-600",
+        },
+        {
+          label: "Total Treatment Centers",
+          value: formatNumber(overview.totalCenters || totals?.hospitals || 0),
+          meta: "Active treatment centers",
+          icon: Building2,
+          tone: "bg-orange-500",
+        },
+        {
+          label: "Total Stock (Units)",
+          value: formatNumber(Number(overview.totalStockUnits || stockQty || 0)),
+          meta: "Factor & medicines in stock",
+          icon: Package,
+          tone: "bg-violet-600",
+        },
+      ]
+    : [
+        {
+          label: "Patients in scope",
+          value: formatNumber(totals?.patients ?? overview.totalPatients),
+          meta: `${totals?.activePatients ?? overview.activePatients} active`,
+          icon: Users,
+          tone: "bg-blue-600",
+        },
+        {
+          label: "Hospitals / centers",
+          value: formatNumber(totals?.hospitals ?? overview.totalCenters),
+          meta: "Your scope",
+          icon: Building2,
+          tone: "bg-orange-500",
+        },
+        {
+          label: "Injections",
+          value: formatNumber(totals?.injections ?? 0),
+          meta: "Logged records",
+          icon: Activity,
+          tone: "bg-sky-600",
+        },
+        {
+          label: "Treatments",
+          value: formatNumber(totals?.treatments ?? 0),
+          meta: "Clinical notes",
+          icon: Activity,
+          tone: "bg-emerald-600",
+        },
+        {
+          label: "Stock (Units)",
+          value: formatNumber(Number(stockQty ?? overview.totalStockUnits ?? 0)),
+          meta: "On hand in scope",
+          icon: Package,
+          tone: "bg-violet-600",
+        },
+      ];
 
   const actions = [
     { label: "Add New Patient", perm: Perm.patientsCreate, href: "/dashboard/patients/new", tone: "blue" },
@@ -128,17 +221,17 @@ export default function DashboardOverview() {
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-        {scopedStats.map((stat, index) => {
-          const Icon = statIcons[index];
+        {topStats.map((stat) => {
+          const Icon = stat.icon;
           return (
-            <article key={stat.label} className="panel flex min-w-0 gap-2 p-2.5">
-              <div className={`flex size-8 shrink-0 items-center justify-center rounded-md ${statWrap[stat.tone]}`}>
-                <Icon className="size-3.5" />
+            <article key={stat.label} className="panel flex min-w-0 items-center gap-3 p-2.5">
+              <div className={`flex size-12 shrink-0 items-center justify-center rounded-full text-white ${stat.tone}`}>
+                <Icon className="size-6" strokeWidth={2.2} />
               </div>
               <div className="min-w-0">
                 <p className="truncate text-[10px] text-muted">{stat.label}</p>
-                <p className="mt-0.5 text-[15px] font-semibold leading-4 text-ink">{stat.value}</p>
-                <p className="mt-0.5 truncate text-[9px] text-faint">{stat.meta}</p>
+                <p className="mt-0.5 text-[18px] font-bold leading-5 text-ink">{stat.value}</p>
+                <p className="mt-0.5 line-clamp-2 text-[9px] text-faint">{stat.meta}</p>
               </div>
             </article>
           );
@@ -146,19 +239,22 @@ export default function DashboardOverview() {
       </div>
 
       <div className="grid gap-2 lg:grid-cols-2">
-        {user?.role === "super_admin" ? (
+        {isSuper ? (
           <article className="panel p-2.5">
             <h2 className="text-[12px] font-semibold text-ink">Patients by Province</h2>
-            {totalPatientsForMap === 0 ? (
+            <p className="text-[10px] text-muted">Hover a province for patient, center, and stock details</p>
+            {totalPatientsForMap === 0 && dashboard.provinceStats.length === 0 ? (
               <p className="mt-4 text-[11px] text-muted">No registered patients yet. Counts will appear here once patients are added.</p>
             ) : (
-              <div className="mt-2 grid items-center gap-2 lg:grid-cols-[1.2fr_0.8fr]">
-                <NepalProvinceMap provinceCounts={provinceCounts} />
-                <ul className="flex flex-col gap-1 text-[10px]">
+              <div className="mt-2 flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <NepalProvinceMap provinceCounts={provinceCounts} provinceStats={dashboard.provinceStats} />
+                </div>
+                <ul className="w-[118px] shrink-0 flex flex-col gap-1 text-[10px]">
                   {Object.entries(provinceCounts)
                     .sort((a, b) => b[1] - a[1])
                     .map(([name, count]) => (
-                      <li key={name} className="flex items-center justify-between gap-2">
+                      <li key={name} className="flex items-center justify-between gap-1">
                         <span className="truncate">{name}</span>
                         <span className="shrink-0 font-semibold tabular-nums text-ink">
                           {formatNumber(count)}{" "}
@@ -190,8 +286,9 @@ export default function DashboardOverview() {
               View All
             </Link>
           </div>
-          <table className="inner-table mt-2 w-full text-left text-[10px]">
-            <thead className="text-[9px] uppercase text-faint">
+          <div className="mt-2 max-h-[260px] overflow-y-auto pr-1">
+          <table className="inner-table w-full text-left text-[10px]">
+            <thead className="sticky top-0 bg-elevated text-[9px] uppercase text-faint">
               <tr>
                 {["Patient ID", "Patient Name", "Province", "Date", "Status"].map((h) => (
                   <th key={h} className="pb-1 font-semibold">
@@ -222,34 +319,25 @@ export default function DashboardOverview() {
               )}
             </tbody>
           </table>
+          </div>
         </article>
       </div>
 
       <div className="grid gap-2 lg:grid-cols-3">
         <article className="panel p-2.5">
           <h2 className="text-[12px] font-semibold text-ink">Treatment & Injection Overview</h2>
-          {(totals?.injections ?? 0) === 0 && (totals?.treatments ?? 0) === 0 ? (
-            <p className="mt-4 text-[11px] text-muted">No injection or treatment records in your scope yet.</p>
-          ) : user?.role === "super_admin" ? (
-            <div className="mt-2">
-              <InjectionOverviewChart />
-            </div>
-          ) : (
-            <p className="mt-4 text-[12px] text-muted">
-              {totals?.injections ?? 0} injections and {totals?.treatments ?? 0} treatments in your scope.
-            </p>
-          )}
+          <div className="mt-2">
+            <InjectionOverviewChart data={dashboard.treatmentTrend} />
+          </div>
         </article>
 
         <article className="panel p-2.5">
           <h2 className="text-[12px] font-semibold text-ink">Treatment Center Status</h2>
           <div className="mt-1.5">
-            {(totals?.hospitals ?? 0) === 0 ? (
+            {(totals?.hospitals ?? overview.totalCenters ?? 0) === 0 ? (
               <p className="text-[11px] text-muted">No active treatment centers in scope.</p>
-            ) : user?.role === "super_admin" ? (
-              <CenterStatusChart activeCount={totals?.hospitals ?? 0} />
             ) : (
-              <p className="text-[12px] text-muted">{totals?.hospitals ?? 0} active center(s) you can manage or view.</p>
+              <CenterStatusChart activeCount={totals?.hospitals ?? overview.totalCenters ?? 0} />
             )}
           </div>
         </article>
@@ -262,23 +350,15 @@ export default function DashboardOverview() {
                 View All
               </Link>
             </div>
-            <p className="mt-4 text-[18px] font-semibold text-ink">{stockQty ?? "—"}</p>
-            <p className="mt-1 text-[11px] text-muted">Units on hand in your scope. Doses given to patients decrement this automatically.</p>
+            <p className="mt-1 text-[16px] font-semibold text-ink">{stockQty ?? overview.totalStockUnits ?? "—"}</p>
+            <StockSummaryChart byHospital={dashboard.stockByHospital} usageTrend={dashboard.stockUsageTrend} />
           </article>
         ) : null}
       </div>
 
       <div className="grid gap-2 lg:grid-cols-3">
         {can(Perm.auditView) ? (
-          <article className="panel p-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[12px] font-semibold text-ink">Admin Activity</h2>
-              <Link href="/dashboard/audit" className="text-[10px] font-semibold text-brand">
-                View All
-              </Link>
-            </div>
-            <p className="mt-2 text-[11px] text-muted">Recent audit events load on the Audit Logs page.</p>
-          </article>
+          <AdminActivityFeed items={dashboard.recentActivity} />
         ) : (
           <article className="panel p-3">
             <h2 className="text-[12px] font-semibold text-ink">Activity</h2>
@@ -286,11 +366,7 @@ export default function DashboardOverview() {
           </article>
         )}
 
-        <article className="panel p-3">
-          <h2 className="text-[12px] font-semibold text-ink">Signed in as</h2>
-          <p className="mt-2 text-[12px] font-semibold text-ink">{user?.fullName || user?.username}</p>
-          <p className="text-[11px] text-muted">{title}</p>
-        </article>
+        <SystemOverviewSection overview={overview} />
 
         <article className="panel p-3">
           <h2 className="text-[12px] font-semibold text-ink">Quick Actions</h2>
@@ -302,9 +378,7 @@ export default function DashboardOverview() {
                 const Icon = actionIcons[index] ?? Activity;
                 return (
                   <Link key={action.label} href={action.href} className="flex flex-col items-center gap-1.5 text-center">
-                    <span
-                      className={`flex size-9 items-center justify-center rounded-full ${actionTone[action.tone as keyof typeof actionTone]}`}
-                    >
+                    <span className={`flex size-9 items-center justify-center rounded-full ${actionTone[action.tone as keyof typeof actionTone]}`}>
                       <Icon className="size-4" />
                     </span>
                     <span className="text-[9px] font-medium leading-3 text-muted">{action.label}</span>

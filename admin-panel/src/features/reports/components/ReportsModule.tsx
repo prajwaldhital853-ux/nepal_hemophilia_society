@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { FileBarChart } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
+import { isNationalScope, useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
 
 const kpiTone = {
@@ -25,7 +25,7 @@ export default function ReportsModule() {
   }, []);
 
   const scopeLabel =
-    user?.role === "super_admin"
+    isNationalScope(user)
       ? "National"
       : user?.role === "province_admin"
         ? `${user.provinceAdmin?.province || "Province"} only`

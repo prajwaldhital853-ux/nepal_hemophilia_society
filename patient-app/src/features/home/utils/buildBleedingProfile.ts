@@ -1,14 +1,12 @@
 import type { BleedingEpisode } from "@/core/providers/PatientClinicalStatsProvider";
-import { buildBleedingCallouts, type BleedingCallout } from "@/features/home/utils/bleedingBodyMap";
 
 export type BleedingProfileSummary = {
-  callouts: BleedingCallout[];
+  joints: string[];
   mostAffected: string;
   severity: string;
   totalEpisodes: number;
   lastBleed: string;
   hasData: boolean;
-  episodes: BleedingEpisode[];
 };
 
 function formatBleedDate(iso: string) {
@@ -18,13 +16,12 @@ function formatBleedDate(iso: string) {
 }
 
 const EMPTY: BleedingProfileSummary = {
-  callouts: [],
+  joints: ["", "", ""],
   mostAffected: "—",
   severity: "—",
   totalEpisodes: 0,
   lastBleed: "—",
   hasData: false,
-  episodes: [],
 };
 
 export function buildBleedingProfile(episodes: BleedingEpisode[]): BleedingProfileSummary {
@@ -51,17 +48,18 @@ export function buildBleedingProfile(episodes: BleedingEpisode[]): BleedingProfi
     .sort((a, b) => b[1] - a[1])
     .map(([site]) => site);
 
-  const calloutSites = rankedSites.length ? rankedSites : [latest.site?.trim() ?? ""].filter(Boolean);
+  const joints = rankedSites.slice(0, 3);
+  while (joints.length < 3) joints.push("");
+
   const mostAffected = rankedSites[0] ?? latest.site?.trim() ?? "—";
   const severity = latest.severity?.trim() || "—";
 
   return {
-    callouts: buildBleedingCallouts(calloutSites),
+    joints,
     mostAffected,
     severity,
     totalEpisodes,
     lastBleed: formatBleedDate(latest.episodeDate),
     hasData: true,
-    episodes: sorted,
   };
 }

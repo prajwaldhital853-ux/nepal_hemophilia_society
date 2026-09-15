@@ -33,7 +33,7 @@ def _flatten_errors(detail):
 
 def scoped_staff_queryset(user):
     qs = HospitalAdmin.objects.select_related("user", "hospital", "hospital__province").order_by("-user__date_joined")
-    if user.role == UserRole.SUPER_ADMIN:
+    if user.role in (UserRole.SUPER_ADMIN, UserRole.ADMIN):
         return qs
     if user.role == UserRole.PROVINCE_ADMIN:
         profile = getattr(user, "province_admin", None)
@@ -105,7 +105,7 @@ class HospitalStaffViewSet(viewsets.ViewSet):
         total = qs.count()
         start = (page - 1) * page_size
         page_qs = qs[start : start + page_size]
-        data = HospitalStaffSerializer(page_qs, many=True).data
+        data = HospitalStaffSerializer(page_qs, many=True, context={"request": request}).data
         return Response(
             {
                 "staff": data,
@@ -118,7 +118,7 @@ class HospitalStaffViewSet(viewsets.ViewSet):
 
     def retrieve(self, request, display_id=None, staff_type=None):
         profile = self._get_profile(display_id)
-        return Response({"staff": HospitalStaffSerializer(profile).data})
+        return Response({"staff": HospitalStaffSerializer(profile, context={"request": request}).data})
 
     def create(self, request, staff_type=None):
         if request.user.role == UserRole.HOSPITAL_ADMIN:
@@ -148,7 +148,7 @@ class HospitalStaffViewSet(viewsets.ViewSet):
             ip=client_ip(request),
             detail=f"{profile.display_id} at {profile.hospital.name}",
         )
-        body = {"staff": HospitalStaffSerializer(profile).data}
+        body = {"staff": HospitalStaffSerializer(profile, context={"request": request}).data}
         temp = getattr(serializer, "issued_temporary_password", None)
         if temp:
             body["credentials"] = {
@@ -166,7 +166,9 @@ class HospitalStaffViewSet(viewsets.ViewSet):
             if own and own.staff_type == HospitalStaffType.TREATMENT_ADMIN and profile.user_id != request.user.id:
                 raise PermissionDenied("Treatment admins can only update their own profile.")
 
-        serializer = HospitalStaffUpdateSerializer(profile, data=request.data, partial=False)
+        serializer = HospitalStaffUpdateSerializer(
+            profile, data=request.data, partial=False, context={"request": request}
+        )
         try:
             serializer.is_valid(raise_exception=True)
         except ValidationError as exc:
@@ -180,7 +182,7 @@ class HospitalStaffViewSet(viewsets.ViewSet):
             ip=client_ip(request),
             detail=f"Updated {profile.display_id}",
         )
-        body = {"staff": HospitalStaffSerializer(profile).data}
+        body = {"staff": HospitalStaffSerializer(profile, context={"request": request}).data}
         temp = getattr(serializer, "issued_temporary_password", None)
         if temp:
             body["credentials"] = {

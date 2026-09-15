@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
-import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { PanResponder, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -14,8 +14,6 @@ import { HomeDrawer } from "@/features/home/components/HomeDrawer";
 import { HomeHeader } from "@/features/home/components/HomeHeader";
 import { ScheduledInjectionCard } from "@/features/home/components/ScheduledInjectionCard";
 import { usePatientNotifications } from "@/features/notifications/hooks/usePatientNotifications";
-import { HomeCareActivitySection } from "@/features/home/components/HomeCareActivitySection";
-import { HomeInventorySection } from "@/features/home/components/HomeInventorySection";
 import { InjectionTrendsChart } from "@/features/home/components/InjectionTrendsChart";
 import { OverviewSection } from "@/features/home/components/OverviewSection";
 import { ProfileSummaryCard } from "@/features/home/components/ProfileSummaryCard";
@@ -30,6 +28,18 @@ export default function HomeScreen({ navigation }: Props) {
   const { unreadCount } = usePatientNotifications();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  const edgePan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) =>
+        gesture.x0 < 40 && gesture.dx > 8 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 0.6,
+      onMoveShouldSetPanResponderCapture: (_, gesture) =>
+        gesture.x0 < 40 && gesture.dx > 10 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 0.6,
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dx > 12 || gesture.vx > 0.05) setDrawerOpen(true);
+      },
+    }),
+  ).current;
+
   useFocusEffect(
     useCallback(() => {
       void refreshPatient().catch(() => undefined);
@@ -38,6 +48,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <View style={styles.screen}>
+      <View style={styles.edgeSwipe} pointerEvents={drawerOpen ? "none" : "auto"} {...edgePan.panHandlers} />
       <StatusBar barStyle="dark-content" backgroundColor={homeColors.white} />
       <View style={{ paddingTop: insets.top }}>
         <HomeHeader
@@ -77,9 +88,7 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
         <BleedingProfileCard />
         <FactorStockCard />
-        <HomeInventorySection />
         <InjectionTrendsChart />
-        <HomeCareActivitySection />
         <QuickActionsSection />
       </ScrollView>
 
@@ -117,6 +126,14 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: homeColors.screenBg,
+  },
+  edgeSwipe: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 72,
+    width: 40,
+    zIndex: 20,
   },
   scroll: {
     flex: 1,

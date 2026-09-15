@@ -8,7 +8,6 @@ import {
   FactorScreen,
   HomeScreen,
   InjectionsScreen,
-  BleedingHistoryScreen,
   DocumentsScreen,
   LoginScreen,
   NotificationsScreen,
@@ -30,7 +29,6 @@ export type RootStackParamList = {
   Profile: undefined;
   Documents: undefined;
   Injections: undefined;
-  BleedingHistory: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -74,7 +72,6 @@ function AppStack() {
           <Stack.Screen name="Notifications" component={NotificationsScreen} options={mainTabOptions} />
           <Stack.Screen name="Profile" component={ProfileScreen} options={mainTabOptions} />
           <Stack.Screen name="Injections" component={InjectionsScreen} options={{ title: "Injection History" }} />
-          <Stack.Screen name="BleedingHistory" component={BleedingHistoryScreen} options={{ title: "Bleeding History" }} />
           <Stack.Screen name="Documents" component={DocumentsScreen} options={{ title: "My documents" }} />
         </>
       )}

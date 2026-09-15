@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { homeForUser, type AuthUser, useAuth } from "@/lib/auth";
-import { apiFetch, setAccessToken } from "@/lib/api";
+import { apiFetch, setAuthTokens } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -32,7 +32,7 @@ export default function LoginPage() {
       if (data.user?.role === "patient") {
         throw new Error("Patient accounts cannot use the admin panel");
       }
-      setAccessToken(data.access);
+      setAuthTokens(data.access, data.refresh);
       if (data.user) setSession(data.user as AuthUser);
       if (data.mustChangePassword || data.user?.must_change_password) {
         router.push("/change-password");
@@ -51,11 +51,11 @@ export default function LoginPage() {
       <div className="w-full max-w-md rounded border border-line bg-card p-6">
         <h1 className="text-[18px] font-semibold text-ink">Admin Login</h1>
         <p className="mt-1 text-[11px] text-muted">
-          Only hospital, province, or super admins can create patient records. Patients cannot self-register.
+          Sign in with your username, official email, or Admin ID. New accounts must set their own password on first login.
         </p>
         <form className="mt-4 space-y-3" onSubmit={onSubmit}>
           <div>
-            <label className="mb-1 block text-[11px] font-medium text-ink">Username</label>
+            <label className="mb-1 block text-[11px] font-medium text-ink">Username, email, or Admin ID</label>
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}

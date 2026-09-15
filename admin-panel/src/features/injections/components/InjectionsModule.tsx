@@ -30,6 +30,7 @@ import {
 
 import {
   fetchInjections,
+  fetchPatientInjections,
   statusClass,
   updateInjection,
   type ApiInjection,
@@ -64,6 +65,9 @@ export default function InjectionsModule() {
   const [rows, setRows] = useState<ApiInjection[]>([]);
   const [loading, setLoading] = useState(true);
   const [showLog, setShowLog] = useState(false);
+  const [relatedInjections, setRelatedInjections] = useState<ApiInjection[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [relatedError, setRelatedError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -83,6 +87,29 @@ export default function InjectionsModule() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const loadRelated = useCallback(async (patientId: string) => {
+    setRelatedLoading(true);
+    setRelatedError("");
+    try {
+      const data = await fetchPatientInjections(patientId);
+      setRelatedInjections(data.injections ?? []);
+    } catch (err) {
+      setRelatedInjections([]);
+      setRelatedError(err instanceof Error ? err.message : "Could not load related injections");
+    } finally {
+      setRelatedLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!selected?.patientId) {
+      setRelatedInjections([]);
+      setRelatedError("");
+      return;
+    }
+    void loadRelated(selected.patientId);
+  }, [selected?.patientId, loadRelated]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -140,6 +167,7 @@ export default function InjectionsModule() {
   async function changeStatus(row: ApiInjection, next: InjectionStatus) {
     await updateInjection(row.id, { status: next });
     void load();
+    if (selected?.patientId === row.patientId) void loadRelated(row.patientId);
   }
 
   const patient = selected
@@ -326,6 +354,74 @@ export default function InjectionsModule() {
               <p className="mt-2 rounded bg-elevated px-2 py-1.5 text-[10px] text-muted">{selected.notes}</p>
             ) : null}
           </div>
+
+          <div className="mt-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-[11px] font-semibold text-ink">Related injection records for this patient</p>
+              <span className="text-[10px] text-muted">
+                {relatedLoading ? "Loading…" : `${relatedInjections.length} record${relatedInjections.length === 1 ? "" : "s"}`}
+              </span>
+            </div>
+            {relatedError ? <p className="mb-2 text-[11px] text-red-600">{relatedError}</p> : null}
+            <div className="overflow-x-auto rounded-md border border-line-subtle">
+              <table className="inner-table w-full min-w-[720px] text-left text-sm">
+                <thead className="bg-elevated text-[10px] uppercase text-muted">
+                  <tr>
+                    {["Injection ID", "Factor / Dose", "Type", "When", "Status", "Center"].map((h) => (
+                      <th key={h} className="px-2.5 py-2 font-medium">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {relatedLoading ? (
+                    <tr>
+                      <td colSpan={6} className="px-2.5 py-4 text-center text-[11px] text-muted">
+                        Loading related records…
+                      </td>
+                    </tr>
+                  ) : relatedInjections.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-2.5 py-4 text-center text-[11px] text-muted">
+                        No other injection records for this patient yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    relatedInjections.map((row) => (
+                      <tr
+                        key={row.id}
+                        className={`cursor-pointer hover:bg-elevated/70 ${
+                          selected.id === row.id ? "bg-brand-soft/60" : ""
+                        }`}
+                        onClick={() => setSelected(row)}
+                      >
+                        <td className="px-2.5 py-2 text-[11px] font-medium text-brand">{row.displayCode}</td>
+                        <td className="px-2.5 py-2 text-[11px] text-ink">
+                          {row.factorType} · {row.dose} {row.unit}
+                        </td>
+                        <td className="px-2.5 py-2">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${typeClass(row.indication)}`}>
+                            {row.indication}
+                          </span>
+                        </td>
+                        <td className="px-2.5 py-2 text-[11px] text-muted">
+                          {row.date}
+                          <span className="block text-[10px]">{row.time}</span>
+                        </td>
+                        <td className="px-2.5 py-2">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusClass(row.status)}`}>
+                            {row.status}
+                          </span>
+                        </td>
+                        <td className="px-2.5 py-2 text-[11px] text-muted">{row.hospitalName}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </article>
       ) : null}
 
@@ -511,6 +607,7 @@ export default function InjectionsModule() {
           onSaved={() => {
             setShowLog(false);
             void load();
+            if (selected?.patientId) void loadRelated(selected.patientId);
           }}
         />
       ) : null}

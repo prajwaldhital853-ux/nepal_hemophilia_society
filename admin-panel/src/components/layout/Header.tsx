@@ -2,7 +2,7 @@
 
 import { Bell, ChevronDown, Mail, Menu, Moon, Search, Sun } from "lucide-react";
 
-import { UserAvatar } from "@/components/ui/UserAvatar";
+import { OwnAvatar } from "@/components/ui/UserAvatar";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 
@@ -13,11 +13,15 @@ export function Header() {
   const roleLabel =
     user?.role === "super_admin"
       ? "Super Administrator"
-      : user?.role === "province_admin"
-        ? "Province Administrator"
-        : user?.hospitalStaff?.staffType === "center_admin"
-          ? "Center Administrator"
-          : "Hospital Administrator";
+      : user?.role === "admin"
+        ? "Administrator"
+        : user?.role === "website_manager"
+          ? "Website Manager"
+          : user?.role === "province_admin"
+            ? "Province Administrator"
+            : user?.hospitalStaff?.staffType === "center_admin"
+              ? "Center Administrator"
+              : "Hospital Administrator";
 
   return (
     <header className="panel flex h-[var(--topbar-h)] shrink-0 items-center gap-2 bg-card px-2.5 shadow-none">
@@ -57,14 +61,14 @@ export function Header() {
           <ChevronDown className="size-3 text-faint" />
         </button>
 
-        <button type="button" className="flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-elevated">
-          <UserAvatar name={displayName} size={28} />
+        <div className="flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-elevated">
+          <OwnAvatar name={displayName} photoUrl={user?.photoUrl} size={28} />
           <span className="hidden text-left sm:block">
             <span className="block text-[12px] font-semibold text-ink">{displayName}</span>
             <span className="block text-[10px] text-muted">{roleLabel}</span>
           </span>
           <ChevronDown className="size-3.5 text-faint" />
-        </button>
+        </div>
       </div>
     </header>
   );

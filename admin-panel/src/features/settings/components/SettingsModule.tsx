@@ -4,11 +4,15 @@ import { useState } from "react";
 import { Bell, Database, Globe, Lock, Moon, Save, Shield } from "lucide-react";
 
 import { useTheme } from "@/lib/theme";
+import { useAuth } from "@/lib/auth";
+import { Perm } from "@/lib/permissions";
 
 const tabs = ["General", "Security", "Notifications", "Backups", "Integrations"] as const;
 
 export default function SettingsModule() {
   const { theme, toggle } = useTheme();
+  const { can, user } = useAuth();
+  const canSave = can(Perm.settingsSystem) && !user?.viewOnly;
   const [tab, setTab] = useState<(typeof tabs)[number]>("General");
   const [orgName, setOrgName] = useState("Nepal Hemophilia Society");
   const [locale, setLocale] = useState("en-NP");
@@ -31,6 +35,7 @@ export default function SettingsModule() {
           <h1 className="text-[15px] font-semibold text-ink">System Settings</h1>
           <p className="text-[11px] text-muted">Home &gt; System Settings · Super Admin only</p>
         </div>
+        {canSave ? (
         <button
           type="button"
           onClick={save}
@@ -39,6 +44,7 @@ export default function SettingsModule() {
           <Save className="size-3.5" />
           {saved ? "Saved" : "Save changes"}
         </button>
+        ) : null}
       </div>
 
       <div className="tabs-bar">

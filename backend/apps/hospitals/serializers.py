@@ -7,6 +7,8 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.accounts.models import UserRole
+from apps.accounts.rbac import KIND_CENTER, KIND_TREATMENT, PERMISSION_LABELS, permissions_for
+from apps.accounts.staffing import apply_assigned_access, parse_bool, photo_url_for
 from apps.hospitals.models import Hospital, HospitalAdmin, HospitalStaffType
 from apps.patients.serializers import normalize_mobile, split_name
 
@@ -102,8 +104,12 @@ class HospitalStaffSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
     lastLogin = serializers.SerializerMethodField()
     roleLabel = serializers.SerializerMethodField()
+    photoUrl = serializers.SerializerMethodField()
     temporaryPassword = serializers.CharField(write_only=True, required=False, allow_blank=True)
     resetTemporaryPassword = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    viewOnly = serializers.SerializerMethodField()
+    permissionCodes = serializers.SerializerMethodField()
 
     class Meta:
         model = HospitalAdmin
@@ -122,10 +128,13 @@ class HospitalStaffSerializer(serializers.ModelSerializer):
             "gender",
             "address",
             "permissions",
+            "permissionCodes",
+            "viewOnly",
             "mustChangePassword",
             "username",
             "lastLogin",
             "roleLabel",
+            "photoUrl",
             "temporaryPassword",
             "resetTemporaryPassword",
         )
@@ -140,7 +149,13 @@ class HospitalStaffSerializer(serializers.ModelSerializer):
         return format_joined(obj.user.date_joined)
 
     def get_permissions(self, obj):
-        return staff_permissions(obj.staff_type)
+        return [PERMISSION_LABELS.get(code, code) for code in permissions_for(obj.user)]
+
+    def get_permissionCodes(self, obj):
+        return permissions_for(obj.user)
+
+    def get_viewOnly(self, obj):
+        return bool(obj.user.view_only)
 
     def get_mustChangePassword(self, obj):
         return bool(obj.user.must_change_password)
@@ -152,6 +167,9 @@ class HospitalStaffSerializer(serializers.ModelSerializer):
 
     def get_roleLabel(self, obj):
         return obj.get_staff_type_display()
+
+    def get_photoUrl(self, obj):
+        return photo_url_for(obj.user, self.context.get("request"))
 
     def validate_phone(self, value):
         mobile = normalize_mobile(value)
@@ -179,6 +197,12 @@ class HospitalStaffCreateSerializer(serializers.Serializer):
     dateOfBirth = serializers.DateField(required=False, allow_null=True)
     gender = serializers.CharField(required=False, allow_blank=True)
     address = serializers.CharField(required=False, allow_blank=True)
+    designation = serializers.CharField(required=False, allow_blank=True)
+    employeeId = serializers.CharField(required=False, allow_blank=True)
+    nationalId = serializers.CharField(required=False, allow_blank=True)
+    notes = serializers.CharField(required=False, allow_blank=True)
+    viewOnly = serializers.BooleanField(required=False, default=False)
+    permissions = serializers.ListField(child=serializers.CharField(), required=False)
     temporaryPassword = serializers.CharField(write_only=True)
 
     def validate_phone(self, value):
@@ -239,6 +263,13 @@ class HospitalStaffCreateSerializer(serializers.Serializer):
             mobile=normalize_mobile(validated_data.get("phone", "")),
             must_change_password=True,
             is_active_account=True,
+            date_of_birth=validated_data.get("dateOfBirth"),
+            gender=validated_data.get("gender", ""),
+            office_address=validated_data.get("address", ""),
+            designation=validated_data.get("designation", ""),
+            employee_id=validated_data.get("employeeId", ""),
+            national_id=validated_data.get("nationalId", ""),
+            notes=validated_data.get("notes", ""),
         )
 
         profile = HospitalAdmin.objects.create(
@@ -249,6 +280,16 @@ class HospitalStaffCreateSerializer(serializers.Serializer):
             date_of_birth=validated_data.get("dateOfBirth"),
             gender=validated_data.get("gender", ""),
             address=validated_data.get("address", ""),
+        )
+        user.staff_id = profile.display_id
+        user.save(update_fields=["staff_id"])
+        kind = KIND_CENTER if staff_type == HospitalStaffType.CENTER_ADMIN else KIND_TREATMENT
+        apply_assigned_access(
+            self.context["request"].user,
+            user,
+            kind,
+            validated_data.get("permissions"),
+            parse_bool(validated_data.get("viewOnly")),
         )
         self.issued_temporary_password = temp_password
         return profile
@@ -308,6 +349,16 @@ class HospitalStaffUpdateSerializer(HospitalStaffSerializer):
 
         user.save()
         instance.save()
+        request = self.context.get("request")
+        if request and ("permissions" in self.initial_data or "viewOnly" in self.initial_data):
+            kind = KIND_CENTER if instance.staff_type == HospitalStaffType.CENTER_ADMIN else KIND_TREATMENT
+            apply_assigned_access(
+                request.user,
+                user,
+                kind,
+                self.initial_data.get("permissions"),
+                parse_bool(self.initial_data.get("viewOnly"), default=user.view_only),
+            )
         return instance
 
     def to_internal_value(self, data):

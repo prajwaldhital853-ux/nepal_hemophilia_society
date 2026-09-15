@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from apps.accounts.rbac import capabilities
+from apps.accounts.staffing import display_id_for, photo_url_for
 
 User = get_user_model()
 
@@ -13,6 +14,10 @@ class UserSerializer(serializers.ModelSerializer):
     permissions = serializers.SerializerMethodField()
     nav = serializers.SerializerMethodField()
     scope = serializers.SerializerMethodField()
+    viewOnly = serializers.SerializerMethodField()
+    kind = serializers.SerializerMethodField()
+    photoUrl = serializers.SerializerMethodField()
+    staffId = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -24,6 +29,8 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "fullName",
             "role",
+            "kind",
+            "staffId",
             "mobile",
             "is_active_account",
             "must_change_password",
@@ -33,10 +40,14 @@ class UserSerializer(serializers.ModelSerializer):
             "permissions",
             "nav",
             "scope",
+            "viewOnly",
+            "photoUrl",
         )
         read_only_fields = (
             "id",
             "role",
+            "kind",
+            "staffId",
             "must_change_password",
             "date_joined",
             "hospitalStaff",
@@ -45,6 +56,8 @@ class UserSerializer(serializers.ModelSerializer):
             "nav",
             "scope",
             "fullName",
+            "viewOnly",
+            "photoUrl",
         )
 
     def get_hospitalStaff(self, obj):
@@ -79,3 +92,15 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_scope(self, obj):
         return capabilities(obj)["scope"]
+
+    def get_viewOnly(self, obj):
+        return bool(getattr(obj, "view_only", False))
+
+    def get_kind(self, obj):
+        return capabilities(obj).get("kind")
+
+    def get_photoUrl(self, obj):
+        return photo_url_for(obj, self.context.get("request"))
+
+    def get_staffId(self, obj):
+        return display_id_for(obj)

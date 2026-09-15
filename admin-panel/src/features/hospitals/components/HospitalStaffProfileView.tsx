@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Building2, Check, FileText, MoreHorizontal, Pencil, Shield } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Building2, Check, FileText, MoreHorizontal, Pencil, Shield, Trash2 } from "lucide-react";
 
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { fetchHospitalStaffProfile } from "@/features/hospitals/api";
+import StaffAccountForm from "@/features/admins/components/StaffAccountForm";
+import { deleteStaffAccount, fetchStaffAccount, type StaffRecord } from "@/features/admins/api";
 import { staffLabels, type HospitalStaffProfile, type HospitalStaffType } from "@/features/hospitals/types";
 import { useAuth } from "@/lib/auth";
-import { Perm } from "@/lib/permissions";
+import { PERM_LABELS, Perm } from "@/lib/permissions";
 
 const tabs = ["Overview", "Activity Log", "Permissions", "Documents"];
 
@@ -37,11 +40,19 @@ function CardHeader({ title, action }: { title: string; action?: React.ReactNode
 function ProfileSidebar({ profile, labels }: { profile: HospitalStaffProfile; labels: (typeof staffLabels)[HospitalStaffType] }) {
   return (
     <aside className="profile-sidebar lg:row-span-2 lg:self-start">
-      <UserAvatar name={profile.fullName} size={80} className="size-20 rounded-md text-[18px]" />
+      <UserAvatar name={profile.fullName} photoUrl={profile.photoUrl} size={80} className="size-20 rounded-md text-[18px]" />
       <h2 className="mt-4 text-[14px] font-semibold">{profile.fullName}</h2>
       <p className="profile-sidebar-meta mt-1 text-[11px]">{profile.roleLabel ?? labels.singular}</p>
       <p className="profile-sidebar-meta text-[11px]">{profile.treatmentCenter}</p>
-      <span className="mt-3 inline-block rounded-full bg-status-green-soft px-2 py-0.5 text-[10px] font-semibold text-status-green">
+      <span
+        className={`mt-3 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+          profile.status === "Active"
+            ? "bg-status-green-soft text-status-green"
+            : profile.status === "Pending"
+              ? "bg-status-amber-soft text-status-amber"
+              : "bg-elevated text-muted"
+        }`}
+      >
         {profile.status}
       </span>
 
@@ -64,7 +75,22 @@ function ProfileSidebar({ profile, labels }: { profile: HospitalStaffProfile; la
   );
 }
 
+function permissionRows(profile: HospitalStaffProfile) {
+  if (profile.permissionCodes?.length) {
+    return profile.permissionCodes.map((code) => ({
+      code,
+      label: PERM_LABELS[code] || code,
+    }));
+  }
+  return profile.permissions.map((label, index) => ({
+    code: `perm-${index}`,
+    label,
+  }));
+}
+
 function TabContent({ tab, profile, labels }: { tab: string; profile: HospitalStaffProfile; labels: (typeof staffLabels)[HospitalStaffType] }) {
+  const granted = permissionRows(profile);
+
   if (tab === "Overview") {
     return (
       <div className="grid gap-3 md:grid-cols-2">
@@ -118,12 +144,12 @@ function TabContent({ tab, profile, labels }: { tab: string; profile: HospitalSt
         <article className="panel p-3">
           <CardHeader title="Permissions" />
           <ul className="mt-3 space-y-2">
-            {profile.permissions.map((perm) => (
-              <li key={perm} className="flex items-center gap-2 text-[11px] text-ink">
+            {granted.map((perm) => (
+              <li key={perm.code} className="flex items-center gap-2 text-[11px] text-ink">
                 <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-status-green-soft">
                   <Check className="size-2.5 text-status-green" />
                 </span>
-                {perm}
+                {perm.label}
               </li>
             ))}
           </ul>
@@ -150,12 +176,12 @@ function TabContent({ tab, profile, labels }: { tab: string; profile: HospitalSt
       <article className="panel p-3">
         <CardHeader title={`Role: ${profile.roleLabel ?? labels.singular}`} />
         <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-          {profile.permissions.map((perm) => (
-            <li key={perm} className="panel-inset flex items-center gap-2 px-2.5 py-2 text-[11px] text-ink shadow-none">
+          {granted.map((perm) => (
+            <li key={perm.code} className="panel-inset flex items-center gap-2 px-2.5 py-2 text-[11px] text-ink shadow-none">
               <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-status-green-soft">
                 <Check className="size-2.5 text-status-green" />
               </span>
-              {perm}
+              {perm.label}
             </li>
           ))}
         </ul>
@@ -187,16 +213,34 @@ function TabContent({ tab, profile, labels }: { tab: string; profile: HospitalSt
 }
 
 export default function HospitalStaffProfileView({ id, staffType }: { id: string; staffType: HospitalStaffType }) {
+  const router = useRouter();
   const labels = staffLabels[staffType];
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const [tab, setTab] = useState("Overview");
   const [profile, setProfile] = useState<HospitalStaffProfile | null>(null);
+  const [staff, setStaff] = useState<StaffRecord | null>(null);
+  const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
+  const canManage = can(Perm.hospitalStaffManage) && !user?.viewOnly;
+
+  function load() {
+    return Promise.all([
+      fetchHospitalStaffProfile(staffType, id),
+      fetchStaffAccount(id).catch(() => null),
+    ])
+      .then(([hospitalProfile, staffRecord]) => {
+        setStaff(staffRecord);
+        setProfile({
+          ...hospitalProfile,
+          photoUrl: hospitalProfile.photoUrl || staffRecord?.photoUrl,
+          permissionCodes: hospitalProfile.permissionCodes || staffRecord?.permissions,
+        });
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load profile"));
+  }
 
   useEffect(() => {
-    void fetchHospitalStaffProfile(staffType, id)
-      .then(setProfile)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load profile"));
+    void load();
   }, [id, staffType]);
 
   if (error) {
@@ -223,10 +267,29 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {can(Perm.hospitalStaffManage) ? (
-            <button type="button" className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-ink shadow-none">
+          {canManage ? (
+            <button
+              type="button"
+              className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-ink shadow-none"
+              onClick={() => setEditing(true)}
+            >
               <Pencil className="size-3.5" />
               Edit Admin
+            </button>
+          ) : null}
+          {staff?.canDelete && staff.userId !== user?.id ? (
+            <button
+              type="button"
+              className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-red-600 shadow-none"
+              onClick={() => {
+                if (!window.confirm(`Delete ${labels.singular} ${profile.id}? This cannot be undone.`)) return;
+                void deleteStaffAccount(profile.id)
+                  .then(() => router.push(labels.profilePath))
+                  .catch((err: Error) => setError(err.message || "Could not delete admin"));
+              }}
+            >
+              <Trash2 className="size-3.5" />
+              Delete
             </button>
           ) : null}
           <button type="button" className="panel p-1.5 shadow-none" aria-label="More">
@@ -261,6 +324,18 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
           <TabContent tab={tab} profile={profile} labels={labels} />
         </div>
       </div>
+      {editing && staff ? (
+        <StaffAccountForm
+          mode="edit"
+          lockedKind={staffType}
+          initial={staff}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            void load();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

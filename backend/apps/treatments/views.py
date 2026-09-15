@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import UserRole
 from apps.accounts.permissions import CanAddTreatments, CanViewClinical, IsAdminRole
-from apps.accounts.rbac import hospital_id_for, province_id_for
+from apps.accounts.rbac import hospital_id_for, is_national_scope, province_id_for
 from apps.audit.models import AuditLog
 from apps.core.clinical import can_view_patient
 from apps.patients.views import _flatten_errors, client_ip
@@ -23,7 +23,7 @@ def _treatment_queryset():
 
 
 def _scope_treatments(user, qs, patient_id=None):
-    if user.role == UserRole.SUPER_ADMIN:
+    if is_national_scope(user):
         return qs
     if user.role == UserRole.PROVINCE_ADMIN:
         pid = province_id_for(user)

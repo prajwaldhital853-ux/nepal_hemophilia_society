@@ -8,7 +8,6 @@ export const SplashScreen = lazyScreen(() => import("@/features/splash/screens/S
 export const RegisterScreen = lazyScreen(() => import("@/features/auth/screens/RegisterScreen"));
 export const DocumentsScreen = lazyScreen(() => import("@/features/home/screens/DocumentsScreen"));
 export const InjectionsScreen = lazyScreen(() => import("@/features/injections/screens/InjectionsScreen"));
-export const BleedingHistoryScreen = lazyScreen(() => import("@/features/bleeding/screens/BleedingHistoryScreen"));
 
 /** Main tabs — eager for instant tab switching. */
 export { default as HomeScreen } from "@/features/home/screens/HomeScreen";

@@ -11,6 +11,7 @@ import {
   Pencil,
   Plus,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 
@@ -45,6 +46,8 @@ function toRow(record: PatientRecord): PatientRow {
       year: "numeric",
     }),
     status: record.status,
+    canEdit: record.canEdit,
+    canDelete: record.canDelete,
   };
 }
 
@@ -102,7 +105,6 @@ export default function PatientsModule() {
   }, [province, rows]);
 
   const canCreate = can(Perm.patientsCreate);
-  const canUpdate = can(Perm.patientsUpdate);
   const hospitalSearchHint = user?.role === "hospital_admin";
 
   return (
@@ -269,7 +271,7 @@ export default function PatientsModule() {
                         >
                           <Eye className="size-[15px]" />
                         </button>
-                        {canUpdate ? (
+                        {row.canEdit ? (
                           <button
                             type="button"
                             className="rounded-lg p-1.5 hover:bg-elevated"
@@ -277,6 +279,21 @@ export default function PatientsModule() {
                             onClick={() => router.push(`/dashboard/patients/${row.id}/edit`)}
                           >
                             <Pencil className="size-[15px]" />
+                          </button>
+                        ) : null}
+                        {row.canDelete && !user?.viewOnly ? (
+                          <button
+                            type="button"
+                            className="rounded-lg p-1.5 text-red-600 hover:bg-red-50"
+                            aria-label={`Delete ${row.name}`}
+                            onClick={() => {
+                              if (!window.confirm(`Delete patient ${row.id}? This cannot be undone if they have no clinical records.`)) return;
+                              void apiFetch(`/patients/${encodeURIComponent(row.id)}/`, { method: "DELETE" })
+                                .then(() => setRows((current) => current.filter((item) => item.id !== row.id)))
+                                .catch((err: Error) => setError(err.message || "Could not delete patient"));
+                            }}
+                          >
+                            <Trash2 className="size-[15px]" />
                           </button>
                         ) : null}
                         <button type="button" className="rounded-lg p-1.5 hover:bg-elevated" aria-label="More">

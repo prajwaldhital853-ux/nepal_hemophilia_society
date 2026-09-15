@@ -1,4 +1,5 @@
 from django.db.models import Q
+from django.db.models.deletion import ProtectedError
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -10,6 +11,7 @@ from rest_framework.views import APIView
 from apps.accounts.models import UserRole
 from apps.accounts.permissions import (
     CanCreatePatients,
+    CanDeletePatients,
     CanUpdatePatients,
     CanVerifyPatients,
     CanViewPatients,
@@ -17,7 +19,7 @@ from apps.accounts.permissions import (
     IsPatientRole,
     PatientPasswordUsable,
 )
-from apps.accounts.rbac import hospital_id_for, province_id_for
+from apps.accounts.rbac import hospital_id_for, is_national_scope, province_id_for
 from apps.audit.models import AuditLog
 from apps.core.clinical import can_view_patient
 from apps.patients.models import Patient, VerificationStatus
@@ -46,7 +48,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     lookup_field = "unique_patient_id"
     lookup_url_kwarg = "id"
     lookup_value_regex = r"HEM-[0-9]+"
-    http_method_names = ["get", "post", "put", "patch", "head", "options"]
+    http_method_names = ["get", "post", "put", "patch", "delete", "head", "options"]
     search_fields = ("unique_patient_id", "full_name", "mobile", "email", "blood_group")
     filterset_fields = ("verification_status", "hemophilia_type", "severity")
 
@@ -57,12 +59,14 @@ class PatientViewSet(viewsets.ModelViewSet):
             return [IsAdminRole(), CanUpdatePatients()]
         if self.action in ("verify", "reject"):
             return [IsAdminRole(), CanVerifyPatients()]
+        if self.action == "destroy":
+            return [IsAdminRole(), CanDeletePatients()]
         return [IsAdminRole(), CanViewPatients()]
 
     def get_queryset(self):
         qs = super().get_queryset()
         user = self.request.user
-        if user.role == UserRole.SUPER_ADMIN:
+        if is_national_scope(user):
             return qs
         if user.role == UserRole.PROVINCE_ADMIN:
             pid = province_id_for(user)
@@ -134,6 +138,28 @@ class PatientViewSet(viewsets.ModelViewSet):
                 "temporaryPassword": temp,
             }
         return Response(body, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self._assert_province_scope(instance)
+        patient_id = instance.unique_patient_id
+        name = instance.full_name
+        try:
+            instance.delete()
+        except ProtectedError:
+            return Response(
+                {"error": "This patient has treatment or injection records and cannot be deleted."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        AuditLog.objects.create(
+            actor=request.user.get_username(),
+            action="Deleted patient record",
+            module="Patients",
+            object_id=patient_id,
+            ip=client_ip(request),
+            detail=f"Admin deleted {patient_id} ({name})",
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)

@@ -27,10 +27,29 @@ async function parseJsonSafe(res: Response) {
   }
 }
 
-type ApiOptions = RequestInit & { token?: string; timeoutMs?: number };
+type ApiOptions = RequestInit & { token?: string; timeoutMs?: number; _retried?: boolean };
+
+async function refreshPatientAccessToken(): Promise<string | null> {
+  const { loadSession, saveSession } = await import("@/core/auth/storage");
+  const session = await loadSession();
+  if (!session.refresh) return null;
+  try {
+    const res = await fetch(`${AppConfig.apiBaseUrl}/auth/refresh/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh: session.refresh }),
+    });
+    const data = await parseJsonSafe(res);
+    if (!res.ok || !data.access) return null;
+    await saveSession(data.access, typeof data.refresh === "string" ? data.refresh : session.refresh);
+    return data.access as string;
+  } catch {
+    return null;
+  }
+}
 
 export async function patientApi(path: string, init: ApiOptions = {}) {
-  const { timeoutMs = API_TIMEOUT_MS, token, ...rest } = init;
+  const { timeoutMs = API_TIMEOUT_MS, token, _retried, ...rest } = init;
   const headers = new Headers(rest.headers);
   if (!(rest.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
@@ -47,6 +66,14 @@ export async function patientApi(path: string, init: ApiOptions = {}) {
       signal: controller.signal,
     });
     const data = await parseJsonSafe(res);
+    const isRefresh = path.startsWith("/auth/refresh");
+    const isLogin = path.startsWith("/auth/patient/login");
+    if (res.status === 401 && token && !isRefresh && !isLogin && !_retried) {
+      const nextToken = await refreshPatientAccessToken();
+      if (nextToken) {
+        return patientApi(path, { ...init, token: nextToken, _retried: true });
+      }
+    }
     if (!res.ok) {
       throw new ApiError(
         typeof data.error === "string" ? data.error : "Request failed",

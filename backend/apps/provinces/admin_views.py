@@ -6,7 +6,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import UserRole
+from apps.accounts.rbac import KIND_PROVINCE
 from apps.accounts.permissions import CanManageProvinceAdmins
+from apps.accounts.staffing import apply_assigned_access, coerce_date, parse_bool
 from apps.audit.models import AuditLog
 from apps.patients.serializers import split_name
 from apps.patients.views import _flatten_errors, client_ip
@@ -34,6 +36,8 @@ def next_padm_id():
 
 def serialize_province_admin(profile):
     user = profile.user
+    from apps.accounts.rbac import PERMISSION_LABELS, permissions_for
+
     return {
         "id": profile.display_id,
         "fullName": user.get_full_name() or user.username,
@@ -43,6 +47,18 @@ def serialize_province_admin(profile):
         "province": profile.province.name,
         "status": "Active" if user.is_active_account else "Inactive",
         "mustChangePassword": user.must_change_password,
+        "dateOfBirth": user.date_of_birth.isoformat() if user.date_of_birth else "",
+        "gender": user.gender,
+        "designation": user.designation,
+        "employeeId": user.employee_id,
+        "nationalId": user.national_id,
+        "officeAddress": user.office_address,
+        "notes": user.notes,
+        "viewOnly": bool(user.view_only),
+        "kind": KIND_PROVINCE,
+        "roleLabel": "Province Admin",
+        "permissions": [PERMISSION_LABELS.get(code, code) for code in permissions_for(user)],
+        "permissionCodes": permissions_for(user),
     }
 
 
@@ -92,8 +108,24 @@ class ProvinceAdminListCreateView(APIView):
             must_change_password=True,
             is_staff=True,
             is_active_account=True,
+            date_of_birth=coerce_date(request.data.get("dateOfBirth")),
+            gender=str(request.data.get("gender") or "")[:20],
+            designation=str(request.data.get("designation") or "")[:120],
+            employee_id=str(request.data.get("employeeId") or "")[:40],
+            national_id=str(request.data.get("nationalId") or "")[:40],
+            office_address=str(request.data.get("officeAddress") or request.data.get("address") or ""),
+            notes=str(request.data.get("notes") or ""),
         )
         profile = ProvinceAdmin.objects.create(user=user, province=province, display_id=next_padm_id())
+        user.staff_id = profile.display_id
+        user.save(update_fields=["staff_id"])
+        apply_assigned_access(
+            request.user,
+            user,
+            KIND_PROVINCE,
+            request.data.get("permissions"),
+            parse_bool(request.data.get("viewOnly")),
+        )
         AuditLog.objects.create(
             actor=request.user.get_username(),
             action="Created province admin",
@@ -142,5 +174,23 @@ class ProvinceAdminDetailView(APIView):
             user.is_active_account = False
         elif request.data.get("status") == "Active":
             user.is_active_account = True
+        if request.data.get("designation") is not None:
+            user.designation = str(request.data.get("designation") or "")[:120]
+        if request.data.get("employeeId") is not None:
+            user.employee_id = str(request.data.get("employeeId") or "")[:40]
+        if request.data.get("nationalId") is not None:
+            user.national_id = str(request.data.get("nationalId") or "")[:40]
+        if request.data.get("officeAddress") is not None or request.data.get("address") is not None:
+            user.office_address = str(request.data.get("officeAddress") or request.data.get("address") or "")
+        if request.data.get("gender") is not None:
+            user.gender = str(request.data.get("gender") or "")[:20]
         user.save()
+        if "permissions" in request.data or "viewOnly" in request.data:
+            apply_assigned_access(
+                request.user,
+                user,
+                KIND_PROVINCE,
+                request.data.get("permissions"),
+                parse_bool(request.data.get("viewOnly"), default=user.view_only),
+            )
         return Response({"admin": serialize_province_admin(profile)})

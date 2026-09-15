@@ -3,7 +3,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.permissions import IsAdminRole, IsPatientRole, PatientPasswordUsable
+from apps.accounts.permissions import (
+    CanViewClinical,
+    CanViewPatientClinicalHistory,
+    CanViewTreatments,
+    IsAdminRole,
+    IsPatientRole,
+    PatientPasswordUsable,
+)
 from apps.core.clinical import can_view_patient
 from apps.injections.serializers import InjectionRecordSerializer
 from apps.injections.views import _injection_queryset, _scope_injections
@@ -21,24 +28,32 @@ def _get_patient_or_404(patient_id: str) -> Patient:
 
 
 class PatientInjectionsView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAuthenticated, IsAdminRole, CanViewClinical]
 
     def get(self, request, patient_id):
         patient = _get_patient_or_404(patient_id)
         if not can_view_patient(request.user, patient):
             raise PermissionDenied()
-        qs = _scope_injections(request.user, _injection_queryset().filter(patient=patient))
+        qs = _scope_injections(
+            request.user,
+            _injection_queryset().filter(patient=patient),
+            patient_id=patient.unique_patient_id,
+        )
         return Response({"injections": InjectionRecordSerializer(qs.order_by("-administered_at"), many=True).data})
 
 
 class PatientTreatmentsView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAuthenticated, IsAdminRole, CanViewTreatments]
 
     def get(self, request, patient_id):
         patient = _get_patient_or_404(patient_id)
         if not can_view_patient(request.user, patient):
             raise PermissionDenied()
-        qs = _scope_treatments(request.user, _treatment_queryset().filter(patient=patient))
+        qs = _scope_treatments(
+            request.user,
+            _treatment_queryset().filter(patient=patient),
+            patient_id=patient.unique_patient_id,
+        )
         return Response({"treatments": TreatmentRecordSerializer(qs.order_by("-treatment_date"), many=True).data})
 
 
@@ -54,18 +69,22 @@ class PatientVisitsView(APIView):
 
 
 class PatientHistoryView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAuthenticated, IsAdminRole, CanViewPatientClinicalHistory]
 
     def get(self, request, patient_id):
         patient = _get_patient_or_404(patient_id)
         if not can_view_patient(request.user, patient):
             raise PermissionDenied()
-        injections = _scope_injections(request.user, _injection_queryset().filter(patient=patient)).order_by(
-            "-administered_at"
-        )[:100]
-        treatments = _scope_treatments(request.user, _treatment_queryset().filter(patient=patient)).order_by(
-            "-treatment_date"
-        )[:100]
+        injections = _scope_injections(
+            request.user,
+            _injection_queryset().filter(patient=patient),
+            patient_id=patient.unique_patient_id,
+        ).order_by("-administered_at")[:100]
+        treatments = _scope_treatments(
+            request.user,
+            _treatment_queryset().filter(patient=patient),
+            patient_id=patient.unique_patient_id,
+        ).order_by("-treatment_date")[:100]
         visits = HospitalVisit.objects.select_related("hospital").filter(patient=patient).order_by("-visit_date")[:100]
         timeline = []
         for item in injections:

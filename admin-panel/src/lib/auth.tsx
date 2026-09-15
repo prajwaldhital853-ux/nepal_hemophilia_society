@@ -6,7 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { apiFetch, clearAccessToken, getAccessToken } from "@/lib/api";
 import { ACTION_ROUTES, navAllows } from "@/lib/permissions";
 
-export type AdminRole = "super_admin" | "province_admin" | "hospital_admin";
+export type AdminRole = "super_admin" | "admin" | "province_admin" | "hospital_admin" | "website_manager";
+export type AdminKind = "super_admin" | "admin" | "province_admin" | "center_admin" | "treatment_admin" | "website_manager";
 
 export type AuthUser = {
   id: number;
@@ -14,9 +15,13 @@ export type AuthUser = {
   email: string;
   fullName: string;
   role: AdminRole;
+  kind?: AdminKind;
+  viewOnly?: boolean;
   permissions: string[];
   nav: string[];
   must_change_password?: boolean;
+  photoUrl?: string;
+  staffId?: string;
   hospitalStaff?: {
     id: string;
     staffType: "treatment_admin" | "center_admin";
@@ -66,7 +71,12 @@ export function pathAllowed(pathname: string, user: AuthUser) {
   return navAllows(pathname, user.nav ?? []);
 }
 
+export function isNationalScope(user: AuthUser | null | undefined) {
+  return user?.role === "super_admin" || user?.role === "admin";
+}
+
 export function homeForUser(user: AuthUser) {
+  if (user.role === "website_manager" || user.kind === "website_manager") return "/dashboard/website";
   if (user.role === "hospital_admin") {
     return user.hospitalStaff?.staffType === "center_admin"
       ? "/dashboard/hospitals/center-admins"
@@ -144,6 +154,10 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!user) return;
+    if (user.must_change_password) {
+      router.replace("/change-password");
+      return;
+    }
     if (!canOpen(pathname)) {
       router.replace(homeForUser(user));
     }
@@ -153,5 +167,11 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
     return <p className="p-6 text-[12px] text-muted">Checking access…</p>;
   }
   if (!getAccessToken() || !user) return null;
+  if (user.must_change_password) {
+    return <p className="p-6 text-[12px] text-muted">Redirecting to set a new password…</p>;
+  }
+  if (!canOpen(pathname)) {
+    return <p className="p-6 text-[12px] text-muted">You do not have access to this page.</p>;
+  }
   return <>{children}</>;
 }
