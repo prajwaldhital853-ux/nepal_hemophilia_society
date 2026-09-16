@@ -35,7 +35,7 @@ echo "==> Running migrations"
 python manage.py migrate --noinput
 
 echo "==> Collecting static files"
-python manage.py collectstatic --noinput --clear
+python manage.py collectstatic --noinput
 
 if [[ "${RUN_SEED_ON_START:-true}" == "true" ]]; then
   echo "==> Seeding reference data (idempotent) — set RUN_SEED_ON_START=false after first deploy to speed up restarts"
