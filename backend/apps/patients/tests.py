@@ -57,6 +57,19 @@ class PatientAdminApiTests(APITestCase):
         res = self.client.post("/api/v1/patients/", self.payload, format="json")
         self.assertEqual(res.status_code, 403)
 
+    def test_patient_id_skips_orphaned_login_accounts(self):
+        User.objects.create_user(
+            username="HEM-0008744",
+            email="orphan@example.com",
+            password="TempPass#2026",
+            role=UserRole.PATIENT,
+        )
+        self.client.force_authenticate(self.admin)
+        payload = {**self.payload, "email": "fresh.patient@example.com"}
+        res = self.client.post("/api/v1/patients/", payload, format="json")
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual(res.data["patient"]["id"], "HEM-0008745")
+
     def test_admin_creates_patient_with_email_and_temp_password(self):
         self.client.force_authenticate(self.admin)
         res = self.client.post("/api/v1/patients/", self.payload, format="json")

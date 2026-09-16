@@ -3,9 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
+import { useMobileNav } from "@/components/layout/MobileNavContext";
 import { NavIcon } from "@/components/layout/NavIcon";
 import { OwnAvatar } from "@/components/ui/UserAvatar";
 import { useAuth } from "@/lib/auth";
@@ -27,16 +28,19 @@ function NavLink({
   item,
   pathname,
   nested = false,
+  onNavigate,
 }: {
   item: NavItem | { href: string; label: string };
   pathname: string;
   nested?: boolean;
+  onNavigate?: () => void;
 }) {
   const active = isActive(pathname, item.href);
 
   return (
     <Link
       href={item.href}
+      onClick={onNavigate}
       className={`relative flex items-center gap-2 rounded px-2 py-[6px] text-[12px] transition-colors duration-200 ${
         nested ? "pl-7" : ""
       } ${
@@ -55,7 +59,15 @@ function NavLink({
   );
 }
 
-function NavGroup({ item, pathname }: { item: NavItem; pathname: string }) {
+function NavGroup({
+  item,
+  pathname,
+  onNavigate,
+}: {
+  item: NavItem;
+  pathname: string;
+  onNavigate?: () => void;
+}) {
   const groupActive = isGroupActive(pathname, item);
   const [open, setOpen] = useState(groupActive);
 
@@ -82,7 +94,7 @@ function NavGroup({ item, pathname }: { item: NavItem; pathname: string }) {
       {expanded && item.children ? (
         <div className="mt-0.5 flex flex-col gap-0.5">
           {item.children.map((child) => (
-            <NavLink key={child.href} item={child} pathname={pathname} nested />
+            <NavLink key={child.href} item={child} pathname={pathname} nested onNavigate={onNavigate} />
           ))}
         </div>
       ) : null}
@@ -93,6 +105,7 @@ function NavGroup({ item, pathname }: { item: NavItem; pathname: string }) {
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { open, closeNav } = useMobileNav();
   const allowed = user?.nav ?? [];
   const mainItems = filterNav(mainNav, allowed);
   const siteItems = filterNav(websiteNav, allowed);
@@ -110,17 +123,33 @@ export function Sidebar() {
               ? `${user.hospitalStaff.staffType === "center_admin" ? "Center Admin" : "Treatment Admin"} · ${user.hospitalStaff.treatmentCenter}`
               : "Hospital Admin";
 
+  useEffect(() => {
+    closeNav();
+  }, [closeNav, pathname]);
+
   return (
-    <aside className="flex h-dvh w-[var(--sidebar-w)] shrink-0 flex-col overflow-hidden border-r border-sidebar-line bg-sidebar text-sidebar-ink">
+    <aside
+      className={`fixed inset-y-0 left-0 z-50 flex h-dvh w-[min(88vw,var(--sidebar-w))] max-w-[280px] shrink-0 flex-col overflow-hidden border-r border-sidebar-line bg-sidebar text-sidebar-ink shadow-xl transition-transform duration-200 ease-out lg:static lg:z-auto lg:w-[var(--sidebar-w)] lg:max-w-none lg:translate-x-0 lg:shadow-none ${
+        open ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
       <div className="flex h-[var(--topbar-h)] shrink-0 items-center gap-2 border-b border-sidebar-line px-3">
         <Image src="/nhs-logo.png" alt="NHS logo" width={32} height={38} className="h-9 w-8 object-contain" />
-        <p className="text-[9px] font-extrabold leading-[11px] tracking-[0.2px]">
+        <p className="min-w-0 flex-1 text-[9px] font-extrabold leading-[11px] tracking-[0.2px]">
           NEPAL HEMOPHILIA
           <br />
           DIGITAL MANAGEMENT
           <br />
           SYSTEM
         </p>
+        <button
+          type="button"
+          className="rounded p-1 text-sidebar-muted hover:bg-elevated/10 hover:text-sidebar-ink lg:hidden"
+          aria-label="Close navigation menu"
+          onClick={closeNav}
+        >
+          <X className="size-4" />
+        </button>
       </div>
 
       <nav className="admin-scroll min-h-0 flex-1 overflow-y-auto px-2 py-2">
@@ -128,9 +157,9 @@ export function Sidebar() {
         <div className="flex flex-col gap-0.5">
           {mainItems.map((item) =>
             item.children?.length ? (
-              <NavGroup key={item.href} item={item} pathname={pathname} />
+              <NavGroup key={item.href} item={item} pathname={pathname} onNavigate={closeNav} />
             ) : (
-              <NavLink key={item.href} item={item} pathname={pathname} />
+              <NavLink key={item.href} item={item} pathname={pathname} onNavigate={closeNav} />
             ),
           )}
         </div>
@@ -142,7 +171,7 @@ export function Sidebar() {
             </p>
             <div className="flex flex-col gap-0.5">
               {siteItems.map((item) => (
-                <NavLink key={item.href} item={item} pathname={pathname} />
+                <NavLink key={item.href} item={item} pathname={pathname} onNavigate={closeNav} />
               ))}
             </div>
           </>

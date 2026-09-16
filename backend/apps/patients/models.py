@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models, transaction
 
@@ -145,15 +146,43 @@ class Patient(TimeStampedModel):
         super().save(*args, **kwargs)
 
     @classmethod
+    def _hem_sequence_from_label(cls, label: str) -> int | None:
+        if not label or not str(label).upper().startswith("HEM-"):
+            return None
+        digits = "".join(ch for ch in str(label) if ch.isdigit())
+        if not digits:
+            return None
+        try:
+            return int(digits)
+        except ValueError:
+            return None
+
+    @classmethod
     def next_unique_id(cls) -> str:
+        User = get_user_model()
         with transaction.atomic():
-            last = cls.objects.select_for_update().order_by("-id").first()
+            cls.objects.select_for_update().order_by("-id").first()
             n = 8744
-            if last and last.unique_patient_id:
-                digits = "".join(ch for ch in last.unique_patient_id if ch.isdigit())
-                if digits:
-                    n = max(n, int(digits) + 1)
-            return f"HEM-{n:07d}"
+            last_patient = cls.objects.order_by("-unique_patient_id").values_list("unique_patient_id", flat=True).first()
+            patient_seq = cls._hem_sequence_from_label(last_patient)
+            if patient_seq is not None:
+                n = max(n, patient_seq + 1)
+            last_user = (
+                User.objects.filter(username__startswith="HEM-")
+                .order_by("-username")
+                .values_list("username", flat=True)
+                .first()
+            )
+            user_seq = cls._hem_sequence_from_label(last_user)
+            if user_seq is not None:
+                n = max(n, user_seq + 1)
+            while True:
+                candidate = f"HEM-{n:07d}"
+                if not cls.objects.filter(unique_patient_id=candidate).exists() and not User.objects.filter(
+                    username=candidate
+                ).exists():
+                    return candidate
+                n += 1
 
 
 class PatientDocument(TimeStampedModel):

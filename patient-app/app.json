@@ -35,7 +35,19 @@
     },
     "owner": "ipo_bulk_v2",
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0",
+            "kotlinVersion": "2.0.21",
+            "minSdkVersion": 24
+          }
+        }
+      ]
     ]
   }
 }

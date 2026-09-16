@@ -83,6 +83,10 @@ def next_prefixed_id(prefix: str, queryset, field="display_id") -> str:
             seq = 1
     else:
         seq = 1
+    while queryset.filter(**{field: f"{prefix}-{seq:05d}"}).exists() or User.objects.filter(
+        staff_id=f"{prefix}-{seq:05d}"
+    ).exists():
+        seq += 1
     return f"{prefix}-{seq:05d}"
 
 
