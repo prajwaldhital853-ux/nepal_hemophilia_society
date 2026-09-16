@@ -64,8 +64,8 @@ export async function apiFetch(path: string, init: ApiInit = {}) {
   headers.set("Content-Type", "application/json");
   const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  let res = await fetch(`${API_BASE}${path}`, { ...rest, headers });
-  let data = await res.json().catch(() => ({}));
+  const res = await fetch(`${API_BASE}${path}`, { ...rest, headers });
+  const data = await res.json().catch(() => ({}));
   const isLogin = path.startsWith("/auth/login");
   const isRefresh = path.startsWith("/auth/refresh");
 
