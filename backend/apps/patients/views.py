@@ -1,3 +1,7 @@
+import logging
+
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import DatabaseError, IntegrityError
 from django.db.models import Q
 from django.db.models.deletion import ProtectedError
 from rest_framework import status, viewsets
@@ -25,12 +29,17 @@ from apps.core.clinical import can_view_patient
 from apps.patients.models import Patient, VerificationStatus
 from apps.patients.serializers import PatientSerializer
 
+logger = logging.getLogger(__name__)
+
 
 def client_ip(request):
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
     if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.META.get("REMOTE_ADDR")
+        candidate = forwarded.split(",")[0].strip()
+        if candidate:
+            return candidate
+    remote = request.META.get("REMOTE_ADDR")
+    return remote or None
 
 
 class PatientViewSet(viewsets.ModelViewSet):
@@ -120,15 +129,39 @@ class PatientViewSet(viewsets.ModelViewSet):
                     {"error": "Province Admin can only register patients in their own province."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-        patient = serializer.save()
-        AuditLog.objects.create(
-            actor=request.user.get_username(),
-            action="Created patient record",
-            module="Patients",
-            object_id=patient.unique_patient_id,
-            ip=client_ip(request),
-            detail=f"Admin created {patient.unique_patient_id} ({patient.full_name})",
-        )
+        try:
+            patient = serializer.save()
+        except IntegrityError:
+            return Response(
+                {"error": "A patient or login account with this email or ID already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except DjangoValidationError as exc:
+            messages = getattr(exc, "messages", [str(exc)])
+            return Response({"error": " ".join(messages)}, status=status.HTTP_400_BAD_REQUEST)
+        except DatabaseError as exc:
+            logger.exception("Patient create database error")
+            return Response(
+                {"error": f"Database error while saving patient: {exc}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception as exc:
+            logger.exception("Patient create failed")
+            return Response(
+                {"error": str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        try:
+            AuditLog.objects.create(
+                actor=request.user.get_username(),
+                action="Created patient record",
+                module="Patients",
+                object_id=patient.unique_patient_id,
+                ip=client_ip(request),
+                detail=f"Admin created {patient.unique_patient_id} ({patient.full_name})",
+            )
+        except Exception:
+            logger.exception("Patient created but audit log write failed for %s", patient.unique_patient_id)
         body = {"patient": PatientSerializer(patient, context={"request": request}).data}
         temp = getattr(serializer, "issued_temporary_password", None)
         if temp:
@@ -178,15 +211,36 @@ class PatientViewSet(viewsets.ModelViewSet):
                     {"error": "Cannot move a patient outside your province."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-        patient = serializer.save()
-        AuditLog.objects.create(
-            actor=request.user.get_username(),
-            action="Updated patient record",
-            module="Patients",
-            object_id=patient.unique_patient_id,
-            ip=client_ip(request),
-            detail=f"Admin updated {patient.unique_patient_id}",
-        )
+        try:
+            patient = serializer.save()
+        except IntegrityError:
+            return Response(
+                {"error": "A patient or login account with this email or ID already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except DjangoValidationError as exc:
+            messages = getattr(exc, "messages", [str(exc)])
+            return Response({"error": " ".join(messages)}, status=status.HTTP_400_BAD_REQUEST)
+        except DatabaseError as exc:
+            logger.exception("Patient update database error")
+            return Response(
+                {"error": f"Database error while saving patient: {exc}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception as exc:
+            logger.exception("Patient update failed")
+            return Response({"error": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        try:
+            AuditLog.objects.create(
+                actor=request.user.get_username(),
+                action="Updated patient record",
+                module="Patients",
+                object_id=patient.unique_patient_id,
+                ip=client_ip(request),
+                detail=f"Admin updated {patient.unique_patient_id}",
+            )
+        except Exception:
+            logger.exception("Patient updated but audit log write failed for %s", patient.unique_patient_id)
         return Response({"patient": PatientSerializer(patient, context={"request": request}).data})
 
     @action(detail=True, methods=["put", "post"], url_path="verify")

@@ -242,6 +242,11 @@ export default function PatientFormWizard({
     setStep((s) => Math.min(5, s + 1));
   }
 
+  function showServerError(message: string) {
+    setServerError(message);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   async function submit() {
     const firstInvalid = [1, 2, 3, 4].find((s) => Object.keys(validateStep(s, form, mode)).length);
     const allErrors = [1, 2, 3, 4].reduce<Record<string, string>>((acc, s) => ({ ...acc, ...validateStep(s, form, mode) }), {});
@@ -254,11 +259,21 @@ export default function PatientFormWizard({
     setServerError("");
     try {
       const body = new FormData();
-      const skip = new Set(["documents", "createdBy", "photoUrl", "mustChangePassword", "id", "deficientFactor"]);
+      const skip = new Set([
+        "documents",
+        "createdBy",
+        "photoUrl",
+        "mustChangePassword",
+        "id",
+        "deficientFactor",
+        "prescribedFactorMedicineName",
+      ]);
+      const optionalEmpty = new Set(["prescribedFactorMedicineId", "diagnosisDate", "notes", "emergencyContactRelation"]);
       Object.entries(form).forEach(([key, value]) => {
         if (skip.has(key) || value === undefined) return;
         if (key === "temporaryPassword") return;
-        body.append(key, String(value ?? ""));
+        if (optionalEmpty.has(key) && (value === null || value === "")) return;
+        body.append(key, String(value));
       });
       if (mode === "create") body.append("temporaryPassword", form.temporaryPassword || "");
       if (mode === "edit" && (form.temporaryPassword || "").trim()) {
@@ -274,11 +289,12 @@ export default function PatientFormWizard({
       const id = data.patient.id as string;
       if (mode === "create" && data.credentials) {
         setCredentials(data.credentials);
+        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
       router.push(`/dashboard/patients/${id}`);
     } catch (error) {
-      setServerError(error instanceof Error ? error.message : "Save failed");
+      showServerError(error instanceof Error ? error.message : "Save failed");
     } finally {
       setSaving(false);
     }

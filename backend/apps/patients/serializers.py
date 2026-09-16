@@ -323,6 +323,8 @@ class PatientSerializer(serializers.ModelSerializer):
             incoming[key] = data.get(key) if hasattr(data, "get") else data[key]
         if incoming.get("diagnosisDate") == "":
             incoming["diagnosisDate"] = None
+        if incoming.get("prescribedFactorMedicineId") in ("", None):
+            incoming["prescribedFactorMedicineId"] = None
         return super().to_internal_value(incoming)
 
     def _save_uploads(self, patient):
@@ -360,18 +362,22 @@ class PatientSerializer(serializers.ModelSerializer):
 
     def _provision_user(self, patient, temporary_password):
         first, last = split_name(patient.full_name)
-        user = User.objects.create_user(
-            username=patient.unique_patient_id,
-            email=patient.email,
-            password=temporary_password,
-            role=UserRole.PATIENT,
-            mobile=patient.mobile,
-            first_name=first,
-            last_name=last,
-            must_change_password=True,
-            is_staff=False,
-            is_superuser=False,
-        )
+        try:
+            user = User.objects.create_user(
+                username=patient.unique_patient_id,
+                email=patient.email,
+                password=temporary_password,
+                role=UserRole.PATIENT,
+                mobile=patient.mobile,
+                first_name=first,
+                last_name=last,
+                must_change_password=True,
+                is_staff=False,
+                is_superuser=False,
+            )
+        except Exception as exc:
+            messages = getattr(exc, "messages", [str(exc)])
+            raise serializers.ValidationError({"temporaryPassword": " ".join(messages)})
         patient.user = user
         patient.save(update_fields=["user"])
         return user

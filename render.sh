@@ -33,6 +33,7 @@ fi
 
 echo "==> Running migrations"
 python manage.py migrate --noinput
+python manage.py migrate --check
 
 echo "==> Collecting static files"
 python manage.py collectstatic --noinput

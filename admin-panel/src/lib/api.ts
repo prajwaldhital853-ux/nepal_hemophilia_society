@@ -1,5 +1,7 @@
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1";
 
+const API_FORM_TIMEOUT_MS = 120_000;
+
 export function resolveMediaUrl(url?: string | null): string {
   if (!url) return "";
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
@@ -39,6 +41,19 @@ export function clearAccessToken() {
 }
 
 type ApiInit = RequestInit & { skipAuthRedirect?: boolean; _retried?: boolean };
+
+function formatApiError(data: unknown, fallback = "Request failed") {
+  if (!data || typeof data !== "object") return fallback;
+  const record = data as Record<string, unknown>;
+  if (typeof record.error === "string" && record.error) return record.error;
+  if (typeof record.detail === "string" && record.detail) return record.detail;
+  if (Array.isArray(record.detail) && typeof record.detail[0] === "string") return record.detail[0];
+  if (typeof record.detail === "object" && record.detail !== null) {
+    const nonField = (record.detail as { non_field_errors?: string[] }).non_field_errors;
+    if (Array.isArray(nonField) && typeof nonField[0] === "string") return nonField[0];
+  }
+  return fallback;
+}
 
 async function refreshAccessToken(): Promise<string | null> {
   const refresh = getRefreshToken();
@@ -88,46 +103,61 @@ export async function apiFetch(path: string, init: ApiInit = {}) {
   }
 
   if (!res.ok) {
-    const detail = data.detail;
-    const message =
-      (typeof data.error === "string" && data.error) ||
-      (typeof detail === "string" && detail) ||
-      (Array.isArray(detail) && typeof detail[0] === "string" && detail[0]) ||
-      (typeof detail === "object" && detail !== null && typeof (detail as { non_field_errors?: string[] }).non_field_errors?.[0] === "string"
-        ? (detail as { non_field_errors: string[] }).non_field_errors[0]
-        : null) ||
-      "Request failed";
-    throw new Error(message);
+    throw new Error(formatApiError(data));
   }
   return data;
 }
 
-export async function apiForm(path: string, formData: FormData, method = "POST") {
+async function fetchFormOnce(path: string, formData: FormData, method: string, token: string) {
   const headers = new Headers();
-  const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  let res = await fetch(`${API_BASE}${path}`, { method, body: formData, headers });
-  let data = await res.json().catch(() => ({}));
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), API_FORM_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method,
+      body: formData,
+      headers,
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    let data: Record<string, unknown> = {};
+    if (text) {
+      try {
+        data = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        data = {};
+      }
+    }
+    return { res, data, raw: text };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("Save timed out. The server may be waking up — wait a moment and try again.");
+    }
+    throw new Error("Could not reach the server. Check your connection and try again.");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function apiForm(path: string, formData: FormData, method = "POST") {
+  const token = getAccessToken();
+  let { res, data, raw } = await fetchFormOnce(path, formData, method, token);
 
   if (res.status === 401 && typeof window !== "undefined") {
     const nextToken = await refreshAccessToken();
     if (nextToken) {
-      const retryHeaders = new Headers();
-      retryHeaders.set("Authorization", `Bearer ${nextToken}`);
-      res = await fetch(`${API_BASE}${path}`, { method, body: formData, headers: retryHeaders });
-      data = await res.json().catch(() => ({}));
+      ({ res, data, raw } = await fetchFormOnce(path, formData, method, nextToken));
     } else {
       clearAccessToken();
       localStorage.removeItem("nhms-admin-user");
       window.location.href = "/login";
+      throw new Error("Session expired");
     }
   }
 
   if (!res.ok) {
-    const message =
-      (typeof data.error === "string" && data.error) ||
-      (typeof data.detail === "string" && data.detail) ||
-      "Request failed";
+    const message = formatApiError(data, raw.trim().startsWith("<") ? `Server error (${res.status})` : "Request failed");
     throw new Error(message);
   }
   return data;
