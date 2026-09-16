@@ -18,6 +18,14 @@ PROJECT_ROOT = BASE_DIR.parent
 
 load_dotenv(PROJECT_ROOT / ".env")
 
+CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "").strip()
+CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
+CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "").strip()
+CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "").strip()
+USE_CLOUDINARY = bool(
+    CLOUDINARY_URL or (CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET)
+)
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-dev-key-change-in-production")
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("true", "1", "yes")
 if not DEBUG and (not SECRET_KEY or SECRET_KEY.startswith("django-insecure")):
@@ -41,8 +49,12 @@ DJANGO_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    "django.contrib.staticfiles",
 ]
+
+if USE_CLOUDINARY:
+    DJANGO_APPS += ["cloudinary_storage", "cloudinary"]
+
+DJANGO_APPS += ["django.contrib.staticfiles"]
 
 THIRD_PARTY_APPS = [
     "rest_framework",
@@ -235,13 +247,30 @@ CORS_ALLOW_CREDENTIALS = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-if not DEBUG:
-    STORAGES = {
-        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
-    }
 MEDIA_URL = os.getenv("MEDIA_URL", "/media/")
 MEDIA_ROOT = BASE_DIR / "media"
+
+_default_file_storage = "django.core.files.storage.FileSystemStorage"
+if USE_CLOUDINARY:
+    _default_file_storage = "cloudinary_storage.storage.MediaCloudinaryStorage"
+    if CLOUDINARY_URL:
+        os.environ.setdefault("CLOUDINARY_URL", CLOUDINARY_URL)
+    else:
+        CLOUDINARY_STORAGE = {
+            "CLOUD_NAME": CLOUDINARY_CLOUD_NAME,
+            "API_KEY": CLOUDINARY_API_KEY,
+            "API_SECRET": CLOUDINARY_API_SECRET,
+        }
+
+_staticfiles_backend = (
+    "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    if not DEBUG
+    else "django.contrib.staticfiles.storage.StaticFilesStorage"
+)
+STORAGES = {
+    "default": {"BACKEND": _default_file_storage},
+    "staticfiles": {"BACKEND": _staticfiles_backend},
+}
 
 # ---------------------------------------------------------------------------
 # Internationalization

@@ -42,5 +42,9 @@ if [[ "${RUN_SEED_ON_START:-true}" == "true" ]]; then
   python manage.py seed_nhms
 fi
 
+if [[ -n "${CLOUDINARY_URL:-}" || -n "${CLOUDINARY_CLOUD_NAME:-}" ]]; then
+  echo "==> Cloudinary configured for patient/admin photos and documents"
+fi
+
 echo "==> Starting Gunicorn"
 exec gunicorn config.wsgi:application --config gunicorn.conf.py

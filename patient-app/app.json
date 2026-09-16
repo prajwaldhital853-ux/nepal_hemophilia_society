@@ -33,6 +33,9 @@
         "projectId": "919b9ff9-f3df-4bb9-a84a-dab5e33ff200"
       }
     },
-    "owner": "ipo_bulk_v2"
+    "owner": "ipo_bulk_v2",
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }
