@@ -270,7 +270,8 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(
         days=int(os.getenv("JWT_REFRESH_TOKEN_LIFETIME_DAYS", "7"))
     ),
-    "ROTATE_REFRESH_TOKENS": True,
+    # Admin/patient refresh handlers set their own long lifetimes; avoid short rotated refresh tokens.
+    "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }

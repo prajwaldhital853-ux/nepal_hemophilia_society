@@ -17,7 +17,7 @@ const fieldClass =
 type Props = {
   patientId?: string;
   hemophiliaType?: string;
-  primaryHospital?: string;
+  treatmentCenter?: string;
   onClose: () => void;
   onSaved: () => void;
 };
@@ -25,7 +25,7 @@ type Props = {
 export default function LogInjectionDialog({
   patientId: initialPatientId,
   hemophiliaType: initialType,
-  primaryHospital = "",
+  treatmentCenter = "",
   onClose,
   onSaved,
 }: Props) {
@@ -63,7 +63,7 @@ export default function LogInjectionDialog({
         bleedSite,
         doctorName,
         notes,
-        treatmentCenter: primaryHospital || undefined,
+        treatmentCenter: treatmentCenter || undefined,
         acknowledgeInhibitorWarning: acknowledge || needsAck,
       });
       onSaved();

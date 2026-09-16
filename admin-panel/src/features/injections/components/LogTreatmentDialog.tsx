@@ -15,15 +15,23 @@ const TREATMENT_TYPES = ["Physiotherapy", "Surgery", "Admission", "ITI Program",
 type Props = {
   patientId: string;
   primaryHospital?: string;
+  loggingCenter?: string;
   onClose: () => void;
   onSaved: () => void;
 };
 
-export default function LogTreatmentDialog({ patientId, primaryHospital = "", onClose, onSaved }: Props) {
+export default function LogTreatmentDialog({
+  patientId,
+  primaryHospital = "",
+  loggingCenter,
+  onClose,
+  onSaved,
+}: Props) {
   const { user } = useAuth();
   const isSuper = isNationalScope(user);
-  const assignedCenter = user?.hospitalStaff?.treatmentCenter || primaryHospital;
-  const [treatmentCenter, setTreatmentCenter] = useState(primaryHospital || assignedCenter);
+  const assignedCenter =
+    loggingCenter || user?.hospitalStaff?.treatmentCenter || user?.provinceAdmin?.defaultLoggingCenter || primaryHospital;
+  const [treatmentCenter, setTreatmentCenter] = useState(assignedCenter);
   const [hospitals, setHospitals] = useState<HospitalOption[]>([]);
   const [treatmentType, setTreatmentType] = useState("Physiotherapy");
   const [status, setStatus] = useState("Completed");

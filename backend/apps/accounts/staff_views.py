@@ -83,7 +83,7 @@ class StaffCatalogView(APIView):
                         "requiresProvince": kind == "province_admin",
                         "requiresHospital": kind in ("center_admin", "treatment_admin"),
                         "defaults": sorted(
-                            catalog_for_kind(kind)
+                            grantable_codes(actor, kind)
                             - ({PERM_STOCK_MANAGE, PERM_STOCK_DELETE} if kind == KIND_TREATMENT else set())
                         ),
                     }

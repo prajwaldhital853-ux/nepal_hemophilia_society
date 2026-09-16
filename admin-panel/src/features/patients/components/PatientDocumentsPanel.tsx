@@ -9,11 +9,12 @@ import {
   type PatientDocumentRow,
 } from "@/features/patients/documentsApi";
 import { useAuth } from "@/lib/auth";
-import { Perm } from "@/lib/permissions";
 
 type Props = {
   patientId: string;
   primaryHospital?: string;
+  loggingCenter?: string;
+  canLogClinical?: boolean;
   compact?: boolean;
   onViewAll?: () => void;
 };
@@ -25,9 +26,16 @@ function formatWhen(value?: string) {
   return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 }
 
-export default function PatientDocumentsPanel({ patientId, primaryHospital = "", compact, onViewAll }: Props) {
-  const { can, user } = useAuth();
-  const canAdd = can(Perm.documentsAdd);
+export default function PatientDocumentsPanel({
+  patientId,
+  primaryHospital = "",
+  loggingCenter,
+  canLogClinical = false,
+  compact,
+  onViewAll,
+}: Props) {
+  const { user } = useAuth();
+  const canAdd = canLogClinical;
   const [rows, setRows] = useState<PatientDocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -73,7 +81,14 @@ export default function PatientDocumentsPanel({ patientId, primaryHospital = "",
     setBusy(true);
     setError("");
     try {
-      await uploadPatientDocuments(patientId, Array.from(files), user?.hospitalStaff?.treatmentCenter || primaryHospital);
+      await uploadPatientDocuments(
+        patientId,
+        Array.from(files),
+        loggingCenter ??
+          user?.hospitalStaff?.treatmentCenter ||
+          user?.provinceAdmin?.defaultLoggingCenter ||
+          primaryHospital,
+      );
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not upload document");

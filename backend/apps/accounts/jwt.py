@@ -1,3 +1,4 @@
+import os
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
@@ -13,9 +14,9 @@ from apps.patients.views import client_ip
 
 User = get_user_model()
 
-# Admin panel sessions stay active until explicit logout (refresh can renew access).
-ADMIN_ACCESS_LIFETIME = timedelta(days=int(__import__("os").getenv("JWT_ADMIN_ACCESS_DAYS", "365")))
-ADMIN_REFRESH_LIFETIME = timedelta(days=int(__import__("os").getenv("JWT_ADMIN_REFRESH_DAYS", "3650")))
+# Admin panel: no time-based logout while the browser tab stays open (sessionStorage on the client).
+ADMIN_ACCESS_LIFETIME = timedelta(days=int(os.getenv("JWT_ADMIN_ACCESS_DAYS", "3650")))
+ADMIN_REFRESH_LIFETIME = timedelta(days=int(os.getenv("JWT_ADMIN_REFRESH_DAYS", "3650")))
 
 
 def issue_admin_tokens(user):
@@ -109,16 +110,20 @@ class NhmsTokenObtainPairView(TokenObtainPairView):
 
 class NhmsTokenRefreshSerializer(TokenRefreshSerializer):
     def validate(self, attrs):
-        refresh = RefreshToken(attrs["refresh"])
-        user_id = refresh.payload.get("user_id")
+        incoming = RefreshToken(attrs["refresh"])
+        user_id = incoming.payload.get("user_id")
         user = User.objects.filter(pk=user_id).first() if user_id else None
-        if user and user.role == UserRole.PATIENT:
-            access_lifetime = timedelta(days=int(__import__("os").getenv("JWT_PATIENT_ACCESS_DAYS", "365")))
+        is_patient = bool(user and user.role == UserRole.PATIENT)
+        if is_patient:
+            access_lifetime = timedelta(days=int(os.getenv("JWT_PATIENT_ACCESS_DAYS", "365")))
+            refresh_lifetime = timedelta(days=int(os.getenv("JWT_PATIENT_REFRESH_DAYS", "3650")))
         else:
             access_lifetime = ADMIN_ACCESS_LIFETIME
+            refresh_lifetime = ADMIN_REFRESH_LIFETIME
 
         data = super().validate(attrs)
-        next_refresh = RefreshToken(attrs["refresh"])
+        refresh_value = data.get("refresh", attrs["refresh"])
+        next_refresh = RefreshToken(refresh_value)
         access = next_refresh.access_token
         for claim in ("role", "username", "must_change_password"):
             if claim in next_refresh:
@@ -127,6 +132,8 @@ class NhmsTokenRefreshSerializer(TokenRefreshSerializer):
             access["must_change_password"] = user.must_change_password
         access.set_exp(lifetime=access_lifetime)
         data["access"] = str(access)
+        next_refresh.set_exp(lifetime=refresh_lifetime)
+        data["refresh"] = str(next_refresh)
         return data
 
 

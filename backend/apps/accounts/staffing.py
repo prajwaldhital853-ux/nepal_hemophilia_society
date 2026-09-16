@@ -244,15 +244,11 @@ def validate_password(temp: str, field="temporaryPassword") -> str:
 
 def apply_assigned_access(actor, user, kind: str, permissions, view_only: bool):
     catalog = catalog_for_kind(kind)
-    selected = [str(code).strip() for code in (permissions or []) if str(code).strip()]
-    if selected:
-        allowed = grantable_codes(actor, kind)
-        invalid = set(selected) - allowed
-        if invalid:
-            raise ValidationError({"permissions": f"You cannot grant: {', '.join(sorted(invalid))}."})
-        user.extra_permissions = sorted(catalog.intersection(selected))
-    else:
-        user.extra_permissions = []
+    allowed = grantable_codes(actor, kind)
+    selected = {str(code).strip() for code in (permissions or []) if str(code).strip()}
+    selected &= catalog
+    grantable = sorted(selected & allowed)
+    user.extra_permissions = grantable
     user.view_only = bool(view_only)
     user.save(update_fields=["extra_permissions", "view_only"])
 
@@ -421,9 +417,11 @@ def create_staff_account(actor, data: dict):
 
 @transaction.atomic
 def update_staff_account(actor, user, data: dict):
-    if not can_manage_user(actor, user) and actor.pk != user.pk:
+    if actor.pk == user.pk:
+        raise PermissionDenied("You cannot edit your own admin account. Ask another administrator.")
+    if not can_manage_user(actor, user):
         raise PermissionDenied("You cannot update this admin.")
-    if getattr(actor, "view_only", False) and actor.pk != user.pk:
+    if getattr(actor, "view_only", False):
         raise PermissionDenied("View-only accounts cannot edit admins.")
     if account_kind(user) == KIND_SUPER and account_kind(actor) != KIND_SUPER:
         raise PermissionDenied("Only Super Admin can change a Super Admin.")
@@ -442,16 +440,13 @@ def update_staff_account(actor, user, data: dict):
             profile.save()
 
     if "permissions" in data or "viewOnly" in data:
-        if actor.pk == user.pk and account_kind(actor) != KIND_SUPER:
-            pass
-        else:
-            apply_assigned_access(
-                actor,
-                user,
-                kind,
-                data.get("permissions", assigned_permission_codes(user)),
-                parse_bool(data.get("viewOnly"), default=user.view_only) if "viewOnly" in data else user.view_only,
-            )
+        apply_assigned_access(
+            actor,
+            user,
+            kind,
+            data.get("permissions", assigned_permission_codes(user)),
+            parse_bool(data.get("viewOnly"), default=user.view_only) if "viewOnly" in data else user.view_only,
+        )
 
     reset_temp = data.get("resetTemporaryPassword") or data.get("temporaryPassword")
     issued = None
@@ -504,6 +499,13 @@ def serialize_staff(user, request=None) -> dict:
         last_login = timezone.localtime(user.last_login).strftime("%b %d, %Y %I:%M %p")
     actor = getattr(request, "user", None) if request is not None else None
     can_delete = bool(actor and actor.is_authenticated and can_delete_user(actor, user))
+    can_edit = bool(
+        actor
+        and actor.is_authenticated
+        and actor.pk != user.pk
+        and not getattr(actor, "view_only", False)
+        and can_manage_user(actor, user)
+    )
     return {
         "id": display_id_for(user),
         "userId": user.id,
@@ -534,6 +536,7 @@ def serialize_staff(user, request=None) -> dict:
         "lastLogin": last_login,
         "joinedDate": user.date_joined.strftime("%b %d, %Y") if user.date_joined else "",
         "canDelete": can_delete,
+        "canEdit": can_edit,
     }
 
 

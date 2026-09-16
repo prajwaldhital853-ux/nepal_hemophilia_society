@@ -42,7 +42,7 @@ function ageFromDob(dob: string) {
 
 export default function PatientProfileView({ id }: { id: string }) {
   const router = useRouter();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const [tab, setTab] = useState("Overview");
   const [record, setRecord] = useState<PatientRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,6 +88,15 @@ export default function PatientProfileView({ id }: { id: string }) {
   const age = ageFromDob(record.dateOfBirth);
   const registered = record.createdAt ? new Date(record.createdAt).toLocaleDateString() : "—";
   const lastVisit = record.updatedAt ? new Date(record.updatedAt).toLocaleDateString() : "—";
+  const actorLoggingCenter =
+    user?.hospitalStaff?.treatmentCenter || user?.provinceAdmin?.defaultLoggingCenter || undefined;
+  const isVisitingPatient =
+    Boolean(user?.provinceAdmin?.province || user?.hospitalStaff?.province) &&
+    Boolean(record.province) &&
+    user?.provinceAdmin?.province !== record.province &&
+    user?.hospitalStaff?.province !== record.province;
+  const loggingCenter = isVisitingPatient ? actorLoggingCenter : record.primaryHospital;
+  const canLogClinical = Boolean(record.canLogClinical);
 
   return (
     <div className="flex flex-col gap-3 pb-6">
@@ -155,6 +164,47 @@ export default function PatientProfileView({ id }: { id: string }) {
       </div>
       {actionError ? <p className="text-[11px] text-red-600">{actionError}</p> : null}
 
+      <article className="panel flex flex-wrap items-center gap-3 border-l-4 border-l-brand p-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-faint">Province</p>
+          <p className="text-[13px] font-semibold text-ink">{record.province || "—"}</p>
+        </div>
+        <div className="h-8 w-px bg-line-subtle" />
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-faint">Treatment center</p>
+          <p className="text-[13px] font-semibold text-ink">{record.primaryHospital || "—"}</p>
+        </div>
+        {record.status ? (
+          <>
+            <div className="h-8 w-px bg-line-subtle" />
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-faint">Registration status</p>
+              <p className="text-[13px] font-semibold text-ink">{record.status}</p>
+            </div>
+          </>
+        ) : null}
+      </article>
+
+      {isVisitingPatient ? (
+        <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] text-sky-900">
+          This patient is registered in <strong>{record.province}</strong> at{" "}
+          <strong>{record.primaryHospital || "their treatment center"}</strong>. You can view their profile and log
+          injections, treatments, bleeding episodes, and documents, but you cannot edit their registration details.
+          {loggingCenter ? (
+            <>
+              {" "}
+              New records will be logged at <strong>{loggingCenter}</strong>.
+            </>
+          ) : null}
+        </p>
+      ) : null}
+
+      {!canLogClinical && record.status !== "Active" ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+          Clinical logging is available only after the patient is verified as <strong>Active</strong>.
+        </p>
+      ) : null}
+
       <div className="tabs-bar">
         {tabs.map((item) => (
           <button
@@ -211,6 +261,12 @@ export default function PatientProfileView({ id }: { id: string }) {
                 <MapPin className="size-3 shrink-0 text-brand" />
                 {record.district}, {record.province}
               </li>
+              <li className="flex items-center gap-1.5 text-left">
+                <MapPin className="size-3 shrink-0 text-brand" />
+                <span>
+                  Center: <span className="font-medium text-ink">{record.primaryHospital || "—"}</span>
+                </span>
+              </li>
               <li className="flex items-center gap-1.5">
                 <CalendarDays className="size-3 shrink-0 text-brand" />
                 Registered {registered}
@@ -255,6 +311,8 @@ export default function PatientProfileView({ id }: { id: string }) {
               patientId={id}
               hemophiliaType={record.hemophiliaType}
               primaryHospital={record.primaryHospital}
+              loggingCenter={loggingCenter}
+              canLogClinical={canLogClinical}
               compact
               onViewAll={() => setTab("Injections")}
             />
@@ -263,6 +321,8 @@ export default function PatientProfileView({ id }: { id: string }) {
               <PatientBleedingPanel
                 patientId={id}
                 primaryHospital={record.primaryHospital}
+                loggingCenter={loggingCenter}
+                canLogClinical={canLogClinical}
                 compact
                 onViewAll={() => setTab("Bleeding Episodes")}
               />
@@ -272,6 +332,8 @@ export default function PatientProfileView({ id }: { id: string }) {
               <PatientDocumentsPanel
                 patientId={id}
                 primaryHospital={record.primaryHospital}
+                loggingCenter={loggingCenter}
+                canLogClinical={canLogClinical}
                 compact
                 onViewAll={() => setTab("Documents")}
               />
@@ -280,13 +342,34 @@ export default function PatientProfileView({ id }: { id: string }) {
         </div>
       ) : null}
       {tab === "Documents" ? (
-        <PatientDocumentsPanel patientId={id} primaryHospital={record.primaryHospital} />
+        <PatientDocumentsPanel
+          patientId={id}
+          primaryHospital={record.primaryHospital}
+          loggingCenter={loggingCenter}
+          canLogClinical={canLogClinical}
+        />
       ) : tab === "Injections" ? (
-        <PatientInjectionsPanel patientId={id} hemophiliaType={record.hemophiliaType} primaryHospital={record.primaryHospital} />
+        <PatientInjectionsPanel
+          patientId={id}
+          hemophiliaType={record.hemophiliaType}
+          primaryHospital={record.primaryHospital}
+          loggingCenter={loggingCenter}
+          canLogClinical={canLogClinical}
+        />
       ) : tab === "Treatment History" ? (
-        <PatientTreatmentsPanel patientId={id} primaryHospital={record.primaryHospital} />
+        <PatientTreatmentsPanel
+          patientId={id}
+          primaryHospital={record.primaryHospital}
+          loggingCenter={loggingCenter}
+          canLogClinical={canLogClinical}
+        />
       ) : tab === "Bleeding Episodes" ? (
-        <PatientBleedingPanel patientId={id} primaryHospital={record.primaryHospital} />
+        <PatientBleedingPanel
+          patientId={id}
+          primaryHospital={record.primaryHospital}
+          loggingCenter={loggingCenter}
+          canLogClinical={canLogClinical}
+        />
       ) : tab === "Medicines / Stock" ? (
         <PatientDoseStockPanel patientId={id} />
       ) : tab !== "Overview" ? (

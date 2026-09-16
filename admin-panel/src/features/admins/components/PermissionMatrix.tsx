@@ -4,6 +4,12 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 
 import type { PermissionGroup, PermissionItem } from "@/features/admins/api";
+import { PERM_LABELS } from "@/lib/permissions";
+
+function permissionLabel(perm: PermissionItem) {
+  if (perm.label && !perm.label.includes(".")) return perm.label;
+  return PERM_LABELS[perm.code] || perm.label || perm.code.replaceAll(".", " · ");
+}
 
 const COLUMNS = [
   { id: "view", label: "View" },
@@ -236,7 +242,7 @@ export default function PermissionMatrix({
                                 disabled={disabled}
                                 onChange={() => toggle(perm.code, perm.action)}
                               />
-                              {perm.label}
+                              {permissionLabel(perm)}
                             </label>
                           );
                         })}

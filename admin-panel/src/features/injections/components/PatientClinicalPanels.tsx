@@ -44,17 +44,21 @@ export function PatientInjectionsPanel({
   patientId,
   hemophiliaType,
   primaryHospital,
+  loggingCenter,
+  canLogClinical = false,
   compact = false,
   onViewAll,
 }: {
   patientId: string;
   hemophiliaType?: string;
   primaryHospital?: string;
+  loggingCenter?: string;
+  canLogClinical?: boolean;
   compact?: boolean;
   onViewAll?: () => void;
 }) {
   const { can } = useAuth();
-  const canAdd = can(Perm.injectionsAdd);
+  const canAdd = canLogClinical;
   const canUpdate = can(Perm.injectionsUpdate);
   const [rows, setRows] = useState<ApiInjection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,9 +108,7 @@ export function PatientInjectionsPanel({
               <Plus className="size-3" />
               Log injection
             </button>
-          ) : (
-            <span className="text-[10px] text-muted">Read-only monitoring</span>
-          )}
+          ) : null}
           {compact && onViewAll ? (
             <button type="button" onClick={onViewAll} className="text-[11px] font-medium text-brand">
               View All
@@ -173,7 +175,7 @@ export function PatientInjectionsPanel({
         <LogInjectionDialog
           patientId={patientId}
           hemophiliaType={hemophiliaType}
-          primaryHospital={primaryHospital}
+          treatmentCenter={loggingCenter ?? primaryHospital}
           onClose={() => setShowLog(false)}
           onSaved={() => {
             setShowLog(false);
@@ -188,12 +190,16 @@ export function PatientInjectionsPanel({
 export function PatientTreatmentsPanel({
   patientId,
   primaryHospital,
+  loggingCenter,
+  canLogClinical = false,
 }: {
   patientId: string;
   primaryHospital?: string;
+  loggingCenter?: string;
+  canLogClinical?: boolean;
 }) {
   const { can } = useAuth();
-  const canAdd = can(Perm.treatmentsAdd);
+  const canAdd = canLogClinical;
   const canUpdate = can(Perm.treatmentsUpdate);
   const [rows, setRows] = useState<ApiTreatment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -233,9 +239,7 @@ export function PatientTreatmentsPanel({
             <Plus className="size-3" />
             Log treatment
           </button>
-        ) : (
-          <span className="text-[10px] text-muted">Read-only monitoring</span>
-        )}
+        ) : null}
       </div>
       <table className="inner-table mt-2 w-full text-left text-sm">
         <thead className="text-[11px] uppercase text-faint">
@@ -285,6 +289,7 @@ export function PatientTreatmentsPanel({
         <LogTreatmentDialog
           patientId={patientId}
           primaryHospital={primaryHospital}
+          loggingCenter={loggingCenter}
           onClose={() => setShowLog(false)}
           onSaved={() => {
             setShowLog(false);

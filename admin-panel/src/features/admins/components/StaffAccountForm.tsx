@@ -21,6 +21,7 @@ import { provinceDistricts } from "@/features/patients/data/geo";
 import { NEPAL_PROVINCES } from "@/lib/constants/provinces";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { PERM_LABELS } from "@/lib/permissions";
 
 const steps = [
   { id: 1, label: "Identity", icon: UserRound },
@@ -134,6 +135,7 @@ function validateStep(
   role: AssignableRole | undefined,
   mode: "create" | "edit",
   takenProvinces: string[] = [],
+  lockedProvince = "",
 ) {
   const errors: Record<string, string> = {};
   if (step === 1) {
@@ -158,6 +160,7 @@ function validateStep(
     ) {
       errors.province = "This province already has a Province Admin. Choose another province.";
     }
+    if (role?.requiresHospital && !form.province && !lockedProvince) errors.province = "Province is required";
     if (role?.requiresHospital && !form.treatmentCenter) errors.treatmentCenter = "Treatment center is required";
     if (!form.officeAddress.trim()) errors.officeAddress = "Office address is required";
   }
@@ -205,16 +208,38 @@ export default function StaffAccountForm({
 
   const selectedRole = roles.find((role) => role.kind === form.kind);
   const isProvinceAdminRole = form.kind === "province_admin";
+  const lockedProvince = user?.role === "province_admin" ? user.provinceAdmin?.province || "" : "";
+  const requiresHospital = Boolean(selectedRole?.requiresHospital);
 
   function defaultsForKind(kind: StaffKind | "") {
     if (!kind) return [];
     return roles.find((role) => role.kind === kind)?.defaults ?? [];
   }
 
-  function selectRole(kind: StaffKind) {
-    const defaults = defaultsForKind(kind);
-    patch({ kind, permissions: defaults, viewOnly: false });
+  function availableCodesFromGroups(source: PermissionGroup[]) {
+    return new Set(source.flatMap((group) => group.permissions.map((perm) => perm.code)));
   }
+
+  function sanitizePermissions(codes: string[], source = groups) {
+    const allowed = availableCodesFromGroups(source);
+    return codes.filter((code) => allowed.has(code));
+  }
+
+  function roleDefaultsFor(kind: StaffKind | "", source = groups) {
+    const role = roles.find((item) => item.kind === kind);
+    const defaults = role?.defaults?.length ? role.defaults : defaultsForKind(kind);
+    const cleaned = sanitizePermissions(defaults, source);
+    return cleaned.length ? cleaned : defaults.filter((code) => availableCodesFromGroups(source).has(code));
+  }
+
+  function selectRole(kind: StaffKind) {
+    patch({ kind, permissions: roleDefaultsFor(kind), viewOnly: false });
+  }
+
+  useEffect(() => {
+    if (!lockedProvince || mode === "edit") return;
+    setForm((current) => (current.province === lockedProvince ? current : { ...current, province: lockedProvince }));
+  }, [lockedProvince, mode]);
 
   useEffect(() => {
     void fetchHospitals()
@@ -257,9 +282,23 @@ export default function StaffAccountForm({
       return;
     }
     void fetchStaffCatalog(form.kind)
-      .then((data) => setGroups(data.permissionGroups))
+      .then((data) => {
+        setGroups(data.permissionGroups);
+        const role = data.assignableRoles.find((item) => item.kind === form.kind);
+        const defaults = sanitizePermissions(role?.defaults ?? [], data.permissionGroups);
+        setForm((current) => {
+          const cleaned = sanitizePermissions(current.permissions, data.permissionGroups);
+          if (mode === "edit") {
+            return cleaned.length === current.permissions.length ? current : { ...current, permissions: cleaned };
+          }
+          if (cleaned.length) {
+            return cleaned.length === current.permissions.length ? current : { ...current, permissions: cleaned };
+          }
+          return defaults.length ? { ...current, permissions: defaults } : current;
+        });
+      })
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load permissions"));
-  }, [form.kind]);
+  }, [form.kind, mode]);
 
   useEffect(() => {
     if (!photoFile) return;
@@ -274,16 +313,20 @@ export default function StaffAccountForm({
     return taken.includes(name) && !(mode === "edit" && initial?.province === name);
   }
   const scopedHospitals = hospitals.filter((hospital) => {
-    if (user?.role === "province_admin" && user.provinceAdmin?.province) {
-      return hospital.province === user.provinceAdmin.province;
-    }
+    if (lockedProvince) return hospital.province === lockedProvince;
     if (user?.role === "hospital_admin" && user.hospitalStaff?.treatmentCenter) {
       return hospital.name === user.hospitalStaff.treatmentCenter;
     }
     if (form.kind === "province_admin") return true;
-    if (form.province) return hospital.province === form.province;
+    if (requiresHospital && form.province) return hospital.province === form.province;
     return true;
   });
+
+  useEffect(() => {
+    if (!form.treatmentCenter) return;
+    const stillValid = scopedHospitals.some((hospital) => hospital.name === form.treatmentCenter);
+    if (!stillValid) setForm((current) => ({ ...current, treatmentCenter: "" }));
+  }, [form.province, form.treatmentCenter, scopedHospitals]);
   const progress = ((step - 1) / (steps.length - 1)) * 100;
 
   function patch(partial: Partial<FormState>) {
@@ -310,7 +353,7 @@ export default function StaffAccountForm({
   }
 
   function goNext() {
-    const nextErrors = validateStep(step, form, selectedRole, mode, taken);
+    const nextErrors = validateStep(step, form, selectedRole, mode, taken, lockedProvince);
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
     setStep((value) => Math.min(5, value + 1));
@@ -318,12 +361,12 @@ export default function StaffAccountForm({
 
   async function submit() {
     const allErrors = [1, 2, 3, 4].reduce<Record<string, string>>(
-      (acc, item) => ({ ...acc, ...validateStep(item, form, selectedRole, mode, taken) }),
+      (acc, item) => ({ ...acc, ...validateStep(item, form, selectedRole, mode, taken, lockedProvince) }),
       {},
     );
     setFieldErrors(allErrors);
     const firstInvalid = [1, 2, 3, 4].find(
-      (item) => Object.keys(validateStep(item, form, selectedRole, mode, taken)).length,
+      (item) => Object.keys(validateStep(item, form, selectedRole, mode, taken, lockedProvince)).length,
     );
     if (firstInvalid) {
       setStep(firstInvalid);
@@ -342,12 +385,12 @@ export default function StaffAccountForm({
         nationalId: form.nationalId,
         employeeId: form.employeeId,
         designation: form.designation,
-        province: form.province,
+        province: lockedProvince || form.province,
         officeAddress: form.district ? `${form.officeAddress}, ${form.district}` : form.officeAddress,
         treatmentCenter: form.treatmentCenter,
         notes: form.notes,
         viewOnly: form.viewOnly,
-        permissions: form.permissions,
+        permissions: sanitizePermissions(form.permissions),
       };
       if (mode === "create") payload.temporaryPassword = form.temporaryPassword;
       if (mode === "edit") payload.status = form.status;
@@ -540,6 +583,29 @@ export default function StaffAccountForm({
                     </span>
                   </Field>
                 </div>
+              ) : lockedProvince ? (
+                <Field label="Province" required>
+                  <input className={`${fieldClass} bg-elevated/80`} value={lockedProvince} readOnly />
+                  <span className="mt-1 block text-[10px] text-muted">
+                    Center admins can only be assigned to treatment centers in your province.
+                  </span>
+                </Field>
+              ) : requiresHospital ? (
+                <Field label="Province" required error={fieldErrors.province}>
+                  <select
+                    className={fieldClass}
+                    value={form.province}
+                    onChange={(e) => patch({ province: e.target.value, district: "", treatmentCenter: "" })}
+                  >
+                    <option value="">Select province first</option>
+                    {provinceOptions.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                  <span className="mt-1 block text-[10px] text-muted">
+                    Choose the province first, then pick a treatment center from that province.
+                  </span>
+                </Field>
               ) : (
                 <Field label="Office province">
                   <select className={fieldClass} value={form.province} onChange={(e) => patch({ province: e.target.value, district: "" })}>
@@ -560,14 +626,37 @@ export default function StaffAccountForm({
               </Field>
               {selectedRole?.requiresHospital ? (
                 <Field label="Treatment center" required error={fieldErrors.treatmentCenter}>
-                  <select className={fieldClass} value={form.treatmentCenter} onChange={(e) => patch({ treatmentCenter: e.target.value })}>
-                    <option value="">Select center</option>
+                  <select
+                    className={fieldClass}
+                    value={form.treatmentCenter}
+                    disabled={!lockedProvince && requiresHospital && !form.province}
+                    onChange={(e) => {
+                      const name = e.target.value;
+                      const hospital = scopedHospitals.find((row) => row.name === name);
+                      patch({
+                        treatmentCenter: name,
+                        province: hospital?.province || form.province || lockedProvince,
+                      });
+                    }}
+                  >
+                    <option value="">
+                      {!lockedProvince && requiresHospital && !form.province
+                        ? "Select province first"
+                        : scopedHospitals.length
+                          ? "Select center"
+                          : "No centers in this province"}
+                    </option>
                     {scopedHospitals.map((hospital) => (
                       <option key={hospital.id} value={hospital.name}>
-                        {hospital.name} ({hospital.province})
+                        {hospital.name}
                       </option>
                     ))}
                   </select>
+                  {lockedProvince ? (
+                    <span className="mt-1 block text-[10px] text-muted">
+                      Showing centers in {lockedProvince} only.
+                    </span>
+                  ) : null}
                 </Field>
               ) : null}
               <div className="sm:col-span-2">
@@ -685,7 +774,7 @@ export default function StaffAccountForm({
                 <p className="mt-1 text-[11px] text-muted">{form.permissions.length} selected. Drawer items follow these grants.</p>
                 <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto text-[11px] text-ink">
                   {form.permissions.map((code) => (
-                    <li key={code}>{code}</li>
+                    <li key={code}>{PERM_LABELS[code] || code.replaceAll(".", " · ")}</li>
                   ))}
                 </ul>
               </article>

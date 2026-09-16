@@ -3,7 +3,14 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { apiFetch, clearAccessToken, getAccessToken } from "@/lib/api";
+import { apiFetch, clearAccessToken, getAccessToken, refreshAccessToken } from "@/lib/api";
+import {
+  USER_KEY,
+  migrateLegacyAuthStorage,
+  readAuthValue,
+  writeAuthValue,
+  removeAuthValue,
+} from "@/lib/authStorage";
 import { ACTION_ROUTES, navAllows } from "@/lib/permissions";
 
 export type AdminRole = "super_admin" | "admin" | "province_admin" | "hospital_admin" | "website_manager";
@@ -28,11 +35,9 @@ export type AuthUser = {
     treatmentCenter: string;
     province: string;
   } | null;
-  provinceAdmin?: { id: string; province: string; provinceId?: number } | null;
+  provinceAdmin?: { id: string; province: string; provinceId?: number; defaultLoggingCenter?: string } | null;
   scope?: { kind: string; provinceId?: number | null; hospitalId?: number | null };
 };
-
-const USER_KEY = "nhms-admin-user";
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -48,7 +53,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function readCachedUser(): AuthUser | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(USER_KEY);
+    const raw = readAuthValue(USER_KEY);
     return raw ? (JSON.parse(raw) as AuthUser) : null;
   } catch {
     return null;
@@ -56,7 +61,7 @@ function readCachedUser(): AuthUser | null {
 }
 
 export function persistUser(user: AuthUser) {
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  writeAuthValue(USER_KEY, JSON.stringify(user));
 }
 
 export function isAdminUser(user: AuthUser | null): user is AuthUser {
@@ -91,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    migrateLegacyAuthStorage();
     const cached = readCachedUser();
     if (cached) setUser(cached);
     const token = getAccessToken();
@@ -104,13 +110,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         persistUser(next);
         setUser(next);
       })
-      .catch(() => {
+      .catch(async () => {
+        const renewed = await refreshAccessToken();
+        if (renewed) {
+          try {
+            const data = await apiFetch("/auth/me/");
+            const next = data as AuthUser;
+            persistUser(next);
+            setUser(next);
+            return;
+          } catch {
+            // fall through
+          }
+        }
         clearAccessToken();
-        localStorage.removeItem(USER_KEY);
+        removeAuthValue(USER_KEY);
         setUser(null);
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const renew = () => {
+      if (document.visibilityState !== "visible") return;
+      void refreshAccessToken();
+    };
+    const interval = window.setInterval(renew, 6 * 60 * 60 * 1000);
+    document.addEventListener("visibilitychange", renew);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", renew);
+    };
+  }, [user]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -124,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       logout: () => {
         clearAccessToken();
-        localStorage.removeItem(USER_KEY);
+        removeAuthValue(USER_KEY);
         setUser(null);
         window.location.href = "/login";
       },

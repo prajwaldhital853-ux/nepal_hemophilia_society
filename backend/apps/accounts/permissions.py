@@ -191,14 +191,28 @@ class CanUpdateInjections(HasPermission):
     message = "You cannot update injection records."
 
 
-class CanAddInjections(HasPermission):
-    permission = PERM_INJECTIONS_ADD
+class CanAddInjections(BasePermission):
     message = "You cannot add injection records."
 
+    def has_permission(self, request, view):
+        if admin_must_set_password(request.user, view):
+            self.message = "You must set a new password before using the admin panel."
+            return False
+        from apps.core.clinical import can_add_clinical_record
 
-class CanAddTreatments(HasPermission):
-    permission = PERM_TREATMENTS_ADD
+        return can_add_clinical_record(request.user)
+
+
+class CanAddTreatments(BasePermission):
     message = "You cannot add treatment records."
+
+    def has_permission(self, request, view):
+        if admin_must_set_password(request.user, view):
+            self.message = "You must set a new password before using the admin panel."
+            return False
+        from apps.core.clinical import can_add_clinical_record
+
+        return can_add_clinical_record(request.user)
 
 
 class CanCorrectInjections(HasPermission):
@@ -247,9 +261,16 @@ class CanWriteHospitalStaff(BasePermission):
         return has_perm(request.user, PERM_HOSPITAL_STAFF_MANAGE)
 
 
-class CanAddDocuments(HasPermission):
-    permission = PERM_DOCUMENTS_ADD
+class CanAddDocuments(BasePermission):
     message = "You cannot add patient documents."
+
+    def has_permission(self, request, view):
+        if admin_must_set_password(request.user, view):
+            self.message = "You must set a new password before using the admin panel."
+            return False
+        from apps.core.clinical import can_add_clinical_record
+
+        return can_add_clinical_record(request.user)
 
 
 class CanViewStock(HasPermission):

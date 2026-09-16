@@ -71,6 +71,45 @@ class HospitalStaffApiTests(APITestCase):
         )
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_province_admin_hospital_list_is_own_province_only(self):
+        other = Province.objects.create(name="Koshi", code="P1")
+        Hospital.objects.create(name="Biratnagar Hemophilia Center", province=other)
+        self.auth(self.province_user)
+        res = self.client.get("/api/v1/hospitals/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        names = {row["name"] for row in res.data["hospitals"]}
+        self.assertIn(self.hospital.name, names)
+        self.assertNotIn("Biratnagar Hemophilia Center", names)
+
+    def test_province_admin_cannot_create_center_admin_outside_province(self):
+        other = Province.objects.create(name="Koshi", code="P1")
+        Hospital.objects.create(name="Biratnagar Hemophilia Center", province=other)
+        self.auth(self.province_user)
+        blocked = self.client.post(
+            "/api/v1/hospitals/staff/center-admins/",
+            {
+                "fullName": "Wrong Center",
+                "email": "wrong.center@hemophilia.org.np",
+                "phone": "9841778899",
+                "treatmentCenter": "Biratnagar Hemophilia Center",
+                "temporaryPassword": "TempPass#123",
+            },
+            format="json",
+        )
+        self.assertEqual(blocked.status_code, status.HTTP_400_BAD_REQUEST)
+        allowed = self.client.post(
+            "/api/v1/hospitals/staff/center-admins/",
+            {
+                "fullName": "Bagmati Center",
+                "email": "bagmati.center@hemophilia.org.np",
+                "phone": "9841889900",
+                "treatmentCenter": self.hospital.name,
+                "temporaryPassword": "TempPass#123",
+            },
+            format="json",
+        )
+        self.assertEqual(allowed.status_code, status.HTTP_201_CREATED, allowed.data)
+
     def test_super_creates_province_admin_and_hospital(self):
         District.objects.create(province=self.province, name="Kathmandu")
         self.auth(self.super)

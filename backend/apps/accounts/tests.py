@@ -1,5 +1,8 @@
+from datetime import datetime, timedelta, timezone
+
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
+from rest_framework_simplejwt.tokens import AccessToken
 
 from apps.accounts.models import UserRole
 from apps.accounts.rbac import (
@@ -110,6 +113,17 @@ class RbacMatrixTests(APITestCase):
         self.treatment.save()
         self.assertEqual(permissions_for(self.treatment), [])
 
+    def test_admin_login_issues_long_lived_tokens(self):
+        res = self.client.post(
+            "/api/v1/auth/login/",
+            {"username": "super", "password": "ChangeMe#2026"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+        access = AccessToken(res.data["access"])
+        refresh_exp = datetime.fromtimestamp(access["exp"], tz=timezone.utc)
+        self.assertGreater(refresh_exp, datetime.now(tz=timezone.utc) + timedelta(days=3000))
+
     def test_admin_login_rejects_patient(self):
         res = self.client.post(
             "/api/v1/auth/login/",
@@ -195,6 +209,15 @@ class RbacMatrixTests(APITestCase):
         self.assertTrue(has_perm(self.center, PERM_PATIENTS_VIEW))
         self.assertFalse(has_perm(self.center, PERM_INJECTIONS_ADD))
 
+    def test_admin_cannot_edit_own_staff_profile(self):
+        self.client.force_authenticate(self.province_user)
+        res = self.client.put(
+            "/api/v1/admins/staff/PADM-00001/",
+            {"fullName": "Self Edit"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 403)
+
     def test_national_admin_cannot_manage_super(self):
         from apps.accounts.rbac import can_manage_user, assignable_kinds
 
@@ -273,6 +296,76 @@ class RbacMatrixTests(APITestCase):
         self.assertIn("patients.create", patient_codes)
         self.assertIn("patients.update", patient_codes)
         self.assertIn("patients.delete", patient_codes)
+
+    def test_province_admin_center_admin_defaults_exclude_ungrantable_delete_perms(self):
+        self.client.force_authenticate(self.province_user)
+        catalog = self.client.get("/api/v1/admins/catalog/?kind=center_admin")
+        self.assertEqual(catalog.status_code, 200)
+        role = next(row for row in catalog.data["assignableRoles"] if row["kind"] == "center_admin")
+        self.assertNotIn("injections.delete", role["defaults"])
+        self.assertNotIn("treatments.delete", role["defaults"])
+        codes = {perm["code"] for group in catalog.data["permissionGroups"] for perm in group["permissions"]}
+        self.assertNotIn("injections.delete", codes)
+        res = self.client.post(
+            "/api/v1/admins/staff/",
+            {
+                "kind": "center_admin",
+                "fullName": "Scoped Center",
+                "email": "scoped.center@hemophilia.org.np",
+                "phone": "9841990011",
+                "dateOfBirth": "1990-01-15",
+                "gender": "Male",
+                "designation": "Center Lead",
+                "officeAddress": "Kathmandu",
+                "treatmentCenter": self.hospital.name,
+                "temporaryPassword": "TempPass#123",
+                "permissions": role["defaults"] + ["injections.delete", "treatments.delete"],
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertNotIn("injections.delete", res.data["admin"]["effectivePermissions"])
+        self.assertNotIn("treatments.delete", res.data["admin"]["effectivePermissions"])
+
+    def test_province_admin_cannot_create_center_admin_outside_province(self):
+        other = Province.objects.create(name="Koshi", code="P1")
+        other_hospital = Hospital.objects.create(name="Biratnagar Hemophilia Center", province=other)
+        self.client.force_authenticate(self.province_user)
+        blocked = self.client.post(
+            "/api/v1/admins/staff/",
+            {
+                "kind": "center_admin",
+                "fullName": "Wrong Center",
+                "email": "wrong.center@hemophilia.org.np",
+                "phone": "9841556677",
+                "dateOfBirth": "1990-01-15",
+                "gender": "Male",
+                "designation": "Center Lead",
+                "officeAddress": "Biratnagar",
+                "treatmentCenter": other_hospital.name,
+                "temporaryPassword": "TempPass#123",
+            },
+            format="json",
+        )
+        self.assertEqual(blocked.status_code, 400)
+        self.assertIn("province", str(blocked.data).lower())
+        allowed = self.client.post(
+            "/api/v1/admins/staff/",
+            {
+                "kind": "center_admin",
+                "fullName": "Bagmati Center",
+                "email": "bagmati.center@hemophilia.org.np",
+                "phone": "9841667788",
+                "dateOfBirth": "1990-01-15",
+                "gender": "Female",
+                "designation": "Center Lead",
+                "officeAddress": "Kathmandu",
+                "treatmentCenter": self.hospital.name,
+                "temporaryPassword": "TempPass#123",
+            },
+            format="json",
+        )
+        self.assertEqual(allowed.status_code, 201, allowed.data)
 
     def test_center_admin_creates_treatment_admin_only(self):
         self.client.force_authenticate(self.center)

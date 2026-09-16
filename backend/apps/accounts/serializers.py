@@ -75,10 +75,19 @@ class UserSerializer(serializers.ModelSerializer):
         profile = getattr(obj, "province_admin", None)
         if not profile:
             return None
+        from apps.hospitals.models import Hospital
+
+        default_center = (
+            Hospital.objects.filter(province_id=profile.province_id, is_active=True)
+            .order_by("name")
+            .values_list("name", flat=True)
+            .first()
+        )
         return {
             "id": profile.display_id,
             "province": profile.province.name,
             "provinceId": profile.province_id,
+            "defaultLoggingCenter": default_center or "",
         }
 
     def get_fullName(self, obj):

@@ -38,6 +38,7 @@ export type StaffRecord = {
   lastLogin?: string;
   joinedDate?: string;
   canDelete?: boolean;
+  canEdit?: boolean;
 };
 
 export type PermissionItem = {

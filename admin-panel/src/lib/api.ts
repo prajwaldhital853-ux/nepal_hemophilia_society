@@ -1,3 +1,11 @@
+import {
+  REFRESH_KEY,
+  TOKEN_KEY,
+  clearAuthStorage,
+  readAuthValue,
+  writeAuthValue,
+} from "@/lib/authStorage";
+
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1";
 
 const API_FORM_TIMEOUT_MS = 120_000;
@@ -9,25 +17,20 @@ export function resolveMediaUrl(url?: string | null): string {
   return url.startsWith("/") ? `${origin}${url}` : `${origin}/${url}`;
 }
 
-const TOKEN_KEY = "nhms-access-token";
-const REFRESH_KEY = "nhms-refresh-token";
-
 export function getAccessToken() {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(TOKEN_KEY) ?? "";
+  return readAuthValue(TOKEN_KEY);
 }
 
 export function getRefreshToken() {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(REFRESH_KEY) ?? "";
+  return readAuthValue(REFRESH_KEY);
 }
 
 export function setAccessToken(token: string) {
-  localStorage.setItem(TOKEN_KEY, token);
+  writeAuthValue(TOKEN_KEY, token);
 }
 
 export function setRefreshToken(token: string) {
-  localStorage.setItem(REFRESH_KEY, token);
+  writeAuthValue(REFRESH_KEY, token);
 }
 
 export function setAuthTokens(access: string, refresh?: string) {
@@ -36,26 +39,10 @@ export function setAuthTokens(access: string, refresh?: string) {
 }
 
 export function clearAccessToken() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_KEY);
+  clearAuthStorage();
 }
 
-type ApiInit = RequestInit & { skipAuthRedirect?: boolean; _retried?: boolean };
-
-function formatApiError(data: unknown, fallback = "Request failed") {
-  if (!data || typeof data !== "object") return fallback;
-  const record = data as Record<string, unknown>;
-  if (typeof record.error === "string" && record.error) return record.error;
-  if (typeof record.detail === "string" && record.detail) return record.detail;
-  if (Array.isArray(record.detail) && typeof record.detail[0] === "string") return record.detail[0];
-  if (typeof record.detail === "object" && record.detail !== null) {
-    const nonField = (record.detail as { non_field_errors?: string[] }).non_field_errors;
-    if (Array.isArray(nonField) && typeof nonField[0] === "string") return nonField[0];
-  }
-  return fallback;
-}
-
-async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
   const refresh = getRefreshToken();
   if (!refresh) return null;
   try {
@@ -71,6 +58,21 @@ async function refreshAccessToken(): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+type ApiInit = RequestInit & { skipAuthRedirect?: boolean; _retried?: boolean };
+
+function formatApiError(data: unknown, fallback = "Request failed") {
+  if (!data || typeof data !== "object") return fallback;
+  const record = data as Record<string, unknown>;
+  if (typeof record.error === "string" && record.error) return record.error;
+  if (typeof record.detail === "string" && record.detail) return record.detail;
+  if (Array.isArray(record.detail) && typeof record.detail[0] === "string") return record.detail[0];
+  if (typeof record.detail === "object" && record.detail !== null) {
+    const nonField = (record.detail as { non_field_errors?: string[] }).non_field_errors;
+    if (Array.isArray(nonField) && typeof nonField[0] === "string") return nonField[0];
+  }
+  return fallback;
 }
 
 export async function apiFetch(path: string, init: ApiInit = {}) {
@@ -97,7 +99,6 @@ export async function apiFetch(path: string, init: ApiInit = {}) {
       return apiFetch(path, { ...init, _retried: true });
     }
     clearAccessToken();
-    localStorage.removeItem("nhms-admin-user");
     window.location.href = "/login";
     return Promise.reject(new Error("Session expired"));
   }
@@ -154,7 +155,6 @@ export async function apiForm<T = Record<string, unknown>>(
       ({ res, data, raw } = await fetchFormOnce(path, formData, method, nextToken));
     } else {
       clearAccessToken();
-      localStorage.removeItem("nhms-admin-user");
       window.location.href = "/login";
       throw new Error("Session expired");
     }

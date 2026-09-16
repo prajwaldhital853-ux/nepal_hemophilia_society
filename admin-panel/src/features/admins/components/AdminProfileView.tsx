@@ -35,6 +35,8 @@ export default function AdminProfileView({ id }: { id: string }) {
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const canManage = (can(Perm.adminsManage) || can(Perm.provinceAdminsManage) || can(Perm.hospitalStaffManage)) && !user?.viewOnly;
+  const isSelf = admin?.userId === user?.id;
+  const canEditThis = Boolean(canManage && admin?.canEdit && !isSelf);
 
   function load() {
     return fetchStaffAccount(id)
@@ -65,6 +67,9 @@ export default function AdminProfileView({ id }: { id: string }) {
 
   const isOverview = tab === "Overview";
   const roleLabel = KIND_LABELS[admin.kind] || admin.roleLabel;
+  const scopeLabel = admin.treatmentCenter
+    ? `${admin.treatmentCenter} · ${admin.province}`
+    : admin.province || "National";
   const granted = admin.permissionLabels?.length
     ? admin.permissionLabels
     : (admin.effectivePermissions || []).map((code) => ({ code, label: PERM_LABELS[code] || code }));
@@ -83,7 +88,7 @@ export default function AdminProfileView({ id }: { id: string }) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {canManage ? (
+          {canEditThis ? (
             <>
               <button
                 type="button"
@@ -144,6 +149,32 @@ export default function AdminProfileView({ id }: { id: string }) {
         </div>
       </div>
       {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
+      {isSelf ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+          This is your own account. Another administrator must update your profile, permissions, or status.
+        </p>
+      ) : null}
+
+      <article className="panel flex flex-wrap items-center gap-3 border-l-4 border-l-brand p-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-faint">Province</p>
+          <p className="text-[13px] font-semibold text-ink">{admin.province || "National"}</p>
+        </div>
+        {admin.treatmentCenter ? (
+          <>
+            <div className="h-8 w-px bg-line-subtle" />
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-faint">Treatment center</p>
+              <p className="text-[13px] font-semibold text-ink">{admin.treatmentCenter}</p>
+            </div>
+          </>
+        ) : null}
+        <div className="h-8 w-px bg-line-subtle" />
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-faint">Scope</p>
+          <p className="text-[13px] font-semibold text-ink">{scopeLabel}</p>
+        </div>
+      </article>
 
       <div
         className={
@@ -157,7 +188,8 @@ export default function AdminProfileView({ id }: { id: string }) {
             <UserAvatar name={admin.fullName} photoUrl={admin.photoUrl} size={80} className="size-20 rounded-md text-[18px]" />
             <h2 className="mt-4 text-[14px] font-semibold">{admin.fullName}</h2>
             <p className="profile-sidebar-meta mt-1 text-[11px]">{roleLabel}</p>
-            <p className="profile-sidebar-meta text-[11px]">{admin.treatmentCenter || admin.province || "National"}</p>
+            <p className="profile-sidebar-meta text-[11px]">{admin.province || "National"}</p>
+            {admin.treatmentCenter ? <p className="profile-sidebar-meta text-[11px]">{admin.treatmentCenter}</p> : null}
             <span
               className={`mt-3 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                 admin.status === "Active"

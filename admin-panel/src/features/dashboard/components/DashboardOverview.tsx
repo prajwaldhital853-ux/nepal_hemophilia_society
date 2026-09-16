@@ -273,7 +273,7 @@ export default function DashboardOverview() {
             <h2 className="text-[12px] font-semibold text-ink">Your scope</h2>
             <p className="mt-2 text-[11px] text-muted">
               {user?.role === "province_admin"
-                ? `Patients, hospitals, and reports are limited to ${user.provinceAdmin?.province || "your province"}. Injection entry is hospital/super only.`
+                ? `Patients, hospitals, and reports are limited to ${user.provinceAdmin?.province || "your province"}. You can also search any patient by HEM-ID nationwide to log clinical records.`
                 : `You can search any HEM-ID and add injections for visiting patients. Registry create/verify stays with Super and Province Admin.`}
             </p>
           </article>

@@ -1,11 +1,11 @@
 export function downloadCsv(filename: string, headers: string[], rows: Array<Array<string | number | null | undefined>>) {
   const escape = (value: string | number | null | undefined) => {
-    const text = value == null ? "" : String(value);
-    if (/[",\n]/.test(text)) return `"${text.replaceAll('"', '""')}"`;
+    const text = value == null ? "" : String(value).replace(/\r?\n/g, " ").replace(/\t/g, " ");
+    if (/[",\r\n]/.test(text)) return `"${text.replaceAll('"', '""')}"`;
     return text;
   };
-  const csv = [headers.map(escape).join(","), ...rows.map((row) => row.map(escape).join(","))].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const csv = ["sep=,", headers.map(escape).join(","), ...rows.map((row) => row.map(escape).join(","))].join("\r\n");
+  const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

@@ -74,11 +74,22 @@ def resolve_actor_hospital(user, hospital_name=None, patient=None):
             if not hospital:
                 return None, "Unknown treatment center."
             return hospital, None
-        hospital = getattr(patient, "primary_hospital", None) if patient is not None else None
-        if hospital and hospital.is_active:
-            return hospital, None
+        pid = province_id_for(user)
         if patient is not None:
+            hospital = getattr(patient, "primary_hospital", None)
+            if hospital and hospital.is_active and (not pid or patient.province_id == pid):
+                return hospital, None
+            if pid:
+                actor_center = Hospital.objects.filter(province_id=pid, is_active=True).order_by("name").first()
+                if actor_center:
+                    return actor_center, None
+            if hospital and hospital.is_active:
+                return hospital, None
             return None, "This patient has no assigned treatment center."
+        if pid:
+            actor_center = Hospital.objects.filter(province_id=pid, is_active=True).order_by("name").first()
+            if actor_center:
+                return actor_center, None
         return None, "Specify treatmentCenter when adding records."
     return None, "Only hospital staff or super admin can add clinical records."
 
@@ -132,6 +143,7 @@ def can_delete_patient(user, patient: Patient) -> bool:
 
 
 def can_add_clinical_record(user) -> bool:
+    """Province and hospital admins may log clinical data nationally unless view-only."""
     if getattr(user, "view_only", False):
         return False
     if is_national_scope(user):
@@ -140,8 +152,16 @@ def can_add_clinical_record(user) -> bool:
         profile = get_hospital_admin_profile(user)
         return bool(profile and profile.user.is_active_account)
     if user.role == UserRole.PROVINCE_ADMIN:
-        return has_perm(user, PERM_INJECTIONS_ADD) or has_perm(user, PERM_TREATMENTS_ADD)
+        return True
     return False
+
+
+def can_log_clinical_for_patient(user, patient: Patient) -> bool:
+    if not can_add_clinical_record(user):
+        return False
+    if not can_view_patient(user, patient):
+        return False
+    return patient.verification_status == VerificationStatus.ACTIVE
 
 
 def can_update_clinical_record(user, hospital) -> bool:

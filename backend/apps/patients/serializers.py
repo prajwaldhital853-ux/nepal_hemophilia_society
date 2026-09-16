@@ -7,7 +7,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from apps.accounts.models import UserRole
-from apps.core.clinical import can_delete_patient, can_edit_patient
+from apps.core.clinical import can_delete_patient, can_edit_patient, can_log_clinical_for_patient
 from apps.factors.models import FactorMedicine, FactorType
 from apps.hospitals.models import Hospital
 from apps.patients.models import InhibitorStatus, Patient, PatientDocument, TreatmentPlan
@@ -113,6 +113,7 @@ class PatientSerializer(serializers.ModelSerializer):
     mustChangePassword = serializers.SerializerMethodField()
     canEdit = serializers.SerializerMethodField()
     canDelete = serializers.SerializerMethodField()
+    canLogClinical = serializers.SerializerMethodField()
 
     class Meta:
         model = Patient
@@ -154,7 +155,14 @@ class PatientSerializer(serializers.ModelSerializer):
             "mustChangePassword",
             "canEdit",
             "canDelete",
+            "canLogClinical",
         )
+
+    def get_canLogClinical(self, obj):
+        request = self.context.get("request")
+        if not request or not getattr(request.user, "is_authenticated", False):
+            return False
+        return can_log_clinical_for_patient(request.user, obj)
 
     def get_canEdit(self, obj):
         request = self.context.get("request")

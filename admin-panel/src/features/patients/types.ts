@@ -21,6 +21,7 @@ export type PatientRow = {
   status: PatientRecordStatus;
   canEdit?: boolean;
   canDelete?: boolean;
+  canLogClinical?: boolean;
 };
 
 export type PatientDocumentMeta = {
@@ -72,6 +73,7 @@ export type PatientRecord = {
   mustChangePassword?: boolean;
   canEdit?: boolean;
   canDelete?: boolean;
+  canLogClinical?: boolean;
 };
 
 export type PatientPayload = Omit<PatientRecord, "id" | "deficientFactor" | "createdAt" | "updatedAt"> & {

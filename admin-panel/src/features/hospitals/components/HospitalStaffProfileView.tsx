@@ -43,6 +43,7 @@ function ProfileSidebar({ profile, labels }: { profile: HospitalStaffProfile; la
       <UserAvatar name={profile.fullName} photoUrl={profile.photoUrl} size={80} className="size-20 rounded-md text-[18px]" />
       <h2 className="mt-4 text-[14px] font-semibold">{profile.fullName}</h2>
       <p className="profile-sidebar-meta mt-1 text-[11px]">{profile.roleLabel ?? labels.singular}</p>
+      <p className="profile-sidebar-meta text-[11px]">{profile.province || "—"}</p>
       <p className="profile-sidebar-meta text-[11px]">{profile.treatmentCenter}</p>
       <span
         className={`mt-3 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${
@@ -223,6 +224,8 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const canManage = can(Perm.hospitalStaffManage) && !user?.viewOnly;
+  const isSelf = staff?.userId === user?.id;
+  const canEditThis = Boolean(canManage && staff?.canEdit && !isSelf);
 
   function load() {
     return Promise.all([
@@ -269,6 +272,9 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
   }
 
   const isOverview = tab === "Overview";
+  const scopeLabel = profile.treatmentCenter
+    ? `${profile.treatmentCenter} · ${profile.province}`
+    : profile.province || "—";
 
   return (
     <div className="flex flex-col gap-3 pb-6">
@@ -284,7 +290,7 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {canManage ? (
+          {canEditThis ? (
             <>
               <button
                 type="button"
@@ -344,6 +350,29 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
           </button>
         </div>
       </div>
+      {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
+      {isSelf ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+          This is your own account. Another administrator must update your profile, permissions, or status.
+        </p>
+      ) : null}
+
+      <article className="panel flex flex-wrap items-center gap-3 border-l-4 border-l-brand p-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-faint">Province</p>
+          <p className="text-[13px] font-semibold text-ink">{profile.province || "—"}</p>
+        </div>
+        <div className="h-8 w-px bg-line-subtle" />
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-faint">Treatment center</p>
+          <p className="text-[13px] font-semibold text-ink">{profile.treatmentCenter || "—"}</p>
+        </div>
+        <div className="h-8 w-px bg-line-subtle" />
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-faint">Scope</p>
+          <p className="text-[13px] font-semibold text-ink">{scopeLabel}</p>
+        </div>
+      </article>
 
       <div
         className={

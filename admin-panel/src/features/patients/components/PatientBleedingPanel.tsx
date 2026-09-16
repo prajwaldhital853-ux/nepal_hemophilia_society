@@ -5,7 +5,6 @@ import { Plus } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Perm } from "@/lib/permissions";
 
 type BleedingEpisode = {
   id: number;
@@ -49,16 +48,22 @@ function severityClass(severity: string) {
 export function PatientBleedingPanel({
   patientId,
   primaryHospital = "",
+  loggingCenter,
+  canLogClinical = false,
   compact = false,
   onViewAll,
 }: {
   patientId: string;
   primaryHospital?: string;
+  loggingCenter?: string;
+  canLogClinical?: boolean;
   compact?: boolean;
   onViewAll?: () => void;
 }) {
-  const { can } = useAuth();
-  const canAdd = can(Perm.injectionsAdd);
+  const { user } = useAuth();
+  const canAdd = canLogClinical;
+  const resolvedLoggingCenter =
+    loggingCenter ?? user?.hospitalStaff?.treatmentCenter || user?.provinceAdmin?.defaultLoggingCenter || primaryHospital;
   const [rows, setRows] = useState<BleedingEpisode[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -94,7 +99,7 @@ export function PatientBleedingPanel({
           site,
           severity,
           notes,
-          treatmentCenter: primaryHospital || undefined,
+          treatmentCenter: resolvedLoggingCenter || undefined,
         }),
       });
       setShowForm(false);

@@ -484,6 +484,8 @@ class PatientRbacScopeTests(APITestCase):
             format="json",
         )
         pid = koshi_patient.data["patient"]["id"]
+        verify = self.client.put(f"/api/v1/patients/{pid}/verify/", {}, format="json")
+        self.assertEqual(verify.status_code, 200)
         self.client.force_authenticate(self.prov)
         listed = self.client.get("/api/v1/patients/")
         self.assertNotIn(pid, {row["id"] for row in listed.data["patients"]})
@@ -493,6 +495,7 @@ class PatientRbacScopeTests(APITestCase):
         detail = self.client.get(f"/api/v1/patients/{pid}/")
         self.assertEqual(detail.status_code, 200)
         self.assertFalse(detail.data["patient"]["canEdit"])
+        self.assertTrue(detail.data["patient"]["canLogClinical"])
         numeric = pid.split("-", 1)[1]
         numeric_search = self.client.get(f"/api/v1/patients/?search={numeric}")
         self.assertEqual(len(numeric_search.data["patients"]), 1)

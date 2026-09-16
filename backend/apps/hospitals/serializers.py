@@ -320,9 +320,18 @@ class HospitalStaffUpdateSerializer(HospitalStaffSerializer):
             user.mobile = user_data["mobile"]
 
         if hospital_name:
-            hospital = Hospital.objects.filter(name=hospital_name, is_active=True).first()
+            hospital = Hospital.objects.filter(name=hospital_name, is_active=True).select_related("province").first()
             if not hospital:
                 raise serializers.ValidationError({"treatmentCenter": "Unknown treatment center."})
+            request = self.context.get("request")
+            if request and request.user.role == UserRole.PROVINCE_ADMIN:
+                province_admin = getattr(request.user, "province_admin", None)
+                if province_admin and hospital.province_id != province_admin.province_id:
+                    raise serializers.ValidationError({"treatmentCenter": "Hospital is outside your province."})
+            if request and request.user.role == UserRole.HOSPITAL_ADMIN:
+                center_admin = getattr(request.user, "hospital_admin", None)
+                if center_admin and hospital.id != center_admin.hospital_id:
+                    raise serializers.ValidationError({"treatmentCenter": "You can only add staff to your own center."})
             instance.hospital = hospital
 
         if status == "Inactive":
