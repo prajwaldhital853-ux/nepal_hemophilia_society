@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsAdminRole, IsPatientRole, PatientPasswordUsable
 from apps.core.clinical import can_view_patient
+from apps.core.pagination import paginate_queryset
 from apps.patients.bleeding_serializers import BleedingEpisodeCreateSerializer, BleedingEpisodeSerializer
 from apps.patients.models import BleedingEpisode, Patient
 from apps.patients.views import _flatten_errors
@@ -23,8 +24,15 @@ class PatientBleedingEpisodesView(APIView):
             raise NotFound("Patient not found.")
         if not can_view_patient(request.user, patient):
             raise PermissionDenied()
-        qs = _episode_queryset().filter(patient=patient).order_by("-episode_date")
-        return Response({"episodes": BleedingEpisodeSerializer(qs, many=True).data})
+        qs = _episode_queryset().filter(patient=patient)
+        rows, next_cursor, limit = paginate_queryset(qs, request)
+        return Response(
+            {
+                "episodes": BleedingEpisodeSerializer(rows, many=True).data,
+                "nextCursor": next_cursor,
+                "limit": limit,
+            }
+        )
 
     def post(self, request, patient_id):
         payload = {**request.data, "patientId": patient_id}
@@ -44,5 +52,12 @@ class PatientMeBleedingEpisodesView(APIView):
         patient = getattr(request.user, "patient_profile", None)
         if not patient:
             return Response({"error": "No patient profile linked."}, status=404)
-        qs = _episode_queryset().filter(patient=patient).order_by("-episode_date")
-        return Response({"episodes": BleedingEpisodeSerializer(qs, many=True).data})
+        qs = _episode_queryset().filter(patient=patient)
+        rows, next_cursor, limit = paginate_queryset(qs, request)
+        return Response(
+            {
+                "episodes": BleedingEpisodeSerializer(rows, many=True).data,
+                "nextCursor": next_cursor,
+                "limit": limit,
+            }
+        )

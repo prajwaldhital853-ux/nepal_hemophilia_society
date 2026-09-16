@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarRange,
@@ -34,12 +34,6 @@ function statusClass(status: HospitalStaffRow["status"]) {
   return "bg-elevated text-muted";
 }
 
-function paginationPages(total: number, pageSize: number) {
-  const pages = Math.max(1, Math.ceil(total / pageSize));
-  if (pages <= 5) return Array.from({ length: pages }, (_, i) => String(i + 1));
-  return ["1", "2", "...", String(pages)];
-}
-
 export default function HospitalStaffModule({ staffType }: { staffType: HospitalStaffType }) {
   const router = useRouter();
   const { can, user } = useAuth();
@@ -49,27 +43,30 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
   const lockProvince = user?.role === "province_admin" ? user.provinceAdmin?.province || "" : "";
   const hideProvince = user?.role === "hospital_admin" || Boolean(lockProvince);
   const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
   const [province, setProvince] = useState(lockProvince || "All");
   const [openProvince, setOpenProvince] = useState(false);
-  const [page, setPage] = useState(1);
   const [rows, setRows] = useState<HospitalStaffRow[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [totalsByProvince, setTotalsByProvince] = useState<Record<string, number>>({ All: 0 });
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const pageSize = 10;
 
   async function loadData() {
     setLoading(true);
     setError("");
     try {
-      const data = await fetchHospitalStaff(staffType, { province, search: query, page, pageSize });
+      const data = await fetchHospitalStaff(staffType, { province, search: debounced, limit: 10 });
       setRows(data.staff.map(toStaffRow));
+      setNextCursor(data.nextCursor ?? null);
       setTotal(data.total);
       setTotalsByProvince(data.totalsByProvince ?? { All: data.total });
     } catch (err) {
       setRows([]);
+      setNextCursor(null);
       setTotal(0);
       setError(err instanceof Error ? err.message : "Failed to load staff");
     } finally {
@@ -77,15 +74,38 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
     }
   }
 
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await fetchHospitalStaff(staffType, {
+        province,
+        search: debounced,
+        cursor: nextCursor,
+        limit: 10,
+      });
+      setRows((current) => [...current, ...data.staff.map(toStaffRow)]);
+      setNextCursor(data.nextCursor ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load more staff");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(query), 300);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
   useEffect(() => {
     if (lockProvince) setProvince(lockProvince);
   }, [lockProvince]);
 
   useEffect(() => {
     void loadData();
-  }, [staffType, province, query, page]);
+  }, [staffType, province, debounced]);
 
-  const pages = useMemo(() => paginationPages(total, pageSize), [total]);
   const provinceTotal = totalsByProvince[province] ?? total;
 
   return (
@@ -125,7 +145,6 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
-                setPage(1);
               }}
               className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
               placeholder="Search by Name, Email or Treatment Center..."
@@ -156,7 +175,6 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
                   onClick={() => {
                     setProvince("All");
                     setOpenProvince(false);
-                    setPage(1);
                   }}
                 >
                   All Provinces
@@ -171,7 +189,6 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
                     onClick={() => {
                       setProvince(item);
                       setOpenProvince(false);
-                      setPage(1);
                     }}
                   >
                     {item} Province
@@ -189,7 +206,6 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
                 type="button"
                 onClick={() => {
                   setProvince("All");
-                  setPage(1);
                 }}
                 aria-label="Clear province"
               >
@@ -290,26 +306,18 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
 
         <div className="table-footer flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
           <p>
-            Showing {rows.length ? (page - 1) * pageSize + 1 : 0} to {(page - 1) * pageSize + rows.length} of{" "}
-            {formatNumber(total)} entries
+            Showing {rows.length ? 1 : 0} to {rows.length} of {formatNumber(total)} entries
           </p>
-          <div className="flex items-center gap-1">
-            {pages.map((item, index) => (
-              <button
-                key={`${item}-${index}`}
-                type="button"
-                disabled={item === "..."}
-                onClick={() => {
-                  if (item !== "...") setPage(Number(item));
-                }}
-                className={`flex size-7 items-center justify-center rounded text-[11px] ${
-                  String(page) === item ? "bg-brand font-semibold text-white" : "panel shadow-none"
-                }`}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
+          {nextCursor ? (
+            <button
+              type="button"
+              onClick={() => void loadMore()}
+              disabled={loadingMore}
+              className="rounded border border-line px-2 py-1 text-[11px] font-semibold text-brand disabled:opacity-60"
+            >
+              {loadingMore ? "Loading…" : "Load more"}
+            </button>
+          ) : null}
         </div>
       </section>
 

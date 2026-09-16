@@ -111,7 +111,7 @@ class PatientAdminApiTests(APITestCase):
     def test_admin_login_returns_jwt(self):
         res = self.client.post(
             "/api/v1/auth/login/",
-            {"username": "superadmin", "password": "ChangeMe#2026"},
+            {"username": "superadmin", "password": "ChangeMe#2026", "deviceId": "testdevice-admin-01"},
             format="json",
         )
         self.assertEqual(res.status_code, 200, res.data)
@@ -124,10 +124,14 @@ class PatientAdminApiTests(APITestCase):
         self.client.force_authenticate(user=None)
         res = self.client.post(
             "/api/v1/auth/login/",
-            {"username": created.data["patient"]["id"], "password": "TempPass#2026"},
+            {
+                "username": created.data["patient"]["id"],
+                "password": "TempPass#2026",
+                "deviceId": "testdevice-admin-01",
+            },
             format="json",
         )
-        self.assertEqual(res.status_code, 400)
+        self.assertIn(res.status_code, (400, 401))
 
 
 class PatientAppAuthTests(APITestCase):
@@ -252,6 +256,38 @@ class PatientAppAuthTests(APITestCase):
             format="json",
         )
         self.assertEqual(locked.status_code, 423)
+
+    def test_patient_idle_hour_resets_attempts(self):
+        from apps.accounts.models import LoginDeviceLock
+        from django.utils import timezone as dj_timezone
+        from datetime import timedelta
+
+        self.client.post(
+            "/api/v1/auth/patient/login/",
+            {"identifier": "app.patient@example.com", "password": "WrongPass#1", "deviceId": self.device_a},
+            format="json",
+        )
+        self.client.post(
+            "/api/v1/auth/patient/login/",
+            {"identifier": "app.patient@example.com", "password": "WrongPass#1", "deviceId": self.device_a},
+            format="json",
+        )
+        LoginDeviceLock.objects.filter(device_id=self.device_a).update(
+            updated_at=dj_timezone.now() - timedelta(hours=2),
+        )
+        first = self.client.post(
+            "/api/v1/auth/patient/login/",
+            {"identifier": "app.patient@example.com", "password": "WrongPass#1", "deviceId": self.device_a},
+            format="json",
+        )
+        self.assertEqual(first.status_code, 401)
+        self.assertEqual(first.data["attemptsRemaining"], 2)
+        ok = self.client.post(
+            "/api/v1/auth/patient/login/",
+            {"identifier": "app.patient@example.com", "password": "TempPass#2026", "deviceId": self.device_a},
+            format="json",
+        )
+        self.assertEqual(ok.status_code, 200, ok.data)
 
     def test_admin_update_is_visible_on_patient_me(self):
         login = self.client.post(

@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from apps.accounts.permissions import CanViewAudit
 from apps.accounts.rbac import is_national_scope
 from apps.audit.models import AuditLog
+from apps.core.pagination import paginate_queryset
 from apps.reports.views import _scoped_audit
 
 
@@ -32,7 +33,7 @@ class AuditListView(APIView):
             qs = qs.filter(created_at__date__gte=date_from)
         if date_to:
             qs = qs.filter(created_at__date__lte=date_to)
-        rows = list(qs.order_by("-created_at")[:500])
+        rows, next_cursor, limit = paginate_queryset(qs, request)
         return Response(
             {
                 "logs": [
@@ -48,6 +49,8 @@ class AuditListView(APIView):
                     }
                     for row in rows
                 ],
-                "total": len(rows),
+                "total": qs.count(),
+                "nextCursor": next_cursor,
+                "limit": limit,
             }
         )

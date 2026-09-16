@@ -19,6 +19,8 @@ export default function AuditModule() {
   const [openModule, setOpenModule] = useState(false);
   const [openId, setOpenId] = useState("");
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -29,6 +31,7 @@ export default function AuditModule() {
     if (moduleFilter !== "All") q.set("module", moduleFilter);
     if (from) q.set("from", from);
     if (to) q.set("to", to);
+    q.set("limit", "25");
     void apiFetch(`/audit/${q.toString() ? `?${q}` : ""}`)
       .then((data) => {
         const next = (data.logs ?? []).map((row: Record<string, string>) => ({
@@ -42,10 +45,42 @@ export default function AuditModule() {
           detail: row.detail || row.objectId || "",
         }));
         setLogs(next);
+        setNextCursor(data.nextCursor ?? null);
         if (next[0]) setOpenId(String(next[0].id));
       })
       .catch((err: Error) => setError(err.message || "Audit logs are Super Admin only."));
   }, [query, moduleFilter, from, to]);
+
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    const q = new URLSearchParams();
+    if (query.trim()) q.set("search", query.trim());
+    if (moduleFilter !== "All") q.set("module", moduleFilter);
+    if (from) q.set("from", from);
+    if (to) q.set("to", to);
+    q.set("limit", "25");
+    q.set("cursor", nextCursor);
+    try {
+      const data = await apiFetch(`/audit/?${q.toString()}`);
+      const extra = (data.logs ?? []).map((row: Record<string, string>) => ({
+        id: String(row.id),
+        actor: row.actor || "—",
+        action: row.action || "—",
+        module: row.module || "—",
+        ip: row.ip || "—",
+        time: row.createdAt ? new Date(row.createdAt).toLocaleString() : "",
+        severity: "Info" as AuditSeverity,
+        detail: row.detail || row.objectId || "",
+      }));
+      setLogs((current) => [...current, ...extra]);
+      setNextCursor(data.nextCursor ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load more audit events");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   const rows = useMemo(() => {
     return logs.filter((row) => {
@@ -185,6 +220,18 @@ export default function AuditModule() {
               </li>
             ))}
           </ul>
+          {nextCursor ? (
+            <div className="flex justify-end px-3 py-2">
+              <button
+                type="button"
+                onClick={() => void loadMore()}
+                disabled={loadingMore}
+                className="rounded border border-line px-2 py-1 text-[11px] font-semibold text-brand disabled:opacity-60"
+              >
+                {loadingMore ? "Loading…" : "Load more"}
+              </button>
+            </div>
+          ) : null}
         </section>
 
         {selected ? (

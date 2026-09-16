@@ -84,16 +84,21 @@ export async function fetchStaffCatalog(kind?: string) {
   return apiFetch(`/admins/catalog/${suffix}`) as Promise<StaffCatalog>;
 }
 
-export async function fetchStaffDirectory(params: { kind?: string; search?: string; province?: string } = {}) {
+export async function fetchStaffDirectory(
+  params: { kind?: string; search?: string; province?: string; cursor?: string; limit?: number } = {},
+) {
   const query = new URLSearchParams();
   if (params.kind) query.set("kind", params.kind);
   if (params.search?.trim()) query.set("search", params.search.trim());
   if (params.province && params.province !== "All") query.set("province", params.province);
+  if (params.cursor) query.set("cursor", params.cursor);
+  if (params.limit) query.set("limit", String(params.limit));
   const suffix = query.toString() ? `?${query.toString()}` : "";
   const data = await apiFetch(`/admins/staff/${suffix}`);
   return {
     staff: (data.staff ?? []) as StaffRecord[],
     total: Number(data.total ?? 0),
+    nextCursor: (data.nextCursor as string | null) ?? null,
   };
 }
 

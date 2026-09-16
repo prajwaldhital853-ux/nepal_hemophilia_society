@@ -16,6 +16,7 @@ from apps.accounts.permissions import (
 from apps.accounts.rbac import hospital_id_for, is_national_scope, province_id_for
 from apps.audit.models import AuditLog
 from apps.core.clinical import can_view_patient
+from apps.core.pagination import paginate_queryset
 from apps.injections.models import InjectionRecord
 from apps.injections.serializers import (
     InjectionCorrectionSerializer,
@@ -84,8 +85,9 @@ class InjectionListCreateView(APIView):
             qs = qs.filter(indication=indication)
         if date_to:
             qs = qs.filter(administered_at__date__lte=date_to)
-        data = InjectionRecordSerializer(qs.order_by("-administered_at")[:500], many=True).data
-        return Response({"injections": data, "total": qs.count()})
+        rows, next_cursor, limit = paginate_queryset(qs, request)
+        data = InjectionRecordSerializer(rows, many=True).data
+        return Response({"injections": data, "total": qs.count(), "nextCursor": next_cursor, "limit": limit})
 
     def post(self, request):
         serializer = InjectionCreateSerializer(data=request.data, context={"request": request})

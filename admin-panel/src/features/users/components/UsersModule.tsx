@@ -69,6 +69,8 @@ export default function UsersModule() {
   const { user } = useAuth();
   const router = useRouter();
   const [rows, setRows] = useState<DirectoryUser[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loginTracking, setLoginTracking] = useState<LoginRow[]>([]);
   const [devices, setDevices] = useState<DeviceRow[]>([]);
   const [counts, setCounts] = useState({ total: 0, admins: 0, patients: 0, active: 0 });
@@ -89,9 +91,11 @@ export default function UsersModule() {
     if (status !== "All") q.set("status", status);
     if (from) q.set("from", from);
     if (to) q.set("to", to);
+    q.set("limit", "25");
     try {
       const data = await apiFetch(`/users/${q.toString() ? `?${q}` : ""}`);
       setRows(data.users ?? []);
+      setNextCursor(data.nextCursor ?? null);
       setCounts(data.counts ?? { total: 0, admins: 0, patients: 0, active: 0 });
       setLoginTracking(data.loginTracking ?? []);
       setDevices(data.devices ?? []);
@@ -102,6 +106,28 @@ export default function UsersModule() {
       setLoading(false);
     }
   }, [search, kind, status, from, to]);
+
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    const q = new URLSearchParams();
+    if (search.trim()) q.set("search", search.trim());
+    if (kind !== "All") q.set("kind", kind);
+    if (status !== "All") q.set("status", status);
+    if (from) q.set("from", from);
+    if (to) q.set("to", to);
+    q.set("limit", "25");
+    q.set("cursor", nextCursor);
+    try {
+      const data = await apiFetch(`/users/?${q.toString()}`);
+      setRows((current) => [...current, ...(data.users ?? [])]);
+      setNextCursor(data.nextCursor ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load more users");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   useEffect(() => {
     void load();
@@ -277,6 +303,18 @@ export default function UsersModule() {
                 ))}
               </tbody>
             </table>
+            {nextCursor ? (
+              <div className="flex justify-end px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => void loadMore()}
+                  disabled={loadingMore}
+                  className="rounded border border-line px-2 py-1 text-[11px] font-semibold text-brand disabled:opacity-60"
+                >
+                  {loadingMore ? "Loading…" : "Load more"}
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
       </section>

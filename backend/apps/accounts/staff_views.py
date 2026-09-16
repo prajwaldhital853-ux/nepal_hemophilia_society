@@ -30,6 +30,7 @@ from apps.accounts.staffing import (
     staff_queryset_for,
     update_staff_account,
 )
+from apps.core.pagination import paginate_queryset
 from apps.audit.models import AuditLog
 from apps.patients.views import _flatten_errors, client_ip
 from apps.provinces.models import ProvinceAdmin
@@ -127,8 +128,9 @@ class StaffListCreateView(APIView):
                 | Q(hospital_admin__display_id__icontains=search)
                 | Q(province_admin__display_id__icontains=search)
             )
-        rows = [serialize_staff(user, request) for user in qs.order_by("first_name", "last_name", "id")[:300]]
-        return Response({"staff": rows, "total": len(rows)})
+        rows_qs, next_cursor, limit = paginate_queryset(qs, request)
+        rows = [serialize_staff(user, request) for user in rows_qs]
+        return Response({"staff": rows, "total": qs.count(), "nextCursor": next_cursor, "limit": limit})
 
     def post(self, request):
         try:

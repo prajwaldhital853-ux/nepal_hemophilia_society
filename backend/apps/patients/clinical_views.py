@@ -14,6 +14,7 @@ from apps.accounts.permissions import (
 from apps.core.clinical import can_view_patient
 from apps.injections.serializers import InjectionRecordSerializer
 from apps.injections.views import _injection_queryset, _scope_injections
+from apps.core.pagination import paginate_queryset
 from apps.patients.models import Patient
 from apps.treatments.models import HospitalVisit
 from apps.treatments.serializers import HospitalVisitSerializer, TreatmentRecordSerializer
@@ -39,7 +40,14 @@ class PatientInjectionsView(APIView):
             _injection_queryset().filter(patient=patient),
             patient_id=patient.unique_patient_id,
         )
-        return Response({"injections": InjectionRecordSerializer(qs.order_by("-administered_at"), many=True).data})
+        rows, next_cursor, limit = paginate_queryset(qs, request)
+        return Response(
+            {
+                "injections": InjectionRecordSerializer(rows, many=True).data,
+                "nextCursor": next_cursor,
+                "limit": limit,
+            }
+        )
 
 
 class PatientTreatmentsView(APIView):
@@ -54,7 +62,14 @@ class PatientTreatmentsView(APIView):
             _treatment_queryset().filter(patient=patient),
             patient_id=patient.unique_patient_id,
         )
-        return Response({"treatments": TreatmentRecordSerializer(qs.order_by("-treatment_date"), many=True).data})
+        rows, next_cursor, limit = paginate_queryset(qs, request)
+        return Response(
+            {
+                "treatments": TreatmentRecordSerializer(rows, many=True).data,
+                "nextCursor": next_cursor,
+                "limit": limit,
+            }
+        )
 
 
 class PatientVisitsView(APIView):
@@ -126,8 +141,15 @@ class PatientMeInjectionsView(APIView):
         patient = getattr(request.user, "patient_profile", None)
         if not patient:
             return Response({"error": "No patient profile linked."}, status=404)
-        qs = _injection_queryset().filter(patient=patient).order_by("-administered_at")
-        return Response({"injections": InjectionRecordSerializer(qs, many=True).data})
+        qs = _injection_queryset().filter(patient=patient)
+        rows, next_cursor, limit = paginate_queryset(qs, request)
+        return Response(
+            {
+                "injections": InjectionRecordSerializer(rows, many=True).data,
+                "nextCursor": next_cursor,
+                "limit": limit,
+            }
+        )
 
 
 class PatientMeTreatmentsView(APIView):
@@ -137,8 +159,15 @@ class PatientMeTreatmentsView(APIView):
         patient = getattr(request.user, "patient_profile", None)
         if not patient:
             return Response({"error": "No patient profile linked."}, status=404)
-        qs = _treatment_queryset().filter(patient=patient).order_by("-treatment_date")
-        return Response({"treatments": TreatmentRecordSerializer(qs, many=True).data})
+        qs = _treatment_queryset().filter(patient=patient)
+        rows, next_cursor, limit = paginate_queryset(qs, request)
+        return Response(
+            {
+                "treatments": TreatmentRecordSerializer(rows, many=True).data,
+                "nextCursor": next_cursor,
+                "limit": limit,
+            }
+        )
 
 
 class PatientMeVisitsView(APIView):

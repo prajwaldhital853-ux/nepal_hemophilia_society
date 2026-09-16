@@ -8,6 +8,7 @@ from apps.accounts.permissions import CanAddTreatments, CanViewClinical, IsAdmin
 from apps.accounts.rbac import hospital_id_for, is_national_scope, province_id_for
 from apps.audit.models import AuditLog
 from apps.core.clinical import can_view_patient
+from apps.core.pagination import paginate_queryset
 from apps.patients.views import _flatten_errors, client_ip
 from apps.treatments.models import TreatmentRecord
 from apps.treatments.serializers import TreatmentCreateSerializer, TreatmentRecordSerializer, TreatmentUpdateSerializer
@@ -60,8 +61,9 @@ class TreatmentListCreateView(APIView):
         status_filter = request.query_params.get("status", "").strip()
         if status_filter and status_filter != "All":
             qs = qs.filter(status=status_filter)
-        data = TreatmentRecordSerializer(qs.order_by("-treatment_date")[:500], many=True).data
-        return Response({"treatments": data, "total": qs.count()})
+        rows, next_cursor, limit = paginate_queryset(qs, request)
+        data = TreatmentRecordSerializer(rows, many=True).data
+        return Response({"treatments": data, "total": qs.count(), "nextCursor": next_cursor, "limit": limit})
 
     def post(self, request):
         serializer = TreatmentCreateSerializer(data=request.data, context={"request": request})

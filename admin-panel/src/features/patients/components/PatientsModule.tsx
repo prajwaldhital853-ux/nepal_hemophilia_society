@@ -67,7 +67,9 @@ export default function PatientsModule() {
   const [province, setProvince] = useState(lockedProvince || "All");
   const [openProvince, setOpenProvince] = useState(false);
   const [rows, setRows] = useState<PatientRow[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -86,20 +88,44 @@ export default function PatientsModule() {
     if (debounced.trim()) params.set("search", debounced.trim());
     if (from) params.set("from", from);
     if (to) params.set("to", to);
-    const suffix = params.toString() ? `?${params.toString()}` : "";
+    params.set("limit", "25");
+    const suffix = `?${params.toString()}`;
     setLoading(true);
     setError("");
     void apiFetch(`/patients/${suffix}`)
       .then((data) => {
         const next = Array.isArray(data.patients) ? data.patients.map(toRow) : [];
         setRows(next);
+        setNextCursor(data.nextCursor ?? null);
       })
       .catch((err: Error) => {
         setRows([]);
+        setNextCursor(null);
         setError(err.message || "Failed to load patients");
       })
       .finally(() => setLoading(false));
   }, [debounced, from, to]);
+
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    const params = new URLSearchParams();
+    if (debounced.trim()) params.set("search", debounced.trim());
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    params.set("limit", "25");
+    params.set("cursor", nextCursor);
+    try {
+      const data = await apiFetch(`/patients/?${params.toString()}`);
+      const extra = Array.isArray(data.patients) ? data.patients.map(toRow) : [];
+      setRows((current) => [...current, ...extra]);
+      setNextCursor(data.nextCursor ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load more patients");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   const hemIdSearch = useMemo(() => {
     const term = debounced.trim();
@@ -334,8 +360,18 @@ export default function PatientsModule() {
 
         <div className="table-footer flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
           <p>
-            Showing {visible.length ? 1 : 0} to {visible.length} of {formatNumber(visible.length)} entries
+            Showing {visible.length ? 1 : 0} to {visible.length} of {formatNumber(visible.length)} loaded
           </p>
+          {nextCursor ? (
+            <button
+              type="button"
+              onClick={() => void loadMore()}
+              disabled={loadingMore}
+              className="rounded border border-line px-2 py-1 text-[11px] font-semibold text-brand disabled:opacity-60"
+            >
+              {loadingMore ? "Loading…" : "Load more"}
+            </button>
+          ) : null}
         </div>
       </section>
     </div>

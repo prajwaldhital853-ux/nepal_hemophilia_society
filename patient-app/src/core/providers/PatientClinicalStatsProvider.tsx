@@ -98,8 +98,8 @@ export function PatientClinicalStatsProvider({ children }: { children: ReactNode
     setLoading(true);
     try {
       const [injData, bleedData] = await Promise.all([
-        patientApi("/me/patient/injections/", { token }),
-        patientApi("/me/patient/bleeding-episodes/", { token }).catch(() => ({ episodes: [] })),
+        patientApi("/me/patient/injections/?limit=100", { token }),
+        patientApi("/me/patient/bleeding-episodes/?limit=100", { token }).catch(() => ({ episodes: [] })),
       ]);
       setInjections(Array.isArray(injData.injections) ? injData.injections : []);
       setBleedingEpisodes(Array.isArray(bleedData.episodes) ? bleedData.episodes : []);

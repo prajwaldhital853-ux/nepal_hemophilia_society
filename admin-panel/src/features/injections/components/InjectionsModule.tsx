@@ -64,7 +64,9 @@ export default function InjectionsModule() {
   const [openStatus, setOpenStatus] = useState(false);
   const [selected, setSelected] = useState<ApiInjection | null>(null);
   const [rows, setRows] = useState<ApiInjection[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [showLog, setShowLog] = useState(false);
   const [relatedInjections, setRelatedInjections] = useState<ApiInjection[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
@@ -80,14 +82,35 @@ export default function InjectionsModule() {
         indication: type === "All" ? undefined : type,
         from: from || undefined,
         to: to || undefined,
+        limit: 25,
       });
       setRows(data.injections ?? []);
+      setNextCursor(data.nextCursor ?? null);
     } catch {
       setRows([]);
     } finally {
       setLoading(false);
     }
   }, [status, type, from, to]);
+
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await fetchInjections({
+        status: status === "All" ? undefined : status,
+        indication: type === "All" ? undefined : type,
+        from: from || undefined,
+        to: to || undefined,
+        cursor: nextCursor,
+        limit: 25,
+      });
+      setRows((current) => [...current, ...(data.injections ?? [])]);
+      setNextCursor(data.nextCursor ?? null);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   useEffect(() => {
     void load();
@@ -625,6 +648,18 @@ export default function InjectionsModule() {
                 )}
               </tbody>
             </table>
+            {nextCursor ? (
+              <div className="flex justify-end px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => void loadMore()}
+                  disabled={loadingMore}
+                  className="rounded border border-line px-2 py-1 text-[11px] font-semibold text-brand disabled:opacity-60"
+                >
+                  {loadingMore ? "Loading…" : "Load more"}
+                </button>
+              </div>
+            ) : null}
           </div>
         </section>
       {showLog ? (

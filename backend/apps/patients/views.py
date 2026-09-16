@@ -11,6 +11,8 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+from apps.core.pagination import paginate_queryset
 from rest_framework.views import APIView
 
 from apps.accounts.models import UserRole
@@ -156,8 +158,9 @@ class PatientViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(updated_at__date__gte=date_from)
         if date_to:
             queryset = queryset.filter(updated_at__date__lte=date_to)
-        serializer = self.get_serializer(queryset, many=True)
-        return Response({"patients": serializer.data})
+        rows, next_cursor, limit = paginate_queryset(queryset, request)
+        serializer = self.get_serializer(rows, many=True)
+        return Response({"patients": serializer.data, "nextCursor": next_cursor, "limit": limit})
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()

@@ -25,7 +25,7 @@ export function usePatientInjections() {
     setError("");
     setLoading(true);
     try {
-      const data = await patientApi("/me/patient/injections/", { token });
+      const data = await patientApi("/me/patient/injections/?limit=100", { token });
       const rows = Array.isArray(data.injections) ? data.injections : [];
       setInjections(
         [...rows].sort((a, b) => new Date(b.administeredAt).getTime() - new Date(a.administeredAt).getTime()),

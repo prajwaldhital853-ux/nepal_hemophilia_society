@@ -16,6 +16,7 @@ from apps.accounts.rbac import (
 )
 from apps.accounts.staffing import photo_url_for, staff_queryset_for
 from apps.patients.models import Patient
+from apps.core.pagination import paginate_sequence
 
 
 def _patient_queryset_for(actor):
@@ -148,6 +149,8 @@ class UsersDirectoryView(APIView):
             for patient in patients.order_by("full_name")[:400]:
                 rows.append(_serialize_patient(patient, request))
 
+        page_rows, next_cursor, limit = paginate_sequence(rows, request, id_getter=lambda row: row["id"])
+
         login_users = User.objects.exclude(role=UserRole.PATIENT)
         if not is_national_scope(request.user):
             if request.user.role == UserRole.PROVINCE_ADMIN:
@@ -197,4 +200,14 @@ class UsersDirectoryView(APIView):
             "patients": sum(1 for row in rows if row["isPatient"]),
             "active": sum(1 for row in rows if row["status"] == "Active"),
         }
-        return Response({"users": rows, "total": len(rows), "counts": counts, "loginTracking": login_tracking, "devices": devices})
+        return Response(
+            {
+                "users": page_rows,
+                "total": len(rows),
+                "counts": counts,
+                "loginTracking": login_tracking,
+                "devices": devices,
+                "nextCursor": next_cursor,
+                "limit": limit,
+            }
+        )

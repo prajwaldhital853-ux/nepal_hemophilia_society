@@ -1,18 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, Database, Globe, Lock, Moon, Save, Shield } from "lucide-react";
 
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
+import { apiDownload, apiFetch } from "@/lib/api";
 import { Perm } from "@/lib/permissions";
 
 const tabs = ["General", "Security", "Notifications", "Backups", "Integrations"] as const;
+
+type BackupRow = {
+  filename: string;
+  kind: string;
+  sizeBytes: number;
+  createdAt: string;
+  sha256?: string;
+};
 
 export default function SettingsModule() {
   const { theme, toggle } = useTheme();
   const { can, user } = useAuth();
   const canSave = can(Perm.settingsSystem) && !user?.viewOnly;
+  const isSuper = user?.role === "super_admin";
   const [tab, setTab] = useState<(typeof tabs)[number]>("General");
   const [orgName, setOrgName] = useState("Nepal Hemophilia Society");
   const [locale, setLocale] = useState("en-NP");
@@ -20,13 +30,61 @@ export default function SettingsModule() {
   const [sessionMins, setSessionMins] = useState("45");
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [smsAlerts, setSmsAlerts] = useState(false);
-  const [backupHour, setBackupHour] = useState("02:30");
   const [saved, setSaved] = useState(false);
+  const [backups, setBackups] = useState<BackupRow[]>([]);
+  const [backupStatus, setBackupStatus] = useState("");
+  const [backupBusy, setBackupBusy] = useState(false);
 
   function save() {
     setSaved(true);
     window.setTimeout(() => setSaved(false), 1800);
   }
+
+  async function downloadBackup(filename: string) {
+    await apiDownload(
+      `/backups/${encodeURIComponent(filename)}/download/`,
+      filename.replace(/\.zip\.enc$/i, ".zip"),
+    );
+  }
+
+  async function loadBackups(autoDownloadLatest = false) {
+    if (!isSuper) return;
+    setBackupStatus("");
+    try {
+      const data = await apiFetch("/backups/");
+      const rows = (data.backups ?? []) as BackupRow[];
+      setBackups(rows);
+      if (autoDownloadLatest && data.autoCreated && data.latest?.filename) {
+        await downloadBackup(data.latest.filename);
+        setBackupStatus(`Daily encrypted backup downloaded to this Super Admin device: ${data.latest.filename}`);
+      }
+    } catch (err) {
+      setBackupStatus(err instanceof Error ? err.message : "Could not load backups");
+    }
+  }
+
+  async function createManualBackup() {
+    if (!isSuper || backupBusy) return;
+    setBackupBusy(true);
+    setBackupStatus("");
+    try {
+      const data = await apiFetch("/backups/", { method: "POST", body: JSON.stringify({ kind: "manual" }) });
+      const filename = data.backup?.filename as string;
+      await loadBackups(false);
+      if (filename) {
+        await downloadBackup(filename);
+        setBackupStatus(`Manual backup created and downloaded: ${filename}`);
+      }
+    } catch (err) {
+      setBackupStatus(err instanceof Error ? err.message : "Could not create backup");
+    } finally {
+      setBackupBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (tab === "Backups" && isSuper) void loadBackups(true);
+  }, [tab, isSuper]);
 
   return (
     <div className="flex flex-col gap-2">
@@ -122,8 +180,9 @@ export default function SettingsModule() {
             </h2>
             <ul className="mt-3 space-y-2 text-[11px] text-muted">
               <li>Password rotation: 90 days</li>
-              <li>Failed logins before lock: 5</li>
-              <li>IP allow-list: provincial offices + VPN</li>
+              <li>Failed logins before device lock: 3 (5 minutes)</li>
+              <li>Idle failed-attempt reset: 1 hour</li>
+              <li>Admin JWT: 8 hour access / 12 hour refresh</li>
             </ul>
           </article>
         </div>
@@ -152,16 +211,58 @@ export default function SettingsModule() {
         <article className="panel p-3">
           <h2 className="flex items-center gap-1.5 text-[12px] font-semibold text-ink">
             <Database className="size-3.5 text-brand" />
-            Nightly backup
+            Encrypted backups
           </h2>
-          <label className="mt-3 block text-[10px] text-muted">Run at (NPT)</label>
-          <input
-            type="time"
-            value={backupHour}
-            onChange={(e) => setBackupHour(e.target.value)}
-            className="mt-1 rounded border border-line-subtle bg-elevated px-2.5 py-1.5 text-[11px] text-ink outline-none"
-          />
-          <p className="mt-3 text-[11px] text-muted">Last successful backup: May 16, 2025 02:31 AM · encrypted object store</p>
+          {isSuper ? (
+            <>
+              <p className="mt-2 text-[11px] text-muted">
+                Daily encrypted archives of users, admins, and clinical data. Files download only to this Super Admin
+                device. Server keeps the last 14 backups.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => void createManualBackup()}
+                  disabled={backupBusy}
+                  className="rounded bg-brand px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60"
+                >
+                  {backupBusy ? "Creating…" : "Create and download backup now"}
+                </button>
+                {backups[0] ? (
+                  <button
+                    type="button"
+                    onClick={() => void downloadBackup(backups[0].filename)}
+                    className="rounded border border-line px-3 py-1.5 text-[11px] font-semibold text-ink"
+                  >
+                    Download latest
+                  </button>
+                ) : null}
+              </div>
+              {backupStatus ? <p className="mt-2 text-[11px] text-brand">{backupStatus}</p> : null}
+              <ul className="mt-3 space-y-1 text-[11px] text-muted">
+                {backups.length === 0 ? (
+                  <li>No backups yet. Create one or open this tab after 20 hours for an automatic daily backup.</li>
+                ) : (
+                  backups.slice(0, 8).map((row) => (
+                    <li key={row.filename} className="flex items-center justify-between gap-2">
+                      <span>
+                        {row.kind} · {new Date(row.createdAt).toLocaleString()} · {Math.round(row.sizeBytes / 1024)} KB
+                      </span>
+                      <button
+                        type="button"
+                        className="text-[11px] font-semibold text-brand"
+                        onClick={() => void downloadBackup(row.filename)}
+                      >
+                        Download
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </>
+          ) : (
+            <p className="mt-2 text-[11px] text-muted">Only Super Admin can create or download backups.</p>
+          )}
         </article>
       ) : null}
 

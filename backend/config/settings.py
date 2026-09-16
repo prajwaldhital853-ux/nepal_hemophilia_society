@@ -10,6 +10,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
 from django.core.exceptions import ImproperlyConfigured
+from corsheaders.defaults import default_headers
 from dotenv import load_dotenv
 
 # backend/ -> project root
@@ -139,6 +140,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.core.middleware.SecurityHeadersMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -257,8 +259,10 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "30/minute",
-        "user": "300/minute" if DEBUG else "180/minute",
-        "patient_login": "20/minute",
+        "user": "300/minute" if DEBUG else "120/minute",
+        "patient_login": "15/minute",
+        "login_device": "12/minute",
+        "password_change": "8/hour",
     },
     "DATETIME_FORMAT": "%Y-%m-%dT%H:%M:%S%z",
 }
@@ -296,6 +300,16 @@ CORS_ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = list(default_headers) + ["x-device-id"]
+CSRF_TRUSTED_ORIGINS = list(CORS_ALLOWED_ORIGINS)
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+BACKUP_ROOT = BASE_DIR / "private_backups"
+BACKUP_ENCRYPTION_KEY = os.getenv("BACKUP_ENCRYPTION_KEY", "").strip()
+if not DEBUG and not BACKUP_ENCRYPTION_KEY:
+    raise ImproperlyConfigured("Set BACKUP_ENCRYPTION_KEY when DEBUG is False.")
 
 # ---------------------------------------------------------------------------
 # Static & Media
@@ -373,8 +387,7 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    SESSION_COOKIE_HTTPONLY = True
-    CSRF_COOKIE_HTTPONLY = True
+    REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = ["rest_framework.renderers.JSONRenderer"]
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
     EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))

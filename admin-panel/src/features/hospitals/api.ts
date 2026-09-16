@@ -10,13 +10,13 @@ import { staffLabels } from "./types";
 
 export async function fetchHospitalStaff(
   staffType: HospitalStaffType,
-  params: { province?: string; search?: string; page?: number; pageSize?: number } = {},
+  params: { province?: string; search?: string; cursor?: string; limit?: number } = {},
 ) {
   const query = new URLSearchParams();
   if (params.province && params.province !== "All") query.set("province", params.province);
   if (params.search?.trim()) query.set("search", params.search.trim());
-  if (params.page) query.set("page", String(params.page));
-  if (params.pageSize) query.set("pageSize", String(params.pageSize));
+  if (params.cursor) query.set("cursor", params.cursor);
+  if (params.limit) query.set("limit", String(params.limit));
   const suffix = query.toString() ? `?${query.toString()}` : "";
   return apiFetch(`${staffLabels[staffType].apiPath}${suffix}`) as Promise<HospitalStaffListResponse>;
 }

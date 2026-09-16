@@ -31,8 +31,8 @@ export type HospitalStaffProfile = HospitalStaffRow & {
 export type HospitalStaffListResponse = {
   staff: HospitalStaffProfile[];
   total: number;
-  page: number;
-  pageSize: number;
+  nextCursor?: string | null;
+  limit?: number;
   totalsByProvince: Record<string, number>;
 };
 

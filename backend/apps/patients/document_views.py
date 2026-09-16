@@ -11,6 +11,7 @@ from apps.accounts.permissions import CanAddDocuments, IsAdminRole, IsPatientRol
 from apps.accounts.rbac import is_national_scope, province_id_for
 from apps.audit.models import AuditLog
 from apps.core.clinical import can_view_patient, resolve_actor_hospital
+from apps.core.pagination import paginate_queryset
 from apps.hospitals.models import Hospital
 from apps.patients.clinical_views import _get_patient_or_404
 from apps.patients.models import PatientDocument
@@ -65,8 +66,9 @@ class PatientDocumentsView(APIView):
         if not can_view_patient(request.user, patient):
             raise PermissionDenied("You cannot view this patient.")
         qs = _filter_documents(_document_queryset(patient), request.query_params)
-        data = [serialize_patient_document(doc, request) for doc in qs]
-        return Response({"documents": data, "total": len(data)})
+        rows, next_cursor, limit = paginate_queryset(qs, request)
+        data = [serialize_patient_document(doc, request) for doc in rows]
+        return Response({"documents": data, "total": qs.count(), "nextCursor": next_cursor, "limit": limit})
 
     def post(self, request, patient_id):
         patient = _get_patient_or_404(patient_id)
@@ -147,5 +149,6 @@ class PatientMeDocumentsView(APIView):
         if not patient:
             raise NotFound("No patient record is linked to this account.")
         qs = _filter_documents(_document_queryset(patient), request.query_params)
-        data = [serialize_patient_document(doc, request) for doc in qs]
-        return Response({"documents": data, "total": len(data)})
+        rows, next_cursor, limit = paginate_queryset(qs, request)
+        data = [serialize_patient_document(doc, request) for doc in rows]
+        return Response({"documents": data, "total": qs.count(), "nextCursor": next_cursor, "limit": limit})

@@ -42,6 +42,8 @@ export async function fetchInjections(params: {
   indication?: string;
   from?: string;
   to?: string;
+  cursor?: string;
+  limit?: number;
 } = {}) {
   const q = new URLSearchParams();
   if (params.patientId) q.set("patientId", params.patientId);
@@ -49,8 +51,14 @@ export async function fetchInjections(params: {
   if (params.indication && params.indication !== "All") q.set("indication", params.indication);
   if (params.from) q.set("from", params.from);
   if (params.to) q.set("to", params.to);
+  if (params.cursor) q.set("cursor", params.cursor);
+  if (params.limit) q.set("limit", String(params.limit));
   const suffix = q.toString() ? `?${q.toString()}` : "";
-  return apiFetch(`/injections/${suffix}`) as Promise<{ injections: ApiInjection[]; total: number }>;
+  return apiFetch(`/injections/${suffix}`) as Promise<{
+    injections: ApiInjection[];
+    total: number;
+    nextCursor?: string | null;
+  }>;
 }
 
 export async function fetchPatientInjections(patientId: string) {

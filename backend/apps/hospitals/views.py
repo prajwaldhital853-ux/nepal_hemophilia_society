@@ -15,6 +15,7 @@ from apps.hospitals.serializers import (
     HospitalStaffUpdateSerializer,
 )
 from apps.patients.views import client_ip
+from apps.core.pagination import paginate_queryset
 
 
 def _flatten_errors(detail):
@@ -93,25 +94,17 @@ class HospitalStaffViewSet(viewsets.ViewSet):
                 | Q(hospital__name__icontains=search)
             )
 
-        try:
-            page = max(1, int(request.query_params.get("page", 1)))
-        except ValueError:
-            page = 1
-        try:
-            page_size = min(50, max(1, int(request.query_params.get("pageSize", 10))))
-        except ValueError:
-            page_size = 10
-
+        rows, next_cursor, limit = paginate_queryset(qs, request)
         total = qs.count()
-        start = (page - 1) * page_size
-        page_qs = qs[start : start + page_size]
-        data = HospitalStaffSerializer(page_qs, many=True, context={"request": request}).data
+        data = HospitalStaffSerializer(rows, many=True, context={"request": request}).data
         return Response(
             {
                 "staff": data,
                 "total": total,
-                "page": page,
-                "pageSize": page_size,
+                "nextCursor": next_cursor,
+                "limit": limit,
+                "page": 1,
+                "pageSize": limit,
                 "totalsByProvince": province_totals(self._base_queryset()),
             }
         )

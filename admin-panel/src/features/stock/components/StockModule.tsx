@@ -75,9 +75,9 @@ export default function StockModule() {
   const [search, setSearch] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [historyPage, setHistoryPage] = useState(1);
-  const [historyTotalPages, setHistoryTotalPages] = useState(1);
+  const [movementCursor, setMovementCursor] = useState<string | null>(null);
   const [historyTotal, setHistoryTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,6 +87,7 @@ export default function StockModule() {
         fetchStock({
           search,
           hospitalName: hospitalFilter !== "All" ? hospitalFilter : undefined,
+          limit: 50,
         }),
         fetchStockMovements({
           type: typeFilter,
@@ -94,21 +95,40 @@ export default function StockModule() {
           from,
           to,
           hospitalName: hospitalFilter,
-          page: historyPage,
-          pageSize: 15,
+          limit: 15,
         }),
       ]);
       setLots(stock.stock ?? []);
       setTotalQuantity(stock.totalQuantity ?? 0);
       setMovements(history.movements ?? []);
       setHistoryTotal(history.total ?? 0);
-      setHistoryTotalPages(history.totalPages ?? 1);
+      setMovementCursor(history.nextCursor ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load stock");
     } finally {
       setLoading(false);
     }
-  }, [search, typeFilter, hospitalFilter, from, to, historyPage]);
+  }, [search, typeFilter, hospitalFilter, from, to]);
+
+  async function loadMoreMovements() {
+    if (!movementCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const history = await fetchStockMovements({
+        type: typeFilter,
+        search,
+        from,
+        to,
+        hospitalName: hospitalFilter,
+        cursor: movementCursor,
+        limit: 15,
+      });
+      setMovements((current) => [...current, ...(history.movements ?? [])]);
+      setMovementCursor(history.nextCursor ?? null);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   useEffect(() => {
     void load();
@@ -362,26 +382,18 @@ export default function StockModule() {
         </table>
         <div className="mt-3 flex items-center justify-between gap-2">
           <p className="text-[10px] text-muted">
-            Page {historyPage} of {historyTotalPages} · {historyTotal} movement(s)
+            {movements.length} of {historyTotal} movement(s) loaded
           </p>
-          <div className="flex gap-2">
+          {movementCursor ? (
             <button
               type="button"
-              disabled={historyPage <= 1}
-              onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
-              className="rounded border border-line px-2 py-1 text-[10px] font-semibold disabled:opacity-40"
+              disabled={loadingMore}
+              onClick={() => void loadMoreMovements()}
+              className="rounded border border-line px-2 py-1 text-[10px] font-semibold text-brand disabled:opacity-40"
             >
-              Previous
+              {loadingMore ? "Loading…" : "Load more"}
             </button>
-            <button
-              type="button"
-              disabled={historyPage >= historyTotalPages}
-              onClick={() => setHistoryPage((p) => p + 1)}
-              className="rounded border border-line px-2 py-1 text-[10px] font-semibold disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
+          ) : null}
         </div>
       </article>
 

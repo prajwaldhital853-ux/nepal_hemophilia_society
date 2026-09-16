@@ -66,9 +66,9 @@ class User(AbstractUser):
 
 
 class LoginDeviceLock(models.Model):
-    """Failed-password lock scoped to one device + identifier, not the whole account."""
+    """Failed-password lock scoped to one device. Never keyed by IP."""
 
-    device_id = models.CharField(max_length=64, db_index=True)
+    device_id = models.CharField(max_length=64, unique=True)
     identifier = models.CharField(max_length=255, db_index=True)
     user = models.ForeignKey(
         "User",
@@ -83,7 +83,6 @@ class LoginDeviceLock(models.Model):
 
     class Meta:
         db_table = "login_device_locks"
-        unique_together = ("device_id", "identifier")
 
     def __str__(self):
         return f"{self.identifier} @ {self.device_id[:8]}"

@@ -7,12 +7,20 @@ export class ApiError extends Error {
   status: number;
   code?: string;
   attemptsRemaining?: number;
+  lockedUntil?: string;
+  retryAfterSeconds?: number;
 
-  constructor(message: string, status: number, extra?: { code?: string; attemptsRemaining?: number }) {
+  constructor(
+    message: string,
+    status: number,
+    extra?: { code?: string; attemptsRemaining?: number; lockedUntil?: string; retryAfterSeconds?: number },
+  ) {
     super(message);
     this.status = status;
     this.code = extra?.code;
     this.attemptsRemaining = extra?.attemptsRemaining;
+    this.lockedUntil = extra?.lockedUntil;
+    this.retryAfterSeconds = extra?.retryAfterSeconds;
   }
 }
 
@@ -55,6 +63,8 @@ export async function patientApi(path: string, init: ApiOptions = {}) {
     headers.set("Content-Type", "application/json");
   }
   if (token) headers.set("Authorization", `Bearer ${token}`);
+  const { getDeviceId } = await import("@/core/auth/storage");
+  headers.set("X-Device-Id", await getDeviceId());
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -78,7 +88,12 @@ export async function patientApi(path: string, init: ApiOptions = {}) {
       throw new ApiError(
         typeof data.error === "string" ? data.error : "Request failed",
         res.status,
-        { code: data.code, attemptsRemaining: data.attemptsRemaining },
+        {
+          code: data.code,
+          attemptsRemaining: data.attemptsRemaining,
+          lockedUntil: data.lockedUntil,
+          retryAfterSeconds: data.retryAfterSeconds,
+        },
       );
     }
     return data;

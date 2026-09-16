@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta, timezone
 
 from django.contrib.auth import get_user_model
+from django.utils import timezone as dj_timezone
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import AccessToken
 
-from apps.accounts.models import UserRole
+from apps.accounts.models import LoginDeviceLock, UserRole
 from apps.accounts.rbac import (
     PERM_AUDIT_VIEW,
     PERM_DASHBOARD,
@@ -24,6 +25,15 @@ from apps.hospitals.models import Hospital, HospitalAdmin, HospitalStaffType
 from apps.provinces.models import Province, ProvinceAdmin
 
 User = get_user_model()
+TEST_DEVICE = "testdevice-admin-01"
+
+
+def post_admin_login(client, username, password, device=TEST_DEVICE):
+    return client.post(
+        "/api/v1/auth/login/",
+        {"username": username, "password": password, "deviceId": device},
+        format="json",
+    )
 
 
 class RbacMatrixTests(APITestCase):
@@ -113,34 +123,23 @@ class RbacMatrixTests(APITestCase):
         self.treatment.save()
         self.assertEqual(permissions_for(self.treatment), [])
 
-    def test_admin_login_issues_long_lived_tokens(self):
-        res = self.client.post(
-            "/api/v1/auth/login/",
-            {"username": "super", "password": "ChangeMe#2026"},
-            format="json",
-        )
+    def test_admin_login_issues_shift_length_tokens(self):
+        res = post_admin_login(self.client, "super", "ChangeMe#2026")
         self.assertEqual(res.status_code, 200, res.data)
         access = AccessToken(res.data["access"])
-        refresh_exp = datetime.fromtimestamp(access["exp"], tz=timezone.utc)
-        self.assertGreater(refresh_exp, datetime.now(tz=timezone.utc) + timedelta(days=3000))
+        access_exp = datetime.fromtimestamp(access["exp"], tz=timezone.utc)
+        self.assertGreater(access_exp, datetime.now(tz=timezone.utc) + timedelta(hours=7))
+        self.assertLess(access_exp, datetime.now(tz=timezone.utc) + timedelta(hours=9))
 
     def test_admin_login_rejects_patient(self):
-        res = self.client.post(
-            "/api/v1/auth/login/",
-            {"username": "pat", "password": "ChangeMe#2026"},
-            format="json",
-        )
+        res = post_admin_login(self.client, "pat", "ChangeMe#2026")
         self.assertIn(res.status_code, (400, 401))
         self.assertFalse(res.data.get("access"))
 
     def test_inactive_admin_cannot_login(self):
         self.treatment.is_active_account = False
         self.treatment.save()
-        res = self.client.post(
-            "/api/v1/auth/login/",
-            {"username": "tadmin", "password": "ChangeMe#2026"},
-            format="json",
-        )
+        res = post_admin_login(self.client, "tadmin", "ChangeMe#2026")
         self.assertIn(res.status_code, (400, 401))
         self.assertFalse(res.data.get("access"))
 
@@ -440,11 +439,7 @@ class RbacMatrixTests(APITestCase):
         self.province_user.staff_id = "PADM-00001"
         self.province_user.save()
         for ident in ("prov", "prov.admin@hemophilia.org.np", "PADM-00001"):
-            res = self.client.post(
-                "/api/v1/auth/login/",
-                {"username": ident, "password": "ChangeMe#2026"},
-                format="json",
-            )
+            res = post_admin_login(self.client, ident, "ChangeMe#2026")
             self.assertEqual(res.status_code, 200, ident)
             self.assertTrue(res.data.get("access"), ident)
 
@@ -467,11 +462,7 @@ class RbacMatrixTests(APITestCase):
         self.assertEqual(created.status_code, 201, created.data)
         self.assertEqual(created.data["admin"]["status"], "Pending")
         self.client.force_authenticate(None)
-        login = self.client.post(
-            "/api/v1/auth/login/",
-            {"username": "pending.admin@hemophilia.org.np", "password": "TempPass#123"},
-            format="json",
-        )
+        login = post_admin_login(self.client, "pending.admin@hemophilia.org.np", "TempPass#123")
         self.assertEqual(login.status_code, 200, login.data)
         self.assertTrue(login.data["mustChangePassword"])
         self.assertEqual(login.data["accountStatus"], "Pending")
@@ -489,11 +480,7 @@ class RbacMatrixTests(APITestCase):
         )
         self.assertEqual(changed.status_code, 200, changed.data)
         self.client.credentials()
-        again = self.client.post(
-            "/api/v1/auth/login/",
-            {"username": created.data["credentials"]["username"], "password": "OwnPass#2026"},
-            format="json",
-        )
+        again = post_admin_login(self.client, created.data["credentials"]["username"], "OwnPass#2026")
         self.assertEqual(again.status_code, 200, again.data)
         self.assertFalse(again.data["mustChangePassword"])
         self.client.force_authenticate(self.super)
@@ -596,4 +583,51 @@ class StaffDeleteTests(APITestCase):
         self.client.force_authenticate(self.province_user)
         res = self.client.delete("/api/v1/admins/staff/TADM-00001/")
         self.assertEqual(res.status_code, 204)
+
+
+class AdminDeviceLockTests(APITestCase):
+    def setUp(self):
+        self.super = User.objects.create_user(username="super", password="ChangeMe#2026", role=UserRole.SUPER_ADMIN)
+        self.device_a = "lock-device-aaaa-01"
+        self.device_b = "lock-device-bbbb-02"
+
+    def test_third_failure_locks_only_that_device(self):
+        for _ in range(3):
+            res = post_admin_login(self.client, "super", "WrongPass#1", self.device_a)
+        self.assertEqual(res.status_code, 423)
+        self.assertEqual(res.data["code"], "device_locked")
+        other = post_admin_login(self.client, "super", "ChangeMe#2026", self.device_b)
+        self.assertEqual(other.status_code, 200, other.data)
+        still_locked = post_admin_login(self.client, "super", "ChangeMe#2026", self.device_a)
+        self.assertEqual(still_locked.status_code, 423)
+
+    def test_idle_hour_resets_attempt_count(self):
+        post_admin_login(self.client, "super", "WrongPass#1", self.device_a)
+        post_admin_login(self.client, "super", "WrongPass#1", self.device_a)
+        LoginDeviceLock.objects.filter(device_id=self.device_a).update(
+            updated_at=dj_timezone.now() - timedelta(hours=2),
+        )
+        first = post_admin_login(self.client, "super", "WrongPass#1", self.device_a)
+        self.assertEqual(first.status_code, 401)
+        self.assertEqual(first.data["attemptsRemaining"], 2)
+        ok = post_admin_login(self.client, "super", "ChangeMe#2026", self.device_a)
+        self.assertEqual(ok.status_code, 200, ok.data)
+
+    def test_lock_expires_after_five_minutes(self):
+        for _ in range(3):
+            post_admin_login(self.client, "super", "WrongPass#1", self.device_a)
+        LoginDeviceLock.objects.filter(device_id=self.device_a).update(
+            locked_until=dj_timezone.now() - timedelta(seconds=5),
+            failed_attempts=3,
+        )
+        ok = post_admin_login(self.client, "super", "ChangeMe#2026", self.device_a)
+        self.assertEqual(ok.status_code, 200, ok.data)
+
+    def test_login_requires_device_id(self):
+        res = self.client.post(
+            "/api/v1/auth/login/",
+            {"username": "super", "password": "ChangeMe#2026"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400)
 

@@ -24,24 +24,32 @@ export default function DocumentsScreen({}: Props) {
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const [docs, setDocs] = useState<Doc[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [center, setCenter] = useState("");
   const [from, setFrom] = useState("");
   const [error, setError] = useState("");
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (cursor?: string) => {
     if (!token) return;
     const q = new URLSearchParams();
     if (search.trim()) q.set("search", search.trim());
     if (center.trim()) q.set("center", center.trim());
     if (from.trim()) q.set("from", from.trim());
-    const suffix = q.toString() ? `?${q.toString()}` : "";
+    q.set("limit", "25");
+    if (cursor) q.set("cursor", cursor);
     try {
-      const data = await patientApi(`/me/patient/documents/${suffix}`, { token });
-      setDocs(data.documents ?? []);
+      if (cursor) setLoadingMore(true);
+      const data = await patientApi(`/me/patient/documents/?${q.toString()}`, { token });
+      const rows = data.documents ?? [];
+      setDocs((current) => (cursor ? [...current, ...rows] : rows));
+      setNextCursor(data.nextCursor ?? null);
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load documents");
+    } finally {
+      setLoadingMore(false);
     }
   }, [token, search, center, from]);
 
@@ -97,6 +105,15 @@ export default function DocumentsScreen({}: Props) {
             </Pressable>
           ))
         )}
+        {nextCursor ? (
+          <Pressable
+            style={styles.card}
+            onPress={() => void load(nextCursor)}
+            disabled={loadingMore}
+          >
+            <Text style={styles.name}>{loadingMore ? "Loading…" : "Load more documents"}</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
     </View>
   );

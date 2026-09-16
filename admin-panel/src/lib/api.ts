@@ -5,10 +5,32 @@ import {
   readAuthValue,
   writeAuthValue,
 } from "@/lib/authStorage";
+import { getAdminDeviceId } from "@/lib/deviceId";
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1";
 
 const API_FORM_TIMEOUT_MS = 120_000;
+
+export class ApiClientError extends Error {
+  status: number;
+  code?: string;
+  attemptsRemaining?: number;
+  lockedUntil?: string;
+  retryAfterSeconds?: number;
+
+  constructor(
+    message: string,
+    status: number,
+    extra?: { code?: string; attemptsRemaining?: number; lockedUntil?: string; retryAfterSeconds?: number },
+  ) {
+    super(message);
+    this.status = status;
+    this.code = extra?.code;
+    this.attemptsRemaining = extra?.attemptsRemaining;
+    this.lockedUntil = extra?.lockedUntil;
+    this.retryAfterSeconds = extra?.retryAfterSeconds;
+  }
+}
 
 export function resolveMediaUrl(url?: string | null): string {
   if (!url) return "";
@@ -48,7 +70,7 @@ export async function refreshAccessToken(): Promise<string | null> {
   try {
     const res = await fetch(`${API_BASE}/auth/refresh/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Device-Id": getAdminDeviceId() },
       body: JSON.stringify({ refresh }),
     });
     const data = await res.json().catch(() => ({}));
@@ -79,6 +101,7 @@ export async function apiFetch(path: string, init: ApiInit = {}) {
   const { skipAuthRedirect, _retried, ...rest } = init;
   const headers = new Headers(rest.headers);
   headers.set("Content-Type", "application/json");
+  headers.set("X-Device-Id", getAdminDeviceId());
   const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const res = await fetch(`${API_BASE}${path}`, { ...rest, headers });
@@ -104,13 +127,52 @@ export async function apiFetch(path: string, init: ApiInit = {}) {
   }
 
   if (!res.ok) {
-    throw new Error(formatApiError(data));
+    const record = data as Record<string, unknown>;
+    throw new ApiClientError(formatApiError(data), res.status, {
+      code: typeof record.code === "string" ? record.code : undefined,
+      attemptsRemaining: typeof record.attemptsRemaining === "number" ? record.attemptsRemaining : undefined,
+      lockedUntil: typeof record.lockedUntil === "string" ? record.lockedUntil : undefined,
+      retryAfterSeconds: typeof record.retryAfterSeconds === "number" ? record.retryAfterSeconds : undefined,
+    });
   }
   return data;
 }
 
+export async function apiDownload(path: string, filename: string) {
+  const headers = new Headers();
+  headers.set("X-Device-Id", getAdminDeviceId());
+  const token = getAccessToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  let res = await fetch(`${API_BASE}${path}`, { headers });
+  if (res.status === 401 && typeof window !== "undefined") {
+    const nextToken = await refreshAccessToken();
+    if (nextToken) {
+      headers.set("Authorization", `Bearer ${nextToken}`);
+      res = await fetch(`${API_BASE}${path}`, { headers });
+    } else {
+      clearAccessToken();
+      window.location.href = "/login";
+      throw new Error("Session expired");
+    }
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiClientError(formatApiError(data, "Download failed"), res.status);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename.replace(/\.zip\.enc$/i, ".zip.enc");
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 async function fetchFormOnce(path: string, formData: FormData, method: string, token: string) {
   const headers = new Headers();
+  headers.set("X-Device-Id", getAdminDeviceId());
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), API_FORM_TIMEOUT_MS);

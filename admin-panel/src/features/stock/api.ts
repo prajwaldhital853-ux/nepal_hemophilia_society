@@ -39,16 +39,19 @@ export type StockMovementRow = {
   injectionId?: number | null;
 };
 
-export async function fetchStock(params: { hospitalName?: string; search?: string; factorMedicineId?: string } = {}) {
+export async function fetchStock(params: { hospitalName?: string; search?: string; cursor?: string; limit?: number } = {}) {
   const q = new URLSearchParams();
   if (params.hospitalName) q.set("hospitalName", params.hospitalName);
   if (params.search) q.set("search", params.search);
+  if (params.cursor) q.set("cursor", params.cursor);
+  if (params.limit) q.set("limit", String(params.limit));
   const suffix = q.toString() ? `?${q.toString()}` : "";
   return apiFetch(`/stock/${suffix}`) as Promise<{
     stock: StockLot[];
     total: number;
     totalQuantity: string | number;
     emptyLots: number;
+    nextCursor?: string | null;
   }>;
 }
 
@@ -59,8 +62,8 @@ export async function fetchStockMovements(params: {
   from?: string;
   to?: string;
   search?: string;
-  page?: number;
-  pageSize?: number;
+  cursor?: string;
+  limit?: number;
 } = {}) {
   const q = new URLSearchParams();
   if (params.type && params.type !== "All") q.set("type", params.type);
@@ -69,15 +72,13 @@ export async function fetchStockMovements(params: {
   if (params.from) q.set("from", params.from);
   if (params.to) q.set("to", params.to);
   if (params.search) q.set("search", params.search);
-  if (params.page) q.set("page", String(params.page));
-  if (params.pageSize) q.set("pageSize", String(params.pageSize));
+  if (params.cursor) q.set("cursor", params.cursor);
+  if (params.limit) q.set("limit", String(params.limit));
   const suffix = q.toString() ? `?${q.toString()}` : "";
   return apiFetch(`/stock/movements/${suffix}`) as Promise<{
     movements: StockMovementRow[];
     total: number;
-    page?: number;
-    pageSize?: number;
-    totalPages?: number;
+    nextCursor?: string | null;
   }>;
 }
 

@@ -44,21 +44,29 @@ function statusStyle(status: string) {
 export default function InjectionsScreen() {
   const { token } = useAuth();
   const [items, setItems] = useState<InjectionItem[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (cursor?: string) => {
     if (!token) return;
     setError("");
-    setLoading(true);
+    if (cursor) setLoadingMore(true);
+    else setLoading(true);
     try {
-      const data = await patientApi("/me/patient/injections/", { token });
-      setItems(Array.isArray(data.injections) ? data.injections : []);
+      const q = new URLSearchParams({ limit: "25" });
+      if (cursor) q.set("cursor", cursor);
+      const data = await patientApi(`/me/patient/injections/?${q.toString()}`, { token });
+      const rows = Array.isArray(data.injections) ? data.injections : [];
+      setItems((current) => (cursor ? [...current, ...rows] : rows));
+      setNextCursor(data.nextCursor ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load injections");
-      setItems([]);
+      if (!cursor) setItems([]);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [token]);
 
@@ -80,7 +88,12 @@ export default function InjectionsScreen() {
       <FlatList
         data={items}
         keyExtractor={(item) => String(item.id)}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={loading && items.length === 0} onRefresh={() => void load()} tintColor={colors.primary} />}
+        onEndReached={() => {
+          if (nextCursor && !loadingMore) void load(nextCursor);
+        }}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.primary} /> : null}
         ListEmptyComponent={
           !loading ? (
             <Text style={styles.empty}>No injection records yet. Records added by your treatment center will appear here.</Text>

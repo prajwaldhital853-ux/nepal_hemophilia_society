@@ -2,21 +2,33 @@ import os
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from rest_framework import serializers
+from rest_framework import serializers, status
+from rest_framework.exceptions import AuthenticationFailed, ValidationError
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from apps.accounts.device_lock import (
+    MAX_FAILED_ATTEMPTS,
+    is_device_locked,
+    is_valid_device_id,
+    lockout_payload,
+    register_failure,
+    register_success,
+)
 from apps.accounts.models import UserRole
 from apps.accounts.serializers import UserSerializer
+from apps.accounts.throttles import DeviceLoginThrottle
 from apps.audit.models import AuditLog
 from apps.patients.views import client_ip
 
 User = get_user_model()
 
-# Admin panel: no time-based logout while the browser tab stays open (sessionStorage on the client).
-ADMIN_ACCESS_LIFETIME = timedelta(days=int(os.getenv("JWT_ADMIN_ACCESS_DAYS", "3650")))
-ADMIN_REFRESH_LIFETIME = timedelta(days=int(os.getenv("JWT_ADMIN_REFRESH_DAYS", "3650")))
+ADMIN_ACCESS_LIFETIME = timedelta(hours=int(os.getenv("JWT_ADMIN_ACCESS_HOURS", "8")))
+ADMIN_REFRESH_LIFETIME = timedelta(hours=int(os.getenv("JWT_ADMIN_REFRESH_HOURS", "12")))
+GENERIC_ADMIN_LOGIN_ERROR = "Invalid admin ID/email/username or password."
 
 
 def issue_admin_tokens(user):
@@ -88,24 +100,50 @@ class NhmsTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class NhmsTokenObtainPairView(TokenObtainPairView):
     serializer_class = NhmsTokenObtainPairSerializer
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = [DeviceLoginThrottle]
 
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        if response.status_code == 200:
-            payload = getattr(response, "data", {}) or {}
-            user_payload = payload.get("user") or {}
-            actor = user_payload.get("username") or str(request.data.get("username") or "")
-            try:
-                AuditLog.objects.create(
-                    actor=actor,
-                    action="Admin login",
-                    module="Auth",
-                    ip=client_ip(request),
-                    detail=f"Signed in from {client_ip(request) or 'unknown IP'}",
-                )
-            except Exception:
-                pass
-        return response
+        identifier = str(request.data.get("username") or "").strip()
+        device_id = str(request.data.get("deviceId") or request.headers.get("X-Device-Id") or "").strip()
+        if not is_valid_device_id(device_id):
+            return Response({"error": "A valid device id is required."}, status=400)
+
+        locked = is_device_locked(device_id)
+        if locked:
+            return Response(lockout_payload(locked), status=423)
+
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except (ValidationError, AuthenticationFailed):
+            lock = register_failure(device_id, identifier)
+            if lock.locked_until:
+                return Response(lockout_payload(lock), status=423)
+            remaining = max(0, MAX_FAILED_ATTEMPTS - lock.failed_attempts)
+            return Response(
+                {
+                    "error": GENERIC_ADMIN_LOGIN_ERROR,
+                    "attemptsRemaining": remaining,
+                    "code": "invalid_credentials",
+                },
+                status=401,
+            )
+
+        user = serializer.user
+        register_success(device_id, identifier, user)
+        try:
+            AuditLog.objects.create(
+                actor=user.get_username(),
+                action="Admin login",
+                module="Auth",
+                ip=client_ip(request),
+                detail="Signed in from a registered device",
+            )
+        except Exception:
+            pass
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 
 class NhmsTokenRefreshSerializer(TokenRefreshSerializer):
@@ -115,8 +153,8 @@ class NhmsTokenRefreshSerializer(TokenRefreshSerializer):
         user = User.objects.filter(pk=user_id).first() if user_id else None
         is_patient = bool(user and user.role == UserRole.PATIENT)
         if is_patient:
-            access_lifetime = timedelta(days=int(os.getenv("JWT_PATIENT_ACCESS_DAYS", "365")))
-            refresh_lifetime = timedelta(days=int(os.getenv("JWT_PATIENT_REFRESH_DAYS", "3650")))
+            access_lifetime = timedelta(days=int(os.getenv("JWT_PATIENT_ACCESS_DAYS", "7")))
+            refresh_lifetime = timedelta(days=int(os.getenv("JWT_PATIENT_REFRESH_DAYS", "30")))
         else:
             access_lifetime = ADMIN_ACCESS_LIFETIME
             refresh_lifetime = ADMIN_REFRESH_LIFETIME

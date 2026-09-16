@@ -18,6 +18,7 @@ from apps.stock.serializers import (
     StockMovementSerializer,
     StockMoveSerializer,
 )
+from apps.core.pagination import paginate_queryset
 from apps.stock.services import _record_movement
 
 
@@ -107,10 +108,21 @@ class StockListCreateView(APIView):
             qs = qs.filter(factor_medicine_id=factor_id)
         if search:
             qs = qs.filter(factor_medicine__name__icontains=search)
-        lots = FactorStockSerializer(qs, many=True).data
         total_qty = qs.aggregate(s=Sum("quantity"))["s"] or 0
         low = qs.filter(quantity__lte=0).count()
-        return Response({"stock": lots, "total": qs.count(), "totalQuantity": total_qty, "emptyLots": low})
+        total = qs.count()
+        rows, next_cursor, limit = paginate_queryset(qs, request)
+        lots = FactorStockSerializer(rows, many=True).data
+        return Response(
+            {
+                "stock": lots,
+                "total": total,
+                "totalQuantity": total_qty,
+                "emptyLots": low,
+                "nextCursor": next_cursor,
+                "limit": limit,
+            }
+        )
 
     def post(self, request):
         serializer = StockCreateSerializer(data=request.data, context={"request": request})
@@ -299,19 +311,16 @@ class StockMovementListView(APIView):
             qs = qs.filter(created_at__date__lte=date_to)
         if search:
             qs = qs.filter(patient__full_name__icontains=search) | qs.filter(reason__icontains=search)
-        total = qs.count()
-        page = max(1, int(request.query_params.get("page", 1) or 1))
-        page_size = min(100, max(1, int(request.query_params.get("pageSize", 15) or 15)))
-        offset = (page - 1) * page_size
-        rows = qs.order_by("-created_at")[offset : offset + page_size]
+        rows, next_cursor, limit = paginate_queryset(qs, request)
         data = StockMovementSerializer(rows, many=True).data
         return Response(
             {
                 "movements": data,
-                "total": total,
-                "page": page,
-                "pageSize": page_size,
-                "totalPages": max(1, (total + page_size - 1) // page_size),
+                "total": qs.count(),
+                "nextCursor": next_cursor,
+                "limit": limit,
+                "page": 1,
+                "pageSize": limit,
             }
         )
 

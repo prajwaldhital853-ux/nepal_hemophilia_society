@@ -26,6 +26,8 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
   const [connectionHint, setConnectionHint] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lockedUntil, setLockedUntil] = useState("");
+  const [lockLabel, setLockLabel] = useState("");
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
@@ -57,6 +59,24 @@ export default function LoginScreen() {
   }, []);
 
   useEffect(() => {
+    if (!lockedUntil) return;
+    const tick = () => {
+      const until = new Date(lockedUntil).getTime();
+      const seconds = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+      const minutes = Math.floor(seconds / 60);
+      const rest = seconds % 60;
+      setLockLabel(`${minutes}:${String(rest).padStart(2, "0")}`);
+      if (seconds <= 0) {
+        setLockedUntil("");
+        setError("");
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lockedUntil]);
+
+  useEffect(() => {
     let cancelled = false;
     void checkApiReachable(5000)
       .then(() => {
@@ -83,6 +103,7 @@ export default function LoginScreen() {
 
   async function onLogin() {
     setError("");
+    if (lockedUntil) return;
     if (!userId.trim() || !password) {
       setError("Enter your email or patient ID and password.");
       return;
@@ -91,14 +112,17 @@ export default function LoginScreen() {
     try {
       await login(userId.trim(), password.trim());
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        setError(err.message || "Invalid patient ID/email or password.");
-      } else if (err instanceof ApiError && err.code === "device_locked") {
+      if (err instanceof ApiError && (err.code === "device_locked" || err.status === 423)) {
+        setLockedUntil(err.lockedUntil || new Date(Date.now() + (err.retryAfterSeconds || 300) * 1000).toISOString());
         setError(err.message);
+      } else if (err instanceof ApiError && err.status === 401) {
+        setError(
+          err.attemptsRemaining !== undefined
+            ? `${err.message} Attempts left on this device: ${err.attemptsRemaining}.`
+            : err.message || "Invalid patient ID/email or password.",
+        );
       } else if (err instanceof ApiError && err.status === 0) {
         setError(err.message);
-      } else if (err instanceof ApiError && err.attemptsRemaining !== undefined) {
-        setError(`${err.message} Attempts left on this device: ${err.attemptsRemaining}.`);
       } else {
         setError(err instanceof Error ? err.message : "Login failed");
       }
@@ -146,6 +170,8 @@ export default function LoginScreen() {
             error={error}
             connectionHint={connectionHint}
             loading={loading}
+            locked={Boolean(lockedUntil)}
+            lockLabel={lockLabel}
           />
         </View>
         {!keyboardVisible ? (

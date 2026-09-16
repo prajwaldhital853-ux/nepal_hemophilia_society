@@ -8,6 +8,7 @@
 *.pem
 *.key
 secrets/
+backend/private_backups/
 
 # =========================
 # Python / Django

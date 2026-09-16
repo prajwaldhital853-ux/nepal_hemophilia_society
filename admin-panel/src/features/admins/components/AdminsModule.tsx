@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, ChevronDown, Download, Eye, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 
@@ -50,11 +50,14 @@ export default function AdminsModule() {
   const { readOnly } = usePageRbac("admins");
   const canManage = (can(Perm.adminsManage) || can(Perm.provinceAdminsManage) || can(Perm.hospitalStaffManage)) && !user?.viewOnly;
   const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
   const [province, setProvince] = useState("All");
   const [kind, setKind] = useState<"" | StaffKind>("");
   const [openProvince, setOpenProvince] = useState(false);
   const [rows, setRows] = useState<StaffRecord[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [roles, setRoles] = useState<StaffKind[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -63,15 +66,47 @@ export default function AdminsModule() {
     setLoading(true);
     setError("");
     try {
-      const data = await fetchStaffDirectory({ kind: kind || undefined, search: query, province });
+      const data = await fetchStaffDirectory({
+        kind: kind || undefined,
+        search: debounced,
+        province,
+        limit: 25,
+      });
       setRows(data.staff);
+      setNextCursor(data.nextCursor);
     } catch (err) {
       setRows([]);
+      setNextCursor(null);
       setError(err instanceof Error ? err.message : "Failed to load admins");
     } finally {
       setLoading(false);
     }
   }
+
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await fetchStaffDirectory({
+        kind: kind || undefined,
+        search: debounced,
+        province,
+        cursor: nextCursor,
+        limit: 25,
+      });
+      setRows((current) => [...current, ...data.staff]);
+      setNextCursor(data.nextCursor);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load more admins");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(query), 300);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     void fetchStaffCatalog()
@@ -81,20 +116,9 @@ export default function AdminsModule() {
 
   useEffect(() => {
     void load();
-  }, [kind, province]);
+  }, [kind, province, debounced]);
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return rows.filter((admin) => {
-      const matchQuery =
-        !q ||
-        admin.id.toLowerCase().includes(q) ||
-        admin.fullName.toLowerCase().includes(q) ||
-        admin.email.toLowerCase().includes(q) ||
-        (admin.phone || "").includes(q);
-      return matchQuery;
-    });
-  }, [query, rows]);
+  const visible = rows;
 
   return (
     <div className="flex flex-col gap-2 pb-6">
@@ -322,6 +346,18 @@ export default function AdminsModule() {
             </tbody>
           </table>
         </div>
+        {nextCursor ? (
+          <div className="flex justify-end border-t border-line-subtle px-3 py-2">
+            <button
+              type="button"
+              onClick={() => void loadMore()}
+              disabled={loadingMore}
+              className="rounded border border-line px-2 py-1 text-[11px] font-semibold text-brand disabled:opacity-60"
+            >
+              {loadingMore ? "Loading…" : "Load more"}
+            </button>
+          </div>
+        ) : null}
       </section>
 
       {showForm ? (

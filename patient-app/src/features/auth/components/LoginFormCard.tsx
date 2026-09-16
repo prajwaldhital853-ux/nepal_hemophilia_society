@@ -21,6 +21,8 @@ type Props = {
   error?: string;
   connectionHint?: string;
   loading?: boolean;
+  locked?: boolean;
+  lockLabel?: string;
 };
 
 export function LoginFormCard({
@@ -38,6 +40,8 @@ export function LoginFormCard({
   error,
   connectionHint,
   loading,
+  locked,
+  lockLabel,
 }: Props) {
   const layout = useLoginLayout();
   const passwordRef = useRef<TextInput>(null);
@@ -115,6 +119,9 @@ export function LoginFormCard({
 
       {connectionHint ? <Text style={styles.hintText}>{connectionHint}</Text> : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {locked ? (
+        <Text style={styles.errorText}>This device is locked. Try again in {lockLabel || "a few minutes"}.</Text>
+      ) : null}
 
       <Pressable
         style={[
@@ -122,14 +129,16 @@ export function LoginFormCard({
           {
             marginTop: sectionGap,
             height: layout.buttonHeight,
-            opacity: loading ? 0.7 : 1,
+            opacity: loading || locked ? 0.7 : 1,
           },
         ]}
         onPress={onLogin}
-        disabled={loading}
+        disabled={loading || locked}
       >
         <MaterialCommunityIcons name="login" size={21} color="#FFFFFF" />
-        <Text style={[styles.loginButtonText, { fontSize: buttonSize }]}>{loading ? "Signing in…" : "Login"}</Text>
+        <Text style={[styles.loginButtonText, { fontSize: buttonSize }]}>
+          {loading ? "Signing in…" : locked ? `Locked (${lockLabel || "5:00"})` : "Login"}
+        </Text>
       </Pressable>
 
       <View style={[styles.dividerRow, { marginTop: sectionGap }]}>
