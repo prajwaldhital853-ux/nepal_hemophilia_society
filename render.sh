@@ -20,10 +20,14 @@ export USE_SQLITE="${USE_SQLITE:-false}"
 if [[ "${USE_SQLITE}" == "true" ]]; then
   echo "==> Using SQLite (USE_SQLITE=true)"
 elif [[ -n "${DATABASE_URL:-}" ]]; then
-  echo "==> Using Render DATABASE_URL for Postgres"
+  echo "==> Using DATABASE_URL for Postgres"
+elif [[ -n "${POSTGRES_HOST:-}" && -n "${POSTGRES_DB:-}" && -n "${POSTGRES_USER:-}" ]]; then
+  echo "==> Using POSTGRES_* variables for Postgres (${POSTGRES_HOST})"
 else
-  echo "ERROR: No DATABASE_URL found. On Render: create a PostgreSQL database and link it to this web service."
-  echo "       Also remove POSTGRES_HOST=localhost from env vars if you copied from .env.example."
+  echo "ERROR: No database configured."
+  echo "  Option A — link Render Postgres to this web service (sets DATABASE_URL automatically)"
+  echo "  Option B — add env var DATABASE_URL with the Internal Database URL from Render"
+  echo "  Option C — set POSTGRES_HOST, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD (not localhost)"
   exit 1
 fi
 
