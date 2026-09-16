@@ -7,6 +7,7 @@ import os
 import sys
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
 
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
@@ -108,7 +109,31 @@ TEMPLATES = [
 # Database — PostgreSQL in production; SQLite optional for local bootstrap
 # ---------------------------------------------------------------------------
 
+
+def _database_from_url(url: str) -> dict:
+    """Parse DATABASE_URL (Render/Heroku style) for Django + psycopg."""
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query)
+    options = {"connect_timeout": 5}
+    sslmode = (query.get("sslmode") or [None])[0]
+    if sslmode:
+        options["sslmode"] = sslmode
+    elif parsed.hostname and "render.com" in parsed.hostname:
+        options["sslmode"] = "require"
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": unquote((parsed.path or "/").lstrip("/")),
+        "USER": unquote(parsed.username or ""),
+        "PASSWORD": unquote(parsed.password or ""),
+        "HOST": parsed.hostname or "",
+        "PORT": str(parsed.port or 5432),
+        "CONN_MAX_AGE": 60,
+        "OPTIONS": options,
+    }
+
+
 use_sqlite = os.getenv("USE_SQLITE", "False").lower() in ("true", "1", "yes") or "test" in sys.argv
+database_url = os.getenv("DATABASE_URL", "").strip()
 if use_sqlite:
     DATABASES = {
         "default": {
@@ -116,6 +141,8 @@ if use_sqlite:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+elif database_url:
+    DATABASES = {"default": _database_from_url(database_url)}
 else:
     DATABASES = {
         "default": {

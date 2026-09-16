@@ -15,30 +15,17 @@ cd "${ROOT_DIR}/backend"
 
 echo "==> NHMS backend startup (PORT=${PORT:-8000})"
 
-# Map Render DATABASE_URL → POSTGRES_* (Django reads POSTGRES_* in settings.py)
-if [[ -n "${DATABASE_URL:-}" && -z "${POSTGRES_HOST:-}" ]]; then
-  echo "==> Mapping DATABASE_URL to POSTGRES_*"
-  # shellcheck disable=SC1090
-  eval "$(python - <<'PY'
-import os
-from urllib.parse import urlparse
-
-url = urlparse(os.environ["DATABASE_URL"])
-mapping = {
-    "POSTGRES_HOST": url.hostname or "",
-    "POSTGRES_PORT": str(url.port or 5432),
-    "POSTGRES_USER": url.username or "",
-    "POSTGRES_PASSWORD": url.password or "",
-    "POSTGRES_DB": (url.path or "/").lstrip("/"),
-}
-for key, value in mapping.items():
-    safe = value.replace("'", "'\"'\"'")
-    print(f"export {key}='{safe}'")
-PY
-)"
-fi
-
 export USE_SQLITE="${USE_SQLITE:-false}"
+
+if [[ "${USE_SQLITE}" == "true" ]]; then
+  echo "==> Using SQLite (USE_SQLITE=true)"
+elif [[ -n "${DATABASE_URL:-}" ]]; then
+  echo "==> Using Render DATABASE_URL for Postgres"
+else
+  echo "ERROR: No DATABASE_URL found. On Render: create a PostgreSQL database and link it to this web service."
+  echo "       Also remove POSTGRES_HOST=localhost from env vars if you copied from .env.example."
+  exit 1
+fi
 
 echo "==> Running migrations"
 python manage.py migrate --noinput
