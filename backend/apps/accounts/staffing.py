@@ -129,15 +129,27 @@ def photo_url_for(user, request=None) -> str:
 def save_admin_photo(user, upload):
     if not upload:
         return
-    validate_document_upload(upload, image_only=True)
-    display = display_id_for(user) or str(user.pk)
-    ext = os.path.splitext(getattr(upload, "name", "") or "")[1].lower()
-    if ext not in {".jpg", ".jpeg", ".png"}:
-        ext = ".jpg"
-    filename = f"{display}/photo{ext}"
-    if user.photo:
-        user.photo.delete(save=False)
-    user.photo.save(filename, upload, save=True)
+    try:
+        validate_document_upload(upload, image_only=True)
+        display = display_id_for(user) or str(user.pk)
+        ext = os.path.splitext(getattr(upload, "name", "") or "")[1].lower()
+        if ext not in {".jpg", ".jpeg", ".png"}:
+            ext = ".jpg"
+        filename = f"{display}/photo{ext}"
+        if user.photo:
+            user.photo.delete(save=False)
+        user.photo.save(filename, upload, save=True)
+    except Exception as exc:
+        message = str(exc)
+        if "Invalid Signature" in message or "invalid signature" in message.lower():
+            raise ValidationError(
+                {
+                    "photo": "Photo upload failed: Cloudinary credentials on the server are invalid. "
+                    "Set only CLOUDINARY_URL on Render (from Cloudinary dashboard) and remove "
+                    "CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET if present."
+                }
+            )
+        raise ValidationError({"photo": f"Photo upload failed: {message}"})
 
 
 def staff_payload(request) -> dict:

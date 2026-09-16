@@ -1,3 +1,6 @@
+import logging
+
+from django.db import DatabaseError, IntegrityError
 from django.db.models import Q
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -27,6 +30,8 @@ from apps.accounts.staffing import (
 from apps.audit.models import AuditLog
 from apps.patients.views import _flatten_errors, client_ip
 from apps.provinces.models import ProvinceAdmin
+
+logger = logging.getLogger(__name__)
 
 
 class CanManageStaffDirectory(BasePermission):
@@ -126,15 +131,32 @@ class StaffListCreateView(APIView):
             return Response({"error": _flatten_errors(exc.detail)}, status=400)
         except PermissionDenied as exc:
             return Response({"error": str(exc.detail)}, status=403)
+        except IntegrityError:
+            return Response(
+                {"error": "An admin with this email or ID already exists."},
+                status=400,
+            )
+        except DatabaseError as exc:
+            logger.exception("Admin create database error")
+            return Response(
+                {"error": f"Database error while saving admin: {exc}"},
+                status=500,
+            )
+        except Exception as exc:
+            logger.exception("Admin create failed")
+            return Response({"error": str(exc)}, status=500)
         body = serialize_staff(user, request)
-        AuditLog.objects.create(
-            actor=request.user.get_username(),
-            action=f"Created {body['roleLabel']}",
-            module="Admins",
-            object_id=body["id"],
-            ip=client_ip(request),
-            detail=user.email,
-        )
+        try:
+            AuditLog.objects.create(
+                actor=request.user.get_username(),
+                action=f"Created {body['roleLabel']}",
+                module="Admins",
+                object_id=body["id"],
+                ip=client_ip(request),
+                detail=user.email,
+            )
+        except Exception:
+            logger.exception("Admin created but audit log write failed for %s", body["id"])
         return Response(
             {
                 "admin": body,
@@ -178,6 +200,20 @@ class StaffDetailView(APIView):
             return Response({"error": _flatten_errors(exc.detail)}, status=400)
         except PermissionDenied as exc:
             return Response({"error": str(exc.detail)}, status=403)
+        except IntegrityError:
+            return Response(
+                {"error": "An admin with this email or ID already exists."},
+                status=400,
+            )
+        except DatabaseError as exc:
+            logger.exception("Admin update database error")
+            return Response(
+                {"error": f"Database error while saving admin: {exc}"},
+                status=500,
+            )
+        except Exception as exc:
+            logger.exception("Admin update failed")
+            return Response({"error": str(exc)}, status=500)
         body = serialize_staff(user, request)
         payload = {"admin": body, "staff": body}
         if issued:

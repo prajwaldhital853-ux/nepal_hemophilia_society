@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": false,
     "experiments": {
       "tsconfigPaths": true
     },
@@ -16,7 +15,6 @@
     },
     "android": {
       "package": "org.nepalhemophilia.patient",
-      "usesCleartextTraffic": true,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#DC2626",
@@ -41,12 +39,15 @@
         "expo-build-properties",
         {
           "android": {
-            "compileSdkVersion": 35,
-            "targetSdkVersion": 35,
-            "minSdkVersion": 24
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "36.0.0",
+            "minSdkVersion": 24,
+            "usesCleartextTraffic": true
           }
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }
