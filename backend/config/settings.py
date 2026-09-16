@@ -272,8 +272,9 @@ _default_file_storage = "django.core.files.storage.FileSystemStorage"
 if USE_CLOUDINARY:
     _default_file_storage = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
+# CompressedStaticFilesStorage (no manifest) — avoids Django 6 admin SVG collectstatic failures on Render
 _staticfiles_backend = (
-    "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    "whitenoise.storage.CompressedStaticFilesStorage"
     if not DEBUG
     else "django.contrib.staticfiles.storage.StaticFilesStorage"
 )
