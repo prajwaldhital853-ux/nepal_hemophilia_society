@@ -307,9 +307,8 @@ CSRF_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
 BACKUP_ROOT = BASE_DIR / "private_backups"
+# Optional. If unset, backups are encrypted with DJANGO_SECRET_KEY.
 BACKUP_ENCRYPTION_KEY = os.getenv("BACKUP_ENCRYPTION_KEY", "").strip()
-if not DEBUG and not BACKUP_ENCRYPTION_KEY:
-    raise ImproperlyConfigured("Set BACKUP_ENCRYPTION_KEY when DEBUG is False.")
 
 # ---------------------------------------------------------------------------
 # Static & Media
