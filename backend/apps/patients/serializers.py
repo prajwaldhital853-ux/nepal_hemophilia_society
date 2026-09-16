@@ -331,31 +331,45 @@ class PatientSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request:
             return
-        photo = request.FILES.get("photo")
-        if photo:
-            validate_document_upload(photo, image_only=True)
-            patient.photo = photo
-            patient.save(update_fields=["photo", "updated_at"])
-        actor_hospital = None
-        if request.user and getattr(request.user, "is_authenticated", False):
-            from apps.core.clinical import get_hospital_admin_profile
+        try:
+            photo = request.FILES.get("photo")
+            if photo:
+                validate_document_upload(photo, image_only=True)
+                patient.photo = photo
+                patient.save(update_fields=["photo", "updated_at"])
+            actor_hospital = None
+            if request.user and getattr(request.user, "is_authenticated", False):
+                from apps.core.clinical import get_hospital_admin_profile
 
-            profile = get_hospital_admin_profile(request.user)
-            if profile:
-                actor_hospital = profile.hospital
-            elif patient.primary_hospital_id:
-                actor_hospital = patient.primary_hospital
-        for upload in request.FILES.getlist("documents"):
-            validate_document_upload(upload)
-            PatientDocument.objects.create(
-                patient=patient,
-                file=upload,
-                original_name=upload.name,
-                content_type=getattr(upload, "content_type", "") or "",
-                size=getattr(upload, "size", 0) or 0,
-                uploaded_by=request.user if request.user.is_authenticated else None,
-                hospital=actor_hospital,
-            )
+                profile = get_hospital_admin_profile(request.user)
+                if profile:
+                    actor_hospital = profile.hospital
+                elif patient.primary_hospital_id:
+                    actor_hospital = patient.primary_hospital
+            for upload in request.FILES.getlist("documents"):
+                validate_document_upload(upload)
+                PatientDocument.objects.create(
+                    patient=patient,
+                    file=upload,
+                    original_name=upload.name,
+                    content_type=getattr(upload, "content_type", "") or "",
+                    size=getattr(upload, "size", 0) or 0,
+                    uploaded_by=request.user if request.user.is_authenticated else None,
+                    hospital=actor_hospital,
+                )
+        except Exception as exc:
+            message = str(exc)
+            if "Invalid Signature" in message or "invalid signature" in message.lower():
+                raise serializers.ValidationError(
+                    {
+                        "photo": "Photo upload failed: Cloudinary credentials on the server are invalid. "
+                        "Set only CLOUDINARY_URL on Render (from Cloudinary dashboard) and remove "
+                        "CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET if present."
+                    }
+                )
+            if "photo" in request.FILES:
+                raise serializers.ValidationError({"photo": f"Photo upload failed: {message}"})
+            raise serializers.ValidationError({"documents": f"Document upload failed: {message}"})
 
     def _validate_upload(self, upload, image_only=False):
         validate_document_upload(upload, image_only=image_only)

@@ -46,8 +46,7 @@
             "minSdkVersion": 24
           }
         }
-      ],
-      "expo-status-bar"
+      ]
     ]
   }
 }

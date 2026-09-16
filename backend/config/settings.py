@@ -27,22 +27,59 @@ def _normalize_cloudinary_url(raw: str) -> str:
     return value
 
 
-CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
-CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "").strip()
-CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "").strip()
-CLOUDINARY_URL = _normalize_cloudinary_url(os.getenv("CLOUDINARY_URL", ""))
+def _parse_cloudinary_url(url: str) -> tuple[str, str, str] | None:
+    """Return (cloud_name, api_key, api_secret) from a cloudinary:// URL."""
+    normalized = _normalize_cloudinary_url(url)
+    if not normalized.startswith("cloudinary://"):
+        return None
+    body = normalized[len("cloudinary://") :]
+    at = body.rfind("@")
+    if at <= 0:
+        return None
+    cloud_name = body[at + 1 :].strip()
+    creds = body[:at]
+    colon = creds.find(":")
+    if colon <= 0:
+        return None
+    api_key = unquote(creds[:colon].strip())
+    api_secret = unquote(creds[colon + 1 :].strip())
+    if not cloud_name or not api_key or not api_secret:
+        return None
+    return cloud_name, api_key, api_secret
 
-if not CLOUDINARY_URL.startswith("cloudinary://") and CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
+
+def _resolve_cloudinary_credentials() -> tuple[str, str, str] | None:
+    """Prefer CLOUDINARY_URL; fall back to the three separate env vars."""
+    parsed = _parse_cloudinary_url(os.getenv("CLOUDINARY_URL", ""))
+    if parsed:
+        return parsed
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
+    api_key = os.getenv("CLOUDINARY_API_KEY", "").strip()
+    api_secret = os.getenv("CLOUDINARY_API_SECRET", "").strip()
+    if cloud_name and api_key and api_secret:
+        return cloud_name, api_key, api_secret
+    return None
+
+
+_CLOUDINARY_CREDENTIALS = _resolve_cloudinary_credentials()
+USE_CLOUDINARY = _CLOUDINARY_CREDENTIALS is not None
+CLOUDINARY_CLOUD_NAME = _CLOUDINARY_CREDENTIALS[0] if _CLOUDINARY_CREDENTIALS else ""
+CLOUDINARY_API_KEY = _CLOUDINARY_CREDENTIALS[1] if _CLOUDINARY_CREDENTIALS else ""
+CLOUDINARY_API_SECRET = _CLOUDINARY_CREDENTIALS[2] if _CLOUDINARY_CREDENTIALS else ""
+CLOUDINARY_URL = ""
+if _CLOUDINARY_CREDENTIALS:
     from urllib.parse import quote
 
+    cloud_name, api_key, api_secret = _CLOUDINARY_CREDENTIALS
     CLOUDINARY_URL = (
-        f"cloudinary://{quote(CLOUDINARY_API_KEY, safe='')}:"
-        f"{quote(CLOUDINARY_API_SECRET, safe='')}@{CLOUDINARY_CLOUD_NAME}"
+        f"cloudinary://{quote(api_key, safe='')}:{quote(api_secret, safe='')}@{cloud_name}"
     )
-
-USE_CLOUDINARY = CLOUDINARY_URL.startswith("cloudinary://")
-if USE_CLOUDINARY:
+    # Cloudinary SDK prefers CLOUDINARY_CLOUD_NAME over CLOUDINARY_URL when both exist.
+    # Remove split vars so a stale API secret cannot override a valid CLOUDINARY_URL.
     os.environ["CLOUDINARY_URL"] = CLOUDINARY_URL
+    os.environ.pop("CLOUDINARY_CLOUD_NAME", None)
+    os.environ.pop("CLOUDINARY_API_KEY", None)
+    os.environ.pop("CLOUDINARY_API_SECRET", None)
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-dev-key-change-in-production")
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("true", "1", "yes")
@@ -281,6 +318,24 @@ STORAGES = {
 # django-cloudinary-storage collectstatic still reads these on Django 6+
 STATICFILES_STORAGE = _staticfiles_backend
 DEFAULT_FILE_STORAGE = _default_file_storage
+
+if USE_CLOUDINARY:
+    import cloudinary
+
+    cloudinary.config(
+        cloud_name=CLOUDINARY_CLOUD_NAME,
+        api_key=CLOUDINARY_API_KEY,
+        api_secret=CLOUDINARY_API_SECRET,
+        secure=True,
+    )
+    CLOUDINARY_STORAGE = {
+        "CLOUD_NAME": CLOUDINARY_CLOUD_NAME,
+        "API_KEY": CLOUDINARY_API_KEY,
+        "API_SECRET": CLOUDINARY_API_SECRET,
+        "SECURE": True,
+        "MEDIA_TAG": "media",
+        "PREFIX": MEDIA_URL.lstrip("/"),
+    }
 
 # ---------------------------------------------------------------------------
 # Internationalization
