@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { homeForUser, type AuthUser, useAuth } from "@/lib/auth";
 import { ApiClientError, apiFetch, setAuthTokens } from "@/lib/api";
-import { getAdminDeviceId } from "@/lib/deviceId";
+import { ensureAdminDeviceId, getAdminDeviceId } from "@/lib/deviceId";
 
 function formatRemaining(untilIso?: string, fallbackSeconds?: number) {
   const until = untilIso ? new Date(untilIso).getTime() : Date.now() + (fallbackSeconds ?? 0) * 1000;
@@ -49,10 +49,12 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
+      const deviceId = getAdminDeviceId();
       const data = await apiFetch("/auth/login/", {
         method: "POST",
         skipAuthRedirect: true,
-        body: JSON.stringify({ username, password, deviceId: getAdminDeviceId() }),
+        headers: { "X-Device-Id": deviceId },
+        body: JSON.stringify({ username, password, deviceId }),
       });
       if (!data.access) throw new Error("Login failed");
       if (data.user?.role === "patient") {
