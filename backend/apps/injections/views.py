@@ -41,6 +41,8 @@ def _scope_injections(user, qs, patient_id=None):
     if is_national_scope(user):
         return qs
     if user.role == UserRole.PROVINCE_ADMIN:
+        if patient_id:
+            return qs
         pid = province_id_for(user)
         return qs.filter(patient__province_id=pid) if pid else qs.none()
     if user.role == UserRole.HOSPITAL_ADMIN:

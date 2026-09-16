@@ -39,6 +39,7 @@ PERM_SETTINGS_SYSTEM = "settings.system"
 PERM_WEBSITE_VIEW = "website.view"
 PERM_WEBSITE_MANAGE = "website.manage"
 PERM_WEBSITE_DELETE = "website.delete"
+PERM_USERS_VIEW = "users.view"
 PERM_USERS_MANAGE = "users.manage"
 PERM_USERS_DELETE = "users.delete"
 PERM_STOCK_VIEW = "stock.view"
@@ -104,6 +105,7 @@ SUPER_PERMS = frozenset(
         PERM_WEBSITE_VIEW,
         PERM_WEBSITE_MANAGE,
         PERM_WEBSITE_DELETE,
+        PERM_USERS_VIEW,
         PERM_USERS_MANAGE,
         PERM_USERS_DELETE,
         PERM_STOCK_VIEW,
@@ -129,7 +131,11 @@ PROVINCE_PERMS = frozenset(
         PERM_PATIENTS_VERIFY,
         PERM_PATIENTS_DELETE,
         PERM_INJECTIONS_VIEW,
+        PERM_INJECTIONS_ADD,
+        PERM_INJECTIONS_UPDATE,
         PERM_TREATMENTS_VIEW,
+        PERM_TREATMENTS_ADD,
+        PERM_TREATMENTS_UPDATE,
         PERM_HOSPITAL_STAFF_VIEW,
         PERM_HOSPITAL_STAFF_MANAGE,
         PERM_HOSPITAL_STAFF_DELETE,
@@ -137,6 +143,9 @@ PROVINCE_PERMS = frozenset(
         PERM_HOSPITALS_DELETE,
         PERM_FACTORS_VIEW,
         PERM_STOCK_VIEW,
+        PERM_STOCK_MANAGE,
+        PERM_STOCK_DELETE,
+        PERM_USERS_VIEW,
         PERM_DOCUMENTS_ADD,
         PERM_DOCUMENTS_DELETE,
         PERM_REPORTS_PROVINCE,
@@ -162,6 +171,7 @@ HOSPITAL_PERMS = frozenset(
         PERM_STOCK_VIEW,
         PERM_STOCK_MANAGE,
         PERM_STOCK_DELETE,
+        PERM_USERS_VIEW,
         PERM_DOCUMENTS_ADD,
         PERM_DOCUMENTS_DELETE,
         PERM_REPORTS_HOSPITAL,
@@ -315,6 +325,7 @@ PERMISSION_GROUPS = [
         "page": "users",
         "label": "Users directory",
         "permissions": [
+            {"code": PERM_USERS_VIEW, "action": "view", "label": "View"},
             {"code": PERM_USERS_MANAGE, "action": "create", "label": "Add"},
             {"code": PERM_USERS_MANAGE, "action": "update", "label": "Update"},
             {"code": PERM_USERS_DELETE, "action": "delete", "label": "Delete"},
@@ -378,6 +389,7 @@ PERMISSION_LABELS = {
     PERM_REPORTS_PROVINCE: "View province reports",
     PERM_REPORTS_NATIONAL: "View national reports",
     PERM_AUDIT_VIEW: "View audit logs",
+    PERM_USERS_VIEW: "View users directory",
     PERM_USERS_MANAGE: "Add and update users",
     PERM_USERS_DELETE: "Delete users",
     PERM_SETTINGS_SYSTEM: "Change system settings",
@@ -395,7 +407,7 @@ NAV_PERMISSIONS = {
     "/dashboard/hospitals/center-admins": PERM_HOSPITAL_STAFF_VIEW,
     "/dashboard/stock": PERM_STOCK_VIEW,
     "/dashboard/injections": PERM_INJECTIONS_VIEW,
-    "/dashboard/users": PERM_USERS_MANAGE,
+    "/dashboard/users": PERM_USERS_VIEW,
     "/dashboard/reports": PERM_REPORTS_HOSPITAL,
     "/dashboard/audit": PERM_AUDIT_VIEW,
     "/dashboard/settings": PERM_SETTINGS_SYSTEM,

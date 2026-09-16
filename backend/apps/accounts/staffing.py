@@ -9,6 +9,7 @@ from datetime import date
 
 from django.contrib.auth import get_user_model, password_validation
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
@@ -553,14 +554,16 @@ def staff_queryset_for(actor):
         pid = province_id_for(actor)
         if not pid:
             return qs.none()
-        return qs.filter(role=UserRole.HOSPITAL_ADMIN, hospital_admin__hospital__province_id=pid)
+        return qs.filter(
+            Q(pk=actor.pk)
+            | Q(province_admin__province_id=pid)
+            | Q(hospital_admin__hospital__province_id=pid)
+        )
     if actor_kind == KIND_CENTER:
         hid = getattr(getattr(actor, "hospital_admin", None), "hospital_id", None)
         if not hid:
             return qs.none()
-        return qs.filter(
-            role=UserRole.HOSPITAL_ADMIN,
-            hospital_admin__hospital_id=hid,
-            hospital_admin__staff_type=HospitalStaffType.TREATMENT_ADMIN,
-        )
+        return qs.filter(Q(pk=actor.pk) | Q(hospital_admin__hospital_id=hid))
+    if actor_kind == KIND_TREATMENT:
+        return qs.filter(pk=actor.pk)
     return qs.none()

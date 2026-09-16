@@ -2,11 +2,59 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
-from apps.core.clinical import get_hospital_admin_profile, resolve_actor_hospital
+from apps.accounts.models import UserRole
+from apps.accounts.rbac import hospital_id_for, is_national_scope, province_id_for
+from apps.core.clinical import get_hospital_admin_profile
 from apps.factors.models import FactorMedicine
 from apps.hospitals.models import Hospital
 from apps.stock.models import FactorStock, GlobalStockShipment, StockMovement, StockMovementType
 from apps.stock.services import _record_movement, allocate_global_stock
+
+
+def resolve_stock_hospital(user, hospital_name=None):
+    """Stock in/out is scoped: national any center, province own province, hospital own center."""
+    if user.role == UserRole.HOSPITAL_ADMIN:
+        profile = get_hospital_admin_profile(user)
+        if not profile:
+            return None, "Your account is not linked to a treatment center."
+        return profile.hospital, None
+    name = (hospital_name or "").strip()
+    if is_national_scope(user):
+        if not name:
+            return None, "Specify the treatment center."
+        hospital = Hospital.objects.filter(name__iexact=name, is_active=True).first()
+        if not hospital:
+            return None, "Unknown treatment center."
+        return hospital, None
+    if user.role == UserRole.PROVINCE_ADMIN:
+        pid = province_id_for(user)
+        if not pid:
+            return None, "Your account is not linked to a province."
+        if not name:
+            return None, "Specify the treatment center."
+        hospital = Hospital.objects.filter(name__iexact=name, is_active=True).first()
+        if not hospital:
+            return None, "Unknown treatment center."
+        if hospital.province_id != pid:
+            return None, "You can only stock treatment centers in your province."
+        return hospital, None
+    return None, "You cannot add or adjust stock."
+
+
+def _assert_hospital_in_stock_scope(user, hospital):
+    if is_national_scope(user):
+        return
+    if user.role == UserRole.HOSPITAL_ADMIN:
+        hid = hospital_id_for(user)
+        if hid != hospital.id:
+            raise serializers.ValidationError({"hospitalName": "You can only stock your own treatment center."})
+        return
+    if user.role == UserRole.PROVINCE_ADMIN:
+        pid = province_id_for(user)
+        if not pid or hospital.province_id != pid:
+            raise serializers.ValidationError({"hospitalName": "You can only stock treatment centers in your province."})
+        return
+    raise serializers.ValidationError({"hospitalName": "You cannot add or adjust stock."})
 
 
 def actor_label(user):
@@ -144,15 +192,12 @@ class StockCreateSerializer(serializers.Serializer):
                     raise serializers.ValidationError(
                         {"centerAllocations": f"Unknown treatment center: {alloc['hospitalName']}"}
                     )
+                _assert_hospital_in_stock_scope(request.user, hospital)
                 hospitals.append((hospital, alloc["quantity"]))
             attrs["resolved_allocations"] = hospitals
             attrs["is_global"] = True
             return attrs
-        hospital, err = resolve_actor_hospital(request.user, attrs.get("hospitalName"))
-        if err:
-            profile = get_hospital_admin_profile(request.user)
-            if profile:
-                hospital, err = profile.hospital, None
+        hospital, err = resolve_stock_hospital(request.user, attrs.get("hospitalName"))
         if err or not hospital:
             raise serializers.ValidationError({"hospitalName": err or "Specify the treatment center."})
         attrs["hospital"] = hospital

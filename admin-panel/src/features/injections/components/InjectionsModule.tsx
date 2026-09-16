@@ -38,6 +38,7 @@ import {
 } from "@/features/injections/api";
 import LogInjectionDialog from "@/features/injections/components/LogInjectionDialog";
 import { formatNumber } from "@/lib/format";
+import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { useChartColors } from "@/lib/chartColors";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
@@ -68,6 +69,8 @@ export default function InjectionsModule() {
   const [relatedInjections, setRelatedInjections] = useState<ApiInjection[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [relatedError, setRelatedError] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,6 +78,8 @@ export default function InjectionsModule() {
       const data = await fetchInjections({
         status: status === "All" ? undefined : status,
         indication: type === "All" ? undefined : type,
+        from: from || undefined,
+        to: to || undefined,
       });
       setRows(data.injections ?? []);
     } catch {
@@ -82,7 +87,7 @@ export default function InjectionsModule() {
     } finally {
       setLoading(false);
     }
-  }, [status, type]);
+  }, [status, type, from, to]);
 
   useEffect(() => {
     void load();
@@ -512,7 +517,28 @@ export default function InjectionsModule() {
                 <X className="size-3" /> Clear
               </button>
             ) : null}
-            <button type="button" className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none">
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
+            <button
+              type="button"
+              className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
+              onClick={() =>
+                downloadCsv(
+                  stampFilename("injections"),
+                  ["ID", "Patient", "Factor", "Dose", "Type", "Status", "When", "Center"],
+                  filtered.map((row) => [
+                    row.displayCode || row.id,
+                    `${row.patientId} ${row.patientName}`,
+                    row.factorMedicineName,
+                    `${row.dose} ${row.unit}`,
+                    row.indication,
+                    row.status,
+                    row.administeredAt,
+                    row.hospitalName,
+                  ]),
+                )
+              }
+            >
               <Download className="size-3.5" />
               Export
             </button>

@@ -121,8 +121,8 @@ class PatientDocumentDetailView(APIView):
                 raise PermissionDenied("Hospital staff can only remove documents they uploaded.")
         elif user.role == UserRole.PROVINCE_ADMIN:
             pid = province_id_for(user)
-            if patient.province_id != pid:
-                raise PermissionDenied()
+            if patient.province_id != pid and doc.uploaded_by_id != user.id:
+                raise PermissionDenied("Province Admin can only remove documents they uploaded for visiting patients.")
         elif not is_national_scope(user):
             raise PermissionDenied()
         name = doc.original_name

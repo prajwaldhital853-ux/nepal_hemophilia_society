@@ -13,6 +13,7 @@ from apps.accounts.rbac import (
     PERM_PATIENTS_VIEW,
     PERM_HOSPITAL_STAFF_MANAGE,
     PERM_PROVINCE_ADMINS_MANAGE,
+    PERM_TREATMENTS_ADD,
     has_perm,
     permissions_for,
 )
@@ -57,10 +58,11 @@ class RbacMatrixTests(APITestCase):
         self.assertTrue(has_perm(self.super, PERM_PROVINCE_ADMINS_MANAGE))
         self.assertTrue(has_perm(self.super, PERM_INJECTIONS_ADD))
 
-    def test_province_admin_cannot_add_injections_or_see_audit(self):
+    def test_province_admin_can_log_clinical_records_but_not_audit(self):
         self.assertTrue(has_perm(self.province_user, PERM_PATIENTS_VERIFY))
         self.assertTrue(has_perm(self.province_user, PERM_PATIENTS_CREATE))
-        self.assertFalse(has_perm(self.province_user, PERM_INJECTIONS_ADD))
+        self.assertTrue(has_perm(self.province_user, PERM_INJECTIONS_ADD))
+        self.assertTrue(has_perm(self.province_user, PERM_TREATMENTS_ADD))
         self.assertFalse(has_perm(self.province_user, PERM_AUDIT_VIEW))
         self.assertFalse(has_perm(self.province_user, PERM_PROVINCE_ADMINS_MANAGE))
 
@@ -83,8 +85,9 @@ class RbacMatrixTests(APITestCase):
         self.assertTrue(has_perm(self.super, PERM_STOCK_MANAGE))
         self.assertTrue(has_perm(self.treatment, PERM_STOCK_VIEW))
         self.assertTrue(has_perm(self.treatment, PERM_STOCK_MANAGE))
+        self.assertTrue(has_perm(self.center, PERM_STOCK_MANAGE))
         self.assertTrue(has_perm(self.province_user, PERM_STOCK_VIEW))
-        self.assertFalse(has_perm(self.province_user, PERM_STOCK_MANAGE))
+        self.assertTrue(has_perm(self.province_user, PERM_STOCK_MANAGE))
         self.assertFalse(has_perm(self.patient, PERM_STOCK_VIEW))
         self.assertFalse(has_perm(self.patient, PERM_STOCK_MANAGE))
 
@@ -127,14 +130,18 @@ class RbacMatrixTests(APITestCase):
         self.assertIn(res.status_code, (400, 401))
         self.assertFalse(res.data.get("access"))
 
-    def test_province_cannot_view_audit_or_manage_users_nav(self):
+    def test_province_cannot_view_audit_but_can_open_users_directory(self):
         self.client.force_authenticate(self.province_user)
         audit = self.client.get("/api/v1/audit/")
         self.assertEqual(audit.status_code, 403)
         me = self.client.get("/api/v1/auth/me/")
-        self.assertNotIn("/dashboard/users", me.data["nav"])
+        self.assertIn("/dashboard/users", me.data["nav"])
         self.assertNotIn("/dashboard/settings", me.data["nav"])
         self.assertNotIn("/dashboard/admins", me.data["nav"])
+        directory = self.client.get("/api/v1/users/")
+        self.assertEqual(directory.status_code, 200)
+        kinds = {row["kind"] for row in directory.data["users"]}
+        self.assertNotIn("super_admin", kinds)
 
     def test_reports_are_role_scoped(self):
         other = Province.objects.create(name="Koshi", code="P1")
@@ -144,6 +151,22 @@ class RbacMatrixTests(APITestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data["scope"], "province_admin")
         self.assertEqual(res.data["totals"]["hospitals"], 1)
+        full = self.client.get("/api/v1/reports/full/")
+        self.assertEqual(full.status_code, 200)
+        self.assertIn("centerTable", full.data)
+        self.assertIn("loginTracking", full.data)
+        self.assertIn("activityLogs", full.data)
+        self.assertIn("Bagmati", full.data.get("scopeLabel", ""))
+
+    def test_national_admin_users_directory_hides_super_admin(self):
+        admin = User.objects.create_user(username="natadmin2", password="ChangeMe#2026", role=UserRole.ADMIN)
+        self.client.force_authenticate(admin)
+        directory = self.client.get("/api/v1/users/")
+        self.assertEqual(directory.status_code, 200)
+        usernames = {row["username"] for row in directory.data["users"]}
+        kinds = {row["kind"] for row in directory.data["users"]}
+        self.assertNotIn("super", usernames)
+        self.assertNotIn("super_admin", kinds)
 
     def test_treatment_admin_nav_hides_national_tools(self):
         self.client.force_authenticate(self.treatment)

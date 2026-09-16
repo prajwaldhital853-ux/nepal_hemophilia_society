@@ -150,6 +150,12 @@ class PatientViewSet(viewsets.ModelViewSet):
                 | Q(mobile__icontains=search)
                 | Q(email__icontains=search)
             )
+        date_from = (request.query_params.get("from") or "").strip()
+        date_to = (request.query_params.get("to") or "").strip()
+        if date_from:
+            queryset = queryset.filter(updated_at__date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(updated_at__date__lte=date_to)
         serializer = self.get_serializer(queryset, many=True)
         return Response({"patients": serializer.data})
 

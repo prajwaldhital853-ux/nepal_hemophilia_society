@@ -20,6 +20,7 @@ import {
   type StockMovementRow,
 } from "@/features/stock/api";
 import { isNationalScope, useAuth } from "@/lib/auth";
+import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { Perm } from "@/lib/permissions";
 
 const fieldClass =
@@ -55,9 +56,10 @@ function movementTypeClass(type: string) {
 
 export default function StockModule() {
   const { can, user } = useAuth();
-  const canManage = can(Perm.stockManage);
+  const canManage = can(Perm.stockManage) && !user?.viewOnly;
   const canDeleteLot = can(Perm.stockDelete) && !user?.viewOnly;
   const isSuper = isNationalScope(user);
+  const canPickCenter = isSuper || user?.role === "province_admin";
   const [lots, setLots] = useState<StockLot[]>([]);
   const [movements, setMovements] = useState<StockMovementRow[]>([]);
   const [factors, setFactors] = useState<FactorOption[]>([]);
@@ -111,8 +113,8 @@ export default function StockModule() {
   useEffect(() => {
     void load();
     void loadFactorCatalog().then(setFactors).catch(() => setFactors([]));
-    if (isSuper) void fetchHospitals().then(setHospitals).catch(() => setHospitals([]));
-  }, [load, isSuper]);
+    if (canPickCenter) void fetchHospitals().then(setHospitals).catch(() => setHospitals([]));
+  }, [load, canPickCenter]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -131,7 +133,7 @@ export default function StockModule() {
             Stock in / add lot
           </button>
         ) : (
-          <p className="text-[11px] text-muted">Read-only monitoring (plan.md: Province Admin does not change stock)</p>
+          <p className="text-[11px] text-muted">Stock in/out is limited to your assigned province or treatment center.</p>
         )}
       </div>
 
@@ -156,7 +158,7 @@ export default function StockModule() {
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-[12px] font-semibold text-ink">Current inventory</h2>
           <div className="flex flex-wrap items-center gap-2">
-            {isSuper ? (
+            {canPickCenter ? (
               <select
                 value={hospitalFilter}
                 onChange={(e) => setHospitalFilter(e.target.value)}
@@ -263,7 +265,7 @@ export default function StockModule() {
       <article className="panel overflow-x-auto p-3">
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <h2 className="mr-auto text-[12px] font-semibold text-ink">Stock history</h2>
-          {isSuper ? (
+          {canPickCenter ? (
             <select
               value={hospitalFilter}
               onChange={(e) => {
@@ -289,6 +291,29 @@ export default function StockModule() {
           </select>
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
+          <button
+            type="button"
+            className="rounded border border-line px-2 py-1 text-[10px] font-semibold"
+            onClick={() =>
+              downloadCsv(
+                stampFilename("stock-history"),
+                ["When", "Type", "Product", "Batch", "Qty", "Center", "Patient", "By", "Reason"],
+                movements.map((row) => [
+                  row.recordedAt,
+                  row.movementType,
+                  row.factorMedicineName,
+                  row.batchNumber || "",
+                  row.quantityDelta,
+                  row.hospitalName,
+                  row.patientId || "",
+                  row.recordedBy?.name || "",
+                  row.reason,
+                ]),
+              )
+            }
+          >
+            Export history
+          </button>
         </div>
         <table className="inner-table w-full text-left">
           <thead className="text-[11px] uppercase text-faint">
@@ -365,8 +390,8 @@ export default function StockModule() {
           title="Stock in / add lot"
           factors={factors}
           hospitals={hospitals}
-          showHospital={isSuper}
-          defaultHospital={user?.hospitalStaff?.treatmentCenter || ""}
+          showHospital={canPickCenter}
+          defaultHospital={user?.hospitalStaff?.treatmentCenter || hospitals[0]?.name || ""}
           onClose={() => setShowAdd(false)}
           onSubmit={async (payload) => {
             await createStockLot(payload);

@@ -11,7 +11,10 @@ from rest_framework.views import APIView
 from apps.accounts.permissions import admin_must_set_password
 from apps.accounts.rbac import (
     KIND_LABELS,
+    KIND_TREATMENT,
     PERMISSION_GROUPS,
+    PERM_STOCK_DELETE,
+    PERM_STOCK_MANAGE,
     account_kind,
     assignable_kinds,
     catalog_for_kind,
@@ -79,7 +82,10 @@ class StaffCatalogView(APIView):
                         "label": KIND_LABELS[kind],
                         "requiresProvince": kind == "province_admin",
                         "requiresHospital": kind in ("center_admin", "treatment_admin"),
-                        "defaults": sorted(catalog_for_kind(kind)),
+                        "defaults": sorted(
+                            catalog_for_kind(kind)
+                            - ({PERM_STOCK_MANAGE, PERM_STOCK_DELETE} if kind == KIND_TREATMENT else set())
+                        ),
                     }
                     for kind in kinds
                 ],

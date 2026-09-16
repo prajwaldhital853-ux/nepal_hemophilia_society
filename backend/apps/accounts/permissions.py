@@ -23,6 +23,7 @@ from apps.accounts.rbac import (
     PERM_DOCUMENTS_ADD,
     PERM_TREATMENTS_ADD,
     PERM_TREATMENTS_VIEW,
+    PERM_USERS_VIEW,
     has_perm,
     is_active_admin,
     is_national_scope,
@@ -192,12 +193,12 @@ class CanUpdateInjections(HasPermission):
 
 class CanAddInjections(HasPermission):
     permission = PERM_INJECTIONS_ADD
-    message = "Province Admin can monitor injections but cannot add them (plan.md §5.5)."
+    message = "You cannot add injection records."
 
 
 class CanAddTreatments(HasPermission):
     permission = PERM_TREATMENTS_ADD
-    message = "Province Admin can monitor treatments but cannot add them (plan.md §5.5)."
+    message = "You cannot add treatment records."
 
 
 class CanCorrectInjections(HasPermission):
@@ -213,6 +214,11 @@ class CanManageFactors(HasPermission):
 class CanViewAudit(HasPermission):
     permission = PERM_AUDIT_VIEW
     message = "Only Super Admin can view audit logs."
+
+
+class CanViewUsers(HasPermission):
+    permission = PERM_USERS_VIEW
+    message = "You cannot view the users directory."
 
 
 class CanManageHospitals(HasPermission):
@@ -253,4 +259,4 @@ class CanViewStock(HasPermission):
 
 class CanManageStock(HasPermission):
     permission = PERM_STOCK_MANAGE
-    message = "Province Admin can monitor stock but cannot add or adjust it (plan.md §5.5)."
+    message = "You cannot add or adjust stock."

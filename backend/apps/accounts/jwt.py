@@ -8,6 +8,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from apps.accounts.models import UserRole
 from apps.accounts.serializers import UserSerializer
+from apps.audit.models import AuditLog
+from apps.patients.views import client_ip
 
 User = get_user_model()
 
@@ -85,6 +87,24 @@ class NhmsTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class NhmsTokenObtainPairView(TokenObtainPairView):
     serializer_class = NhmsTokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            payload = getattr(response, "data", {}) or {}
+            user_payload = payload.get("user") or {}
+            actor = user_payload.get("username") or str(request.data.get("username") or "")
+            try:
+                AuditLog.objects.create(
+                    actor=actor,
+                    action="Admin login",
+                    module="Auth",
+                    ip=client_ip(request),
+                    detail=f"Signed in from {client_ip(request) or 'unknown IP'}",
+                )
+            except Exception:
+                pass
+        return response
 
 
 class NhmsTokenRefreshSerializer(TokenRefreshSerializer):

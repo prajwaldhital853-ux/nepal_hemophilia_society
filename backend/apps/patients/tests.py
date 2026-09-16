@@ -334,6 +334,13 @@ class PatientRbacScopeTests(APITestCase):
             staff_type=HospitalStaffType.TREATMENT_ADMIN,
             display_id="TADM-00001",
         )
+        self.cadmin = User.objects.create_user(username="cadmin", password="ChangeMe#2026", role=UserRole.HOSPITAL_ADMIN)
+        HospitalAdmin.objects.create(
+            user=self.cadmin,
+            hospital=self.h_ktm,
+            staff_type=HospitalStaffType.CENTER_ADMIN,
+            display_id="CADM-00001",
+        )
         self.payload = {
             "fullName": "Scoped Patient",
             "dateOfBirth": "2001-03-12",
@@ -441,9 +448,15 @@ class PatientRbacScopeTests(APITestCase):
         detail = self.client.get(f"/api/v1/patients/{other.data['patient']['id']}/")
         self.assertEqual(detail.status_code, 200)
         self.assertFalse(detail.data["patient"]["canEdit"])
+        own_detail = self.client.get(f"/api/v1/patients/{own.data['patient']['id']}/")
+        self.assertFalse(own_detail.data["patient"]["canEdit"])
+        treatment_update = self.client.put(f"/api/v1/patients/{own.data['patient']['id']}/", self.payload, format="json")
+        self.assertEqual(treatment_update.status_code, 403)
+        self.client.force_authenticate(self.cadmin)
         update = self.client.put(f"/api/v1/patients/{own.data['patient']['id']}/", self.payload, format="json")
         self.assertEqual(update.status_code, 200, update.data)
         self.assertTrue(update.data["patient"]["canEdit"])
+        self.client.force_authenticate(self.tadmin)
         cross = self.client.put(
             f"/api/v1/patients/{other.data['patient']['id']}/",
             {

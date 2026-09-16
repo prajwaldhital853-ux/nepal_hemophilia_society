@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarRange, CheckCircle2, ChevronDown, Eye, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { CheckCircle2, ChevronDown, Download, Eye, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 
 import {
   deleteStaffAccount,
@@ -16,6 +16,7 @@ import {
 import StaffAccountForm from "@/features/admins/components/StaffAccountForm";
 import { NEPAL_PROVINCES } from "@/lib/constants/provinces";
 import { useAuth } from "@/lib/auth";
+import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { formatNumber } from "@/lib/format";
 import { Perm } from "@/lib/permissions";
 import { usePageRbac } from "@/components/rbac/ReadOnlyBanner";
@@ -104,9 +105,29 @@ export default function AdminsModule() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-muted">
-            <CalendarRange className="size-3.5" />
-            {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          <button
+            type="button"
+            className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-muted"
+            onClick={() =>
+              downloadCsv(
+                stampFilename("admins"),
+                ["ID", "Name", "Role", "Email", "Phone", "Province", "Center", "Status", "Last login"],
+                visible.map((row) => [
+                  row.id,
+                  row.fullName,
+                  row.roleLabel,
+                  row.email,
+                  row.phone,
+                  row.province,
+                  row.treatmentCenter,
+                  row.status,
+                  row.lastLogin || "",
+                ]),
+              )
+            }
+          >
+            <Download className="size-3.5" />
+            Export
           </button>
           {canManage && !readOnly ? (
             <button

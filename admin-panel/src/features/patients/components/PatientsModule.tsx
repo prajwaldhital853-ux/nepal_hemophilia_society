@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  CalendarRange,
   ChevronDown,
   Download,
   Eye,
@@ -20,6 +19,7 @@ import { NEPAL_PROVINCES } from "@/lib/constants/provinces";
 import { useAuth } from "@/lib/auth";
 import { formatNumber } from "@/lib/format";
 import { apiFetch } from "@/lib/api";
+import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { Perm } from "@/lib/permissions";
 
 function ageFromDob(dob: string) {
@@ -69,6 +69,8 @@ export default function PatientsModule() {
   const [rows, setRows] = useState<PatientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebounced(query), 300);
@@ -82,6 +84,8 @@ export default function PatientsModule() {
   useEffect(() => {
     const params = new URLSearchParams();
     if (debounced.trim()) params.set("search", debounced.trim());
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
     const suffix = params.toString() ? `?${params.toString()}` : "";
     setLoading(true);
     setError("");
@@ -95,7 +99,7 @@ export default function PatientsModule() {
         setError(err.message || "Failed to load patients");
       })
       .finally(() => setLoading(false));
-  }, [debounced]);
+  }, [debounced, from, to]);
 
   const hemIdSearch = useMemo(() => {
     const term = debounced.trim();
@@ -129,10 +133,8 @@ export default function PatientsModule() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-muted">
-            <CalendarRange className="size-3.5" />
-            {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-          </button>
+          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="panel px-2 py-1.5 text-[11px] shadow-none" />
+          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="panel px-2 py-1.5 text-[11px] shadow-none" />
           {canCreate ? (
             <button
               type="button"
@@ -223,7 +225,17 @@ export default function PatientsModule() {
             Total Patients: <span className="text-[15px] font-semibold text-ink">{formatNumber(visible.length)}</span>
           </p>
 
-          <button type="button" className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none">
+          <button
+            type="button"
+            className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
+            onClick={() =>
+              downloadCsv(
+                stampFilename("patients"),
+                ["ID", "Name", "Province", "Center", "Blood group", "Age", "Last visit", "Status"],
+                visible.map((row) => [row.id, row.name, row.province, row.center, row.bloodGroup, row.age, row.lastVisit, row.status]),
+              )
+            }
+          >
             <Download className="size-3.5" />
             Export
           </button>

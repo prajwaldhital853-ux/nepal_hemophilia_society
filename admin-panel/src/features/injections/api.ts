@@ -40,11 +40,15 @@ export async function fetchInjections(params: {
   patientId?: string;
   status?: string;
   indication?: string;
+  from?: string;
+  to?: string;
 } = {}) {
   const q = new URLSearchParams();
   if (params.patientId) q.set("patientId", params.patientId);
   if (params.status && params.status !== "All") q.set("status", params.status);
   if (params.indication && params.indication !== "All") q.set("indication", params.indication);
+  if (params.from) q.set("from", params.from);
+  if (params.to) q.set("to", params.to);
   const suffix = q.toString() ? `?${q.toString()}` : "";
   return apiFetch(`/injections/${suffix}`) as Promise<{ injections: ApiInjection[]; total: number }>;
 }

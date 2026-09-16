@@ -20,7 +20,12 @@ class ClinicalWorkflowTests(APITestCase):
         self.other_province = Province.objects.create(name="Koshi", code="P1")
         self.district = District.objects.create(province=self.province, name="Kathmandu")
         self.hospital = Hospital.objects.create(name="Kathmandu Hemophilia Center", province=self.province, district=self.district)
-        self.other_hospital = Hospital.objects.create(name="Biratnagar Hemophilia Center", province=self.other_province)
+        self.other_district = District.objects.create(province=self.other_province, name="Morang")
+        self.other_hospital = Hospital.objects.create(
+            name="Biratnagar Hemophilia Center",
+            province=self.other_province,
+            district=self.other_district,
+        )
 
         self.super = User.objects.create_user(username="super", password="ChangeMe#2026", role=UserRole.SUPER_ADMIN)
         self.province_admin_user = User.objects.create_user(
@@ -228,19 +233,55 @@ class ClinicalWorkflowTests(APITestCase):
         patient_inj = self.client.get(f"/api/v1/patients/{self.patient_a.unique_patient_id}/injections/")
         self.assertEqual(patient_inj.status_code, 403)
 
-    def test_province_admin_cannot_add_injection(self):
+    def test_province_admin_can_add_injection_for_cross_province_patient(self):
+        koshi_patient = Patient.objects.create(
+            unique_patient_id="HEM-0000999",
+            full_name="Koshi Patient",
+            date_of_birth="2000-01-01",
+            gender="Male",
+            mobile="9841000999",
+            email="koshi.clinical@example.com",
+            province=self.other_province,
+            district=self.other_district,
+            local_level="Biratnagar",
+            ward_number=1,
+            address="Biratnagar",
+            blood_group="O+",
+            hemophilia_type="A",
+            deficient_factor="VIII",
+            severity="Severe",
+            baseline_factor_level=Decimal("1.0"),
+            inhibitor_status=InhibitorStatus.NONE,
+            primary_hospital=self.other_hospital,
+            verification_status=VerificationStatus.ACTIVE,
+        )
         self.client.force_authenticate(self.province_admin_user)
         res = self.client.post(
             "/api/v1/injections/",
             {
-                "patientId": self.patient_a.unique_patient_id,
+                "patientId": koshi_patient.unique_patient_id,
                 "factorMedicineId": self.factor_a.id,
                 "dose": "1000",
                 "indication": "On-demand",
+                "status": "Scheduled",
             },
             format="json",
         )
-        self.assertEqual(res.status_code, 403)
+        self.assertEqual(res.status_code, 201, res.data)
+        listed = self.client.get(f"/api/v1/patients/{koshi_patient.unique_patient_id}/injections/")
+        self.assertEqual(listed.status_code, 200, listed.data)
+        self.assertEqual(len(listed.data["injections"]), 1)
+        bleeding = self.client.post(
+            f"/api/v1/patients/{koshi_patient.unique_patient_id}/bleeding-episodes/",
+            {
+                "episodeDate": "2026-03-01",
+                "site": "Knee",
+                "severity": "Moderate",
+                "notes": "Logged by visiting province admin",
+            },
+            format="json",
+        )
+        self.assertEqual(bleeding.status_code, 201, bleeding.data)
 
     def test_super_admin_adds_treatment_with_hospital(self):
         self.client.force_authenticate(self.super)

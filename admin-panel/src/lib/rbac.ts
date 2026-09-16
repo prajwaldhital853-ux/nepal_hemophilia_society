@@ -28,7 +28,7 @@ const PAGE_ACTIONS: Record<PageKey, { view?: string; create?: string; update?: s
   audit: { view: Perm.auditView },
   settings: { view: Perm.settingsSystem, update: Perm.settingsSystem },
   website: { view: Perm.websiteView, create: Perm.websiteManage, update: Perm.websiteManage, delete: Perm.websiteDelete },
-  users: { view: Perm.usersManage, create: Perm.usersManage, update: Perm.usersManage, delete: Perm.usersDelete },
+  users: { view: Perm.usersView, create: Perm.usersManage, update: Perm.usersManage, delete: Perm.usersDelete },
 };
 
 export function pageRbac(user: AccessUser, page: PageKey) {

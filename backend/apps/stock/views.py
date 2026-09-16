@@ -82,7 +82,12 @@ def _assert_can_manage_lot(user, stock):
         if hid != stock.hospital_id:
             raise PermissionDenied("You can only manage stock at your own treatment center.")
         return
-    raise PermissionDenied("Province Admin can monitor stock but cannot change it.")
+    if user.role == UserRole.PROVINCE_ADMIN:
+        pid = province_id_for(user)
+        if not pid or stock.hospital.province_id != pid:
+            raise PermissionDenied("You can only manage stock at treatment centers in your province.")
+        return
+    raise PermissionDenied("You cannot add or adjust stock.")
 
 
 class StockListCreateView(APIView):

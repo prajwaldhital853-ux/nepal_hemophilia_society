@@ -3,9 +3,20 @@
 from django.core.exceptions import ObjectDoesNotExist
 
 from apps.accounts.models import UserRole
-from apps.accounts.rbac import has_perm, hospital_id_for, is_national_scope, province_id_for, PERM_PATIENTS_DELETE, PERM_PATIENTS_UPDATE
+from apps.accounts.rbac import (
+    KIND_CENTER,
+    account_kind,
+    has_perm,
+    is_national_scope,
+    province_id_for,
+    PERM_INJECTIONS_ADD,
+    PERM_INJECTIONS_UPDATE,
+    PERM_PATIENTS_DELETE,
+    PERM_PATIENTS_UPDATE,
+    PERM_TREATMENTS_ADD,
+    PERM_TREATMENTS_UPDATE,
+)
 from apps.factors.models import ApplicableType, FactorType
-from apps.hospitals.models import HospitalStaffType
 from apps.patients.models import InhibitorStatus, Patient, VerificationStatus
 
 
@@ -52,6 +63,23 @@ def resolve_actor_hospital(user, hospital_name=None, patient=None):
         if patient is not None:
             return None, "This patient has no assigned treatment center."
         return None, "Specify treatmentCenter when adding records."
+    if user.role == UserRole.PROVINCE_ADMIN:
+        if getattr(user, "view_only", False):
+            return None, "View-only accounts cannot add clinical records."
+        from apps.hospitals.models import Hospital
+
+        name = (hospital_name or "").strip()
+        if name:
+            hospital = Hospital.objects.filter(name=name, is_active=True).first()
+            if not hospital:
+                return None, "Unknown treatment center."
+            return hospital, None
+        hospital = getattr(patient, "primary_hospital", None) if patient is not None else None
+        if hospital and hospital.is_active:
+            return hospital, None
+        if patient is not None:
+            return None, "This patient has no assigned treatment center."
+        return None, "Specify treatmentCenter when adding records."
     return None, "Only hospital staff or super admin can add clinical records."
 
 
@@ -76,8 +104,12 @@ def can_edit_patient(user, patient: Patient) -> bool:
         pid = province_id_for(user)
         return bool(pid and patient.province_id == pid)
     if user.role == UserRole.HOSPITAL_ADMIN:
+        if getattr(user, "view_only", False):
+            return False
         profile = get_hospital_admin_profile(user)
-        return bool(profile and patient.primary_hospital_id == profile.hospital_id)
+        if not (profile and patient.primary_hospital_id == profile.hospital_id):
+            return False
+        return account_kind(user) == KIND_CENTER or has_perm(user, PERM_PATIENTS_UPDATE)
     return False
 
 
@@ -90,26 +122,38 @@ def can_delete_patient(user, patient: Patient) -> bool:
         pid = province_id_for(user)
         return bool(pid and patient.province_id == pid)
     if user.role == UserRole.HOSPITAL_ADMIN:
+        if getattr(user, "view_only", False):
+            return False
         profile = get_hospital_admin_profile(user)
-        return bool(profile and patient.primary_hospital_id == profile.hospital_id)
+        if not (profile and patient.primary_hospital_id == profile.hospital_id):
+            return False
+        return account_kind(user) == KIND_CENTER or has_perm(user, PERM_PATIENTS_DELETE)
     return False
 
 
 def can_add_clinical_record(user) -> bool:
+    if getattr(user, "view_only", False):
+        return False
     if is_national_scope(user):
         return True
     if user.role == UserRole.HOSPITAL_ADMIN:
         profile = get_hospital_admin_profile(user)
         return bool(profile and profile.user.is_active_account)
+    if user.role == UserRole.PROVINCE_ADMIN:
+        return has_perm(user, PERM_INJECTIONS_ADD) or has_perm(user, PERM_TREATMENTS_ADD)
     return False
 
 
 def can_update_clinical_record(user, hospital) -> bool:
+    if getattr(user, "view_only", False):
+        return False
     if is_national_scope(user):
         return True
     if user.role == UserRole.HOSPITAL_ADMIN:
         profile = get_hospital_admin_profile(user)
         return bool(profile and profile.hospital_id == hospital.id)
+    if user.role == UserRole.PROVINCE_ADMIN:
+        return has_perm(user, PERM_INJECTIONS_UPDATE) or has_perm(user, PERM_TREATMENTS_UPDATE)
     return False
 
 

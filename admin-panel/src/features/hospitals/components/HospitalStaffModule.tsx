@@ -23,6 +23,7 @@ import {
   type HospitalStaffType,
 } from "@/features/hospitals/types";
 import { formatNumber } from "@/lib/format";
+import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
 import { usePageRbac } from "@/components/rbac/ReadOnlyBanner";
@@ -202,7 +203,17 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
             <span className="text-[15px] font-semibold text-ink">{formatNumber(provinceTotal)}</span>
           </p>
 
-          <button type="button" className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none">
+          <button
+            type="button"
+            className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
+            onClick={() =>
+              downloadCsv(
+                stampFilename(labels.singular.replaceAll(" ", "-").toLowerCase()),
+                ["ID", "Name", "Email", "Phone", "Center", "Province", "Status", "Joined"],
+                rows.map((row) => [row.id, row.name, row.email, row.phone, row.treatmentCenter, row.province, row.status, row.joinedDate]),
+              )
+            }
+          >
             <Download className="size-3.5" />
             Export
           </button>

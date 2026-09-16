@@ -5,6 +5,7 @@ import { AlertTriangle, ChevronDown, Download, Search, ShieldAlert } from "lucid
 
 import { AUDIT_MODULES, type AuditLog, type AuditSeverity } from "@/features/audit/types";
 import { apiFetch } from "@/lib/api";
+import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 
 function severityClass(severity: AuditSeverity) {
   if (severity === "Critical") return "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400";
@@ -19,9 +20,16 @@ export default function AuditModule() {
   const [openId, setOpenId] = useState("");
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [error, setError] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
 
   useEffect(() => {
-    void apiFetch("/audit/")
+    const q = new URLSearchParams();
+    if (query.trim()) q.set("search", query.trim());
+    if (moduleFilter !== "All") q.set("module", moduleFilter);
+    if (from) q.set("from", from);
+    if (to) q.set("to", to);
+    void apiFetch(`/audit/${q.toString() ? `?${q}` : ""}`)
       .then((data) => {
         const next = (data.logs ?? []).map((row: Record<string, string>) => ({
           id: String(row.id),
@@ -37,7 +45,7 @@ export default function AuditModule() {
         if (next[0]) setOpenId(String(next[0].id));
       })
       .catch((err: Error) => setError(err.message || "Audit logs are Super Admin only."));
-  }, []);
+  }, [query, moduleFilter, from, to]);
 
   const rows = useMemo(() => {
     return logs.filter((row) => {
@@ -130,7 +138,19 @@ export default function AuditModule() {
                 </div>
               ) : null}
             </div>
-            <button type="button" className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none">
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
+            <button
+              type="button"
+              className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
+              onClick={() =>
+                downloadCsv(
+                  stampFilename("audit-trail"),
+                  ["ID", "When", "Actor", "Module", "Action", "IP", "Detail"],
+                  rows.map((row) => [row.id, row.time, row.actor, row.module, row.action, row.ip, row.detail]),
+                )
+              }
+            >
               <Download className="size-3.5" />
               Export trail
             </button>

@@ -106,7 +106,7 @@ class StockAndDocumentPermissionTests(APITestCase):
         self.assertTrue(has_perm(self.treatment_admin, PERM_STOCK_VIEW))
         self.assertTrue(has_perm(self.treatment_admin, PERM_STOCK_MANAGE))
         self.assertTrue(has_perm(self.province_admin_user, PERM_STOCK_VIEW))
-        self.assertFalse(has_perm(self.province_admin_user, PERM_STOCK_MANAGE))
+        self.assertTrue(has_perm(self.province_admin_user, PERM_STOCK_MANAGE))
         self.assertFalse(has_perm(self.patient_user, PERM_STOCK_VIEW))
         self.assertFalse(has_perm(self.patient_user, PERM_STOCK_MANAGE))
 
@@ -127,14 +127,15 @@ class StockAndDocumentPermissionTests(APITestCase):
         names = {row["hospitalName"] for row in listed.data["stock"]}
         self.assertEqual(names, {self.hospital.name})
 
-    def test_province_admin_cannot_stock_in_but_can_view(self):
-        self._stock_in(self.treatment_admin)
-        blocked = self._stock_in(self.province_admin_user, hospital_name=self.hospital.name)
-        self.assertEqual(blocked.status_code, 403)
+    def test_province_admin_can_stock_in_own_province(self):
+        res = self._stock_in(self.province_admin_user, hospital_name=self.hospital.name)
+        self.assertEqual(res.status_code, 201, res.data)
         self.client.force_authenticate(self.province_admin_user)
         viewed = self.client.get("/api/v1/stock/")
         self.assertEqual(viewed.status_code, 200)
         self.assertGreaterEqual(viewed.data["total"], 1)
+        blocked = self._stock_in(self.province_admin_user, hospital_name=self.other_hospital.name)
+        self.assertIn(blocked.status_code, (400, 403))
 
     def test_patient_cannot_list_or_manage_admin_stock(self):
         self._stock_in(self.treatment_admin)
