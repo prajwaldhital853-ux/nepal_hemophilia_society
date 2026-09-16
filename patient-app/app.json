@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "newArchEnabled": false,
     "experiments": {
       "tsconfigPaths": true
     },
@@ -42,12 +43,11 @@
           "android": {
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
-            "buildToolsVersion": "35.0.0",
-            "kotlinVersion": "2.0.21",
             "minSdkVersion": 24
           }
         }
-      ]
+      ],
+      "expo-status-bar"
     ]
   }
 }

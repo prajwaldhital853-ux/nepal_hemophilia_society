@@ -13,8 +13,10 @@
     },
     "preview": {
       "distribution": "internal",
+      "node": "22.13.1",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "image": "latest"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://nepal-hemophilia-society.onrender.com/api/v1"

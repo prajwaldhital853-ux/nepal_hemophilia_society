@@ -281,12 +281,15 @@ export default function PatientFormWizard({
       }
       if (photoFile) body.append("photo", photoFile);
       documentFiles.forEach((file) => body.append("documents", file));
-      const data = await apiForm(
+      const data = await apiForm<{
+        patient: { id: string };
+        credentials?: { patientId: string; email: string; temporaryPassword: string };
+      }>(
         mode === "edit" && initial ? `/patients/${initial.id}/` : "/patients/",
         body,
         mode === "edit" ? "PUT" : "POST",
       );
-      const id = data.patient.id as string;
+      const id = data.patient.id;
       if (mode === "create" && data.credentials) {
         setCredentials(data.credentials);
         window.scrollTo({ top: 0, behavior: "smooth" });

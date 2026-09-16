@@ -140,7 +140,11 @@ async function fetchFormOnce(path: string, formData: FormData, method: string, t
   }
 }
 
-export async function apiForm(path: string, formData: FormData, method = "POST") {
+export async function apiForm<T = Record<string, unknown>>(
+  path: string,
+  formData: FormData,
+  method = "POST",
+): Promise<T> {
   const token = getAccessToken();
   let { res, data, raw } = await fetchFormOnce(path, formData, method, token);
 
@@ -160,5 +164,5 @@ export async function apiForm(path: string, formData: FormData, method = "POST")
     const message = formatApiError(data, raw.trim().startsWith("<") ? `Server error (${res.status})` : "Request failed");
     throw new Error(message);
   }
-  return data;
+  return data as T;
 }
