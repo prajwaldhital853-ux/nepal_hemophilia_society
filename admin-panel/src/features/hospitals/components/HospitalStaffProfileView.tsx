@@ -8,7 +8,7 @@ import { Building2, Check, FileText, MoreHorizontal, Pencil, Shield, Trash2 } fr
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { fetchHospitalStaffProfile } from "@/features/hospitals/api";
 import StaffAccountForm from "@/features/admins/components/StaffAccountForm";
-import { deleteStaffAccount, fetchStaffAccount, type StaffRecord } from "@/features/admins/api";
+import { deleteStaffAccount, fetchStaffAccount, updateStaffAccount, type StaffRecord } from "@/features/admins/api";
 import { staffLabels, type HospitalStaffProfile, type HospitalStaffType } from "@/features/hospitals/types";
 import { useAuth } from "@/lib/auth";
 import { PERM_LABELS, Perm } from "@/lib/permissions";
@@ -221,6 +221,7 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
   const [staff, setStaff] = useState<StaffRecord | null>(null);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const canManage = can(Perm.hospitalStaffManage) && !user?.viewOnly;
 
   function load() {
@@ -242,6 +243,22 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
   useEffect(() => {
     void load();
   }, [id, staffType]);
+
+  async function setAccountStatus(status: "Active" | "Inactive") {
+    if (!staff) return;
+    setBusy(true);
+    setError("");
+    try {
+      const data = await updateStaffAccount(staff.id, { status });
+      const updated = data.admin ?? data.staff;
+      setStaff(updated);
+      setProfile((current) => (current ? { ...current, status: updated.status } : current));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update status");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (error) {
     return <p className="text-[11px] text-red-600">{error}</p>;
@@ -268,14 +285,44 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
         </div>
         <div className="flex items-center gap-2">
           {canManage ? (
-            <button
-              type="button"
-              className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-ink shadow-none"
-              onClick={() => setEditing(true)}
-            >
-              <Pencil className="size-3.5" />
-              Edit Admin
-            </button>
+            <>
+              <button
+                type="button"
+                className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-ink shadow-none"
+                onClick={() => setEditing(true)}
+              >
+                <Pencil className="size-3.5" />
+                Edit Admin
+              </button>
+              {staff?.status === "Pending" ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="rounded bg-brand px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60"
+                  onClick={() => void setAccountStatus("Active")}
+                >
+                  Mark as Active
+                </button>
+              ) : staff?.status === "Inactive" ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="panel px-3 py-1.5 text-[11px] font-medium text-ink shadow-none disabled:opacity-60"
+                  onClick={() => void setAccountStatus("Active")}
+                >
+                  Activate
+                </button>
+              ) : staff?.status === "Active" ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="panel px-3 py-1.5 text-[11px] font-medium text-ink shadow-none disabled:opacity-60"
+                  onClick={() => void setAccountStatus("Inactive")}
+                >
+                  Deactivate
+                </button>
+              ) : null}
+            </>
           ) : null}
           {staff?.canDelete && staff.userId !== user?.id ? (
             <button

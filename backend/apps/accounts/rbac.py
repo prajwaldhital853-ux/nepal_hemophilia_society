@@ -505,8 +505,12 @@ def has_perm(user, permission: str) -> bool:
 
 def province_id_for(user):
     if getattr(user, "role", None) == UserRole.PROVINCE_ADMIN:
-        profile = getattr(user, "province_admin", None)
-        return getattr(profile, "province_id", None)
+        from django.core.exceptions import ObjectDoesNotExist
+
+        try:
+            return user.province_admin.province_id
+        except ObjectDoesNotExist:
+            return None
     if getattr(user, "role", None) == UserRole.HOSPITAL_ADMIN:
         profile = getattr(user, "hospital_admin", None)
         if profile:

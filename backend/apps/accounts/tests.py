@@ -356,6 +356,33 @@ class RbacMatrixTests(APITestCase):
         self.assertEqual(staff.status_code, 200)
         self.assertEqual(staff.data["admin"]["status"], "Active")
 
+    def test_super_marks_pending_admin_active_without_first_login(self):
+        self.client.force_authenticate(self.super)
+        created = self.client.post(
+            "/api/v1/admins/staff/",
+            {
+                "kind": "admin",
+                "fullName": "Manual Activate",
+                "email": "manual.activate@hemophilia.org.np",
+                "phone": "9841667788",
+                "designation": "Coordinator",
+                "temporaryPassword": "TempPass#123",
+            },
+            format="json",
+        )
+        self.assertEqual(created.status_code, 201, created.data)
+        admin_id = created.data["admin"]["id"]
+        self.assertEqual(created.data["admin"]["status"], "Pending")
+
+        activated = self.client.put(
+            f"/api/v1/admins/staff/{admin_id}/",
+            {"status": "Active"},
+            format="json",
+        )
+        self.assertEqual(activated.status_code, 200, activated.data)
+        self.assertEqual(activated.data["admin"]["status"], "Active")
+        self.assertFalse(activated.data["admin"]["mustChangePassword"])
+
 
 class StaffDeleteTests(APITestCase):
     def setUp(self):

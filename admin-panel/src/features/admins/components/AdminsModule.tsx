@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarRange, ChevronDown, Eye, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { CalendarRange, CheckCircle2, ChevronDown, Eye, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 
 import {
   deleteStaffAccount,
   fetchStaffCatalog,
   fetchStaffDirectory,
+  updateStaffAccount,
   KIND_LABELS,
   type StaffKind,
   type StaffRecord,
@@ -251,6 +252,21 @@ export default function AdminsModule() {
                         >
                           <Eye className="size-[15px]" />
                         </button>
+                        {canManage && row.status === "Pending" ? (
+                          <button
+                            type="button"
+                            className="rounded-lg p-1.5 text-status-green hover:bg-status-green-soft"
+                            aria-label={`Mark ${row.fullName} as active`}
+                            title="Mark as Active"
+                            onClick={() => {
+                              void updateStaffAccount(row.id, { status: "Active" })
+                                .then(() => void load())
+                                .catch((err: Error) => setError(err.message || "Could not activate admin"));
+                            }}
+                          >
+                            <CheckCircle2 className="size-[15px]" />
+                          </button>
+                        ) : null}
                         {canManage ? (
                           <button
                             type="button"

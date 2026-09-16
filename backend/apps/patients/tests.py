@@ -396,6 +396,27 @@ class PatientRbacScopeTests(APITestCase):
         self.assertEqual(verify.status_code, 200)
         self.assertEqual(verify.data["patient"]["status"], "Active")
 
+    def test_province_admin_can_update_patient_in_own_province(self):
+        from apps.accounts.rbac import PERM_DASHBOARD, PERM_PATIENTS_VIEW
+
+        self.prov.extra_permissions = [PERM_DASHBOARD, PERM_PATIENTS_VIEW]
+        self.prov.save(update_fields=["extra_permissions"])
+        self.client.force_authenticate(self.super)
+        created = self.client.post("/api/v1/patients/", self.payload, format="json")
+        pid = created.data["patient"]["id"]
+        self.client.force_authenticate(self.prov)
+        detail = self.client.get(f"/api/v1/patients/{pid}/")
+        self.assertEqual(detail.status_code, 200)
+        self.assertTrue(detail.data["patient"]["canEdit"])
+        update = self.client.put(
+            f"/api/v1/patients/{pid}/",
+            {**self.payload, "fullName": "Updated By Province Admin"},
+            format="json",
+        )
+        self.assertEqual(update.status_code, 200, update.data)
+        self.assertEqual(update.data["patient"]["fullName"], "Updated By Province Admin")
+        self.assertTrue(update.data["patient"]["canEdit"])
+
     def test_hospital_admin_lists_own_center_and_can_search_hem_id(self):
         self.client.force_authenticate(self.super)
         own = self.client.post("/api/v1/patients/", self.payload, format="json")

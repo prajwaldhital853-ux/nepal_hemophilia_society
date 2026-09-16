@@ -126,10 +126,8 @@ class CanUpdatePatients(BasePermission):
             return False
         if is_national_scope(user):
             return has_perm(user, PERM_PATIENTS_UPDATE)
-        if user.role == UserRole.HOSPITAL_ADMIN:
+        if user.role in (UserRole.HOSPITAL_ADMIN, UserRole.PROVINCE_ADMIN):
             return has_perm(user, PERM_PATIENTS_VIEW)
-        if user.role == UserRole.PROVINCE_ADMIN:
-            return has_perm(user, PERM_PATIENTS_UPDATE)
         return False
 
     def has_object_permission(self, request, view, obj):
@@ -155,10 +153,8 @@ class CanDeletePatients(BasePermission):
             return False
         if is_national_scope(user):
             return has_perm(user, PERM_PATIENTS_DELETE)
-        if user.role == UserRole.HOSPITAL_ADMIN:
+        if user.role in (UserRole.HOSPITAL_ADMIN, UserRole.PROVINCE_ADMIN):
             return has_perm(user, PERM_PATIENTS_VIEW)
-        if user.role == UserRole.PROVINCE_ADMIN:
-            return has_perm(user, PERM_PATIENTS_DELETE)
         return False
 
     def has_object_permission(self, request, view, obj):

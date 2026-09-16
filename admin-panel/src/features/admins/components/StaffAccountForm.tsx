@@ -81,6 +81,7 @@ type FormState = {
   viewOnly: boolean;
   permissions: string[];
   temporaryPassword: string;
+  status: "Active" | "Pending" | "Inactive";
 };
 
 const emptyForm = (): FormState => ({
@@ -101,6 +102,7 @@ const emptyForm = (): FormState => ({
   viewOnly: false,
   permissions: [],
   temporaryPassword: generateTempPassword(),
+  status: "Pending",
 });
 
 function formFromStaff(staff: StaffRecord): FormState {
@@ -122,6 +124,7 @@ function formFromStaff(staff: StaffRecord): FormState {
     viewOnly: staff.viewOnly,
     permissions: staff.permissions || [],
     temporaryPassword: "",
+    status: staff.status,
   };
 }
 
@@ -347,6 +350,7 @@ export default function StaffAccountForm({
         permissions: form.permissions,
       };
       if (mode === "create") payload.temporaryPassword = form.temporaryPassword;
+      if (mode === "edit") payload.status = form.status;
       if (mode === "edit" && form.temporaryPassword.trim()) {
         payload.resetTemporaryPassword = form.temporaryPassword;
         payload.resetPassword = true;
@@ -623,6 +627,19 @@ export default function StaffAccountForm({
 
           {step === 4 ? (
             <div className="grid max-w-lg gap-3">
+              {mode === "edit" ? (
+                <Field label="Account status">
+                  <select
+                    className={fieldClass}
+                    value={form.status}
+                    onChange={(e) => patch({ status: e.target.value as FormState["status"] })}
+                  >
+                    <option value="Pending">Pending — awaiting first login password change</option>
+                    <option value="Active">Active — full access now</option>
+                    <option value="Inactive">Inactive — cannot sign in</option>
+                  </select>
+                </Field>
+              ) : null}
               <Field
                 label={mode === "edit" ? "Reset temporary password (optional)" : "Temporary password"}
                 required={mode === "create"}

@@ -167,7 +167,8 @@ export default function PatientFormWizard({
       router.replace("/dashboard/patients");
       return;
     }
-    if (mode === "edit" && !(initial?.canEdit ?? can(Perm.patientsUpdate))) {
+    const mayEdit = Boolean(initial?.canEdit) || can(Perm.patientsUpdate);
+    if (mode === "edit" && !mayEdit) {
       router.replace(initial?.id ? `/dashboard/patients/${initial.id}` : "/dashboard/patients");
     }
   }, [can, initial?.id, mode, router]);

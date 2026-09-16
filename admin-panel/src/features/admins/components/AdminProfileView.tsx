@@ -46,13 +46,12 @@ export default function AdminProfileView({ id }: { id: string }) {
     void load();
   }, [id]);
 
-  async function toggleStatus() {
+  async function setAccountStatus(status: "Active" | "Inactive") {
     if (!admin) return;
     setBusy(true);
+    setError("");
     try {
-      const data = await updateStaffAccount(admin.id, {
-        status: admin.status === "Active" ? "Inactive" : "Active",
-      });
+      const data = await updateStaffAccount(admin.id, { status });
       setAdmin(data.admin ?? data.staff);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update status");
@@ -94,14 +93,34 @@ export default function AdminProfileView({ id }: { id: string }) {
                 <Pencil className="size-3.5" />
                 Edit
               </button>
-              <button
-                type="button"
-                disabled={busy}
-                className="panel px-3 py-1.5 text-[11px] font-medium text-ink shadow-none disabled:opacity-60"
-                onClick={() => void toggleStatus()}
-              >
-                {admin.status === "Inactive" ? "Activate" : "Deactivate"}
-              </button>
+              {admin.status === "Pending" ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="rounded bg-brand px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60"
+                  onClick={() => void setAccountStatus("Active")}
+                >
+                  Mark as Active
+                </button>
+              ) : admin.status === "Inactive" ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="panel px-3 py-1.5 text-[11px] font-medium text-ink shadow-none disabled:opacity-60"
+                  onClick={() => void setAccountStatus("Active")}
+                >
+                  Activate
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="panel px-3 py-1.5 text-[11px] font-medium text-ink shadow-none disabled:opacity-60"
+                  onClick={() => void setAccountStatus("Inactive")}
+                >
+                  Deactivate
+                </button>
+              )}
               {admin.canDelete && admin.userId !== user?.id ? (
                 <button
                   type="button"
@@ -195,7 +214,14 @@ export default function AdminProfileView({ id }: { id: string }) {
                     ["Designation", admin.designation || ""],
                     ["Employee ID", admin.employeeId || ""],
                     ["Status", admin.status],
-                    ["Must change password", admin.mustChangePassword ? "Yes — first login" : "No"],
+                    [
+                      "Must change password",
+                      admin.mustChangePassword
+                        ? admin.status === "Pending"
+                          ? "Yes — first login or use Mark as Active"
+                          : "Yes"
+                        : "No",
+                    ],
                   ]}
                 />
               </article>
