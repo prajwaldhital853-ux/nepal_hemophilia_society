@@ -38,13 +38,15 @@ echo "==> Collecting static files"
 python manage.py collectstatic --noinput
 
 if [[ "${RUN_SEED_ON_START:-true}" == "true" ]]; then
-  echo "==> Seeding reference data (idempotent)"
+  echo "==> Seeding reference data (idempotent) — set RUN_SEED_ON_START=false after first deploy to speed up restarts"
   python manage.py seed_nhms
+else
+  echo "==> Skipping seed (RUN_SEED_ON_START=false)"
 fi
 
 if [[ -n "${CLOUDINARY_URL:-}" || -n "${CLOUDINARY_CLOUD_NAME:-}" ]]; then
   echo "==> Cloudinary configured for patient/admin photos and documents"
 fi
 
-echo "==> Starting Gunicorn"
+echo "==> Starting Gunicorn on 0.0.0.0:${PORT:-8000}"
 exec gunicorn config.wsgi:application --config gunicorn.conf.py
