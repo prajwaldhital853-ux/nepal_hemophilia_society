@@ -13,7 +13,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${ROOT_DIR}/backend"
 
-echo "==> NHMS backend startup (PORT=${PORT:-8000})"
+echo "==> NHMS backend startup (PORT=${PORT:-8000}, Python $(python -V 2>&1))"
 
 export USE_SQLITE="${USE_SQLITE:-false}"
 

@@ -84,7 +84,6 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
-    "apps.core",
     "apps.accounts",
     "apps.provinces",
     "apps.hospitals",
@@ -96,6 +95,7 @@ LOCAL_APPS = [
     "apps.notifications",
     "apps.audit",
     "apps.reports",
+    "apps.core",  # last: collectstatic command overrides cloudinary_storage on Django 6
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -281,6 +281,9 @@ STORAGES = {
     "default": {"BACKEND": _default_file_storage},
     "staticfiles": {"BACKEND": _staticfiles_backend},
 }
+# django-cloudinary-storage collectstatic still reads these on Django 6+
+STATICFILES_STORAGE = _staticfiles_backend
+DEFAULT_FILE_STORAGE = _default_file_storage
 
 # ---------------------------------------------------------------------------
 # Internationalization
