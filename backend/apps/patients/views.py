@@ -42,6 +42,20 @@ def client_ip(request):
     return remote or None
 
 
+def _province_pk_from_value(value):
+    """Resolve a province PK from serializer input (name string or Province instance)."""
+    if value is None:
+        return None
+    from apps.provinces.models import Province
+
+    if isinstance(value, Province):
+        return value.pk
+    if isinstance(value, str):
+        row = Province.objects.filter(name=value.strip()).first()
+        return row.pk if row else None
+    return getattr(value, "pk", None)
+
+
 class PatientViewSet(viewsets.ModelViewSet):
     """
     Admin-only patient registry.
@@ -124,7 +138,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         if request.user.role == UserRole.PROVINCE_ADMIN:
             pid = province_id_for(request.user)
             province = serializer.validated_data.get("province")
-            if province and getattr(province, "pk", None) != pid:
+            if province and _province_pk_from_value(province) != pid:
                 return Response(
                     {"error": "Province Admin can only register patients in their own province."},
                     status=status.HTTP_403_FORBIDDEN,
@@ -205,8 +219,9 @@ class PatientViewSet(viewsets.ModelViewSet):
             return Response({"error": _flatten_errors(exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
         if request.user.role == UserRole.PROVINCE_ADMIN:
             pid = province_id_for(request.user)
-            province = serializer.validated_data.get("province") or instance.province
-            if getattr(province, "pk", None) != pid:
+            province = serializer.validated_data.get("province")
+            target_pid = _province_pk_from_value(province) if province is not None else instance.province_id
+            if target_pid != pid:
                 return Response(
                     {"error": "Cannot move a patient outside your province."},
                     status=status.HTTP_403_FORBIDDEN,

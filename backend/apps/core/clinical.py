@@ -74,10 +74,10 @@ def can_edit_patient(user, patient: Patient) -> bool:
     if is_national_scope(user):
         return has_perm(user, PERM_PATIENTS_UPDATE)
     if user.role == UserRole.PROVINCE_ADMIN:
-        if not has_perm(user, PERM_PATIENTS_UPDATE):
+        if getattr(user, "view_only", False):
             return False
-        province_admin = getattr(user, "province_admin", None)
-        return bool(province_admin and patient.province_id == province_admin.province_id)
+        pid = province_id_for(user)
+        return bool(pid and patient.province_id == pid)
     if user.role == UserRole.HOSPITAL_ADMIN:
         profile = get_hospital_admin_profile(user)
         return bool(profile and patient.primary_hospital_id == profile.hospital_id)
