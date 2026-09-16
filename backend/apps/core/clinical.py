@@ -61,10 +61,7 @@ def can_view_patient(user, patient: Patient) -> bool:
     if user.role == UserRole.PATIENT:
         profile = getattr(user, "patient_profile", None)
         return bool(profile and profile.pk == patient.pk)
-    if user.role == UserRole.PROVINCE_ADMIN:
-        pid = province_id_for(user)
-        return bool(pid and patient.province_id == pid)
-    if user.role == UserRole.HOSPITAL_ADMIN:
+    if user.role in (UserRole.PROVINCE_ADMIN, UserRole.HOSPITAL_ADMIN):
         return True
     return False
 

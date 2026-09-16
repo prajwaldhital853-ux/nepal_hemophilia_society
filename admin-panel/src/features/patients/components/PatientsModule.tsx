@@ -97,15 +97,23 @@ export default function PatientsModule() {
       .finally(() => setLoading(false));
   }, [debounced]);
 
+  const hemIdSearch = useMemo(() => {
+    const term = debounced.trim();
+    if (!term) return false;
+    if (/^hem-/i.test(term)) return true;
+    return /^\d{4,}$/.test(term.replace(/\D/g, ""));
+  }, [debounced]);
+
   const visible = useMemo(() => {
     return rows.filter((patient) => {
+      if (hemIdSearch) return true;
       const matchProvince = province === "All" || patient.province === province;
       return matchProvince;
     });
-  }, [province, rows]);
+  }, [hemIdSearch, province, rows]);
 
   const canCreate = can(Perm.patientsCreate);
-  const hospitalSearchHint = user?.role === "hospital_admin";
+  const scopedSearchHint = user?.role === "hospital_admin" || user?.role === "province_admin";
 
   return (
     <div className="flex flex-col gap-2 pb-6">
@@ -113,8 +121,10 @@ export default function PatientsModule() {
         <div>
           <h1 className="text-[15px] font-semibold text-ink">All Patients</h1>
           <p className="text-[11px] text-muted">
-            {hospitalSearchHint
-              ? "Search your hospital roster, or enter a Unique Patient ID (HEM-…) for cross-hospital care."
+            {scopedSearchHint
+              ? user?.role === "province_admin"
+                ? "Browse patients in your province, or enter a Unique Patient ID (HEM-…) to open any patient for clinical logging."
+                : "Search your hospital roster, or enter a Unique Patient ID (HEM-…) for cross-hospital care."
               : "Home > Patients Management > All Patients"}
           </p>
         </div>
@@ -147,7 +157,7 @@ export default function PatientsModule() {
               onChange={(e) => setQuery(e.target.value)}
               className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
               placeholder={
-                hospitalSearchHint
+                scopedSearchHint
                   ? "Search Unique Patient ID (HEM-000123)…"
                   : "Search by Patient ID, Name, Blood Group..."
               }
@@ -242,8 +252,10 @@ export default function PatientsModule() {
               ) : visible.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-3 py-8 text-center text-[11px] text-muted">
-                    {hospitalSearchHint
-                      ? "No patients at this hospital. Enter a HEM-ID to open a visiting patient’s record."
+                    {scopedSearchHint
+                      ? user?.role === "province_admin"
+                        ? "No patients in your province. Enter a HEM-ID to find a patient from another province."
+                        : "No patients at this hospital. Enter a HEM-ID to open a visiting patient’s record."
                       : "No patients in this scope yet."}
                   </td>
                 </tr>

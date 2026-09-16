@@ -456,3 +456,30 @@ class PatientRbacScopeTests(APITestCase):
             format="json",
         )
         self.assertIn(cross.status_code, (403, 404))
+
+    def test_province_admin_can_search_patient_outside_province_by_hem_id(self):
+        self.client.force_authenticate(self.super)
+        koshi_patient = self.client.post(
+            "/api/v1/patients/",
+            {
+                **self.payload,
+                "email": "koshi.lookup@example.com",
+                "province": "Koshi",
+                "district": "Morang",
+                "primaryHospital": "Biratnagar Hemophilia Center",
+            },
+            format="json",
+        )
+        pid = koshi_patient.data["patient"]["id"]
+        self.client.force_authenticate(self.prov)
+        listed = self.client.get("/api/v1/patients/")
+        self.assertNotIn(pid, {row["id"] for row in listed.data["patients"]})
+        searched = self.client.get(f"/api/v1/patients/?search={pid}")
+        self.assertEqual(len(searched.data["patients"]), 1)
+        self.assertEqual(searched.data["patients"][0]["id"], pid)
+        detail = self.client.get(f"/api/v1/patients/{pid}/")
+        self.assertEqual(detail.status_code, 200)
+        self.assertFalse(detail.data["patient"]["canEdit"])
+        numeric = pid.split("-", 1)[1]
+        numeric_search = self.client.get(f"/api/v1/patients/?search={numeric}")
+        self.assertEqual(len(numeric_search.data["patients"]), 1)

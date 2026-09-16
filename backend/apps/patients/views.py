@@ -1,4 +1,5 @@
 import logging
+import re
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import DatabaseError, IntegrityError
@@ -40,6 +41,35 @@ def client_ip(request):
             return candidate
     remote = request.META.get("REMOTE_ADDR")
     return remote or None
+
+
+def _patient_search_term(request):
+    return (request.query_params.get("search") or request.query_params.get("q") or "").strip()
+
+
+def _normalize_hem_id(search: str) -> str | None:
+    """Normalize HEM-000123, hem-123, or 123 into canonical HEM-0000123."""
+    raw = (search or "").strip()
+    if not raw:
+        return None
+    upper = raw.upper()
+    if upper.startswith("HEM-"):
+        suffix = upper[4:].lstrip("-")
+        digits = re.sub(r"\D", "", suffix)
+        if digits:
+            return f"HEM-{int(digits):07d}"
+        return upper
+    digits = re.sub(r"\D", "", raw)
+    if digits:
+        return f"HEM-{int(digits):07d}"
+    return None
+
+
+def _hem_id_queryset(qs, search: str):
+    hem_id = _normalize_hem_id(search)
+    if not hem_id:
+        return None
+    return qs.filter(unique_patient_id__iexact=hem_id)
 
 
 def _province_pk_from_value(value):
@@ -91,16 +121,22 @@ class PatientViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if is_national_scope(user):
             return qs
+        search = _patient_search_term(self.request)
         if user.role == UserRole.PROVINCE_ADMIN:
+            if self.action == "retrieve":
+                return qs
+            hem_qs = _hem_id_queryset(qs, search) if search else None
+            if hem_qs is not None:
+                return hem_qs
             pid = province_id_for(user)
             return qs.filter(province_id=pid) if pid else qs.none()
         if user.role == UserRole.HOSPITAL_ADMIN:
-            hid = hospital_id_for(user)
             if self.action == "retrieve":
                 return qs
-            search = (self.request.query_params.get("search") or self.request.query_params.get("q") or "").strip()
-            if search.upper().startswith("HEM-"):
-                return qs.filter(unique_patient_id__iexact=search.upper())
+            hem_qs = _hem_id_queryset(qs, search) if search else None
+            if hem_qs is not None:
+                return hem_qs
+            hid = hospital_id_for(user)
             return qs.filter(primary_hospital_id=hid) if hid else qs.none()
         return qs.none()
 
