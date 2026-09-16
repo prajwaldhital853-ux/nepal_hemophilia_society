@@ -18,13 +18,31 @@ PROJECT_ROOT = BASE_DIR.parent
 
 load_dotenv(PROJECT_ROOT / ".env")
 
-CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "").strip()
+
+def _normalize_cloudinary_url(raw: str) -> str:
+    """Accept pasted values like 'CLOUDINARY_URL=cloudinary://...' from dashboards."""
+    value = (raw or "").strip().strip('"').strip("'")
+    if value.upper().startswith("CLOUDINARY_URL="):
+        value = value.split("=", 1)[1].strip()
+    return value
+
+
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
 CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "").strip()
 CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "").strip()
-USE_CLOUDINARY = bool(
-    CLOUDINARY_URL or (CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET)
-)
+CLOUDINARY_URL = _normalize_cloudinary_url(os.getenv("CLOUDINARY_URL", ""))
+
+if not CLOUDINARY_URL.startswith("cloudinary://") and CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
+    from urllib.parse import quote
+
+    CLOUDINARY_URL = (
+        f"cloudinary://{quote(CLOUDINARY_API_KEY, safe='')}:"
+        f"{quote(CLOUDINARY_API_SECRET, safe='')}@{CLOUDINARY_CLOUD_NAME}"
+    )
+
+USE_CLOUDINARY = CLOUDINARY_URL.startswith("cloudinary://")
+if USE_CLOUDINARY:
+    os.environ["CLOUDINARY_URL"] = CLOUDINARY_URL
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-dev-key-change-in-production")
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("true", "1", "yes")
@@ -253,14 +271,6 @@ MEDIA_ROOT = BASE_DIR / "media"
 _default_file_storage = "django.core.files.storage.FileSystemStorage"
 if USE_CLOUDINARY:
     _default_file_storage = "cloudinary_storage.storage.MediaCloudinaryStorage"
-    if CLOUDINARY_URL:
-        os.environ.setdefault("CLOUDINARY_URL", CLOUDINARY_URL)
-    else:
-        CLOUDINARY_STORAGE = {
-            "CLOUD_NAME": CLOUDINARY_CLOUD_NAME,
-            "API_KEY": CLOUDINARY_API_KEY,
-            "API_SECRET": CLOUDINARY_API_SECRET,
-        }
 
 _staticfiles_backend = (
     "whitenoise.storage.CompressedManifestStaticFilesStorage"
