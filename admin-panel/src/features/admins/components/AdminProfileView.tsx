@@ -8,8 +8,9 @@ import { Check, MoreHorizontal, Pencil, Shield, Trash2 } from "lucide-react";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { deleteStaffAccount, fetchStaffAccount, KIND_LABELS, updateStaffAccount, type StaffRecord } from "@/features/admins/api";
 import StaffAccountForm from "@/features/admins/components/StaffAccountForm";
+import { isOwnStaffAccount } from "@/features/admins/identity";
 import { useAuth } from "@/lib/auth";
-import { PERM_LABELS, Perm } from "@/lib/permissions";
+import { PERM_LABELS } from "@/lib/permissions";
 
 const tabs = ["Overview", "Roles & Permissions"];
 
@@ -28,15 +29,14 @@ function InfoRows({ items }: { items: [string, string][] }) {
 
 export default function AdminProfileView({ id }: { id: string }) {
   const router = useRouter();
-  const { can, user } = useAuth();
+  const { user } = useAuth();
   const [tab, setTab] = useState("Overview");
   const [admin, setAdmin] = useState<StaffRecord | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
-  const canManage = (can(Perm.adminsManage) || can(Perm.provinceAdminsManage) || can(Perm.hospitalStaffManage)) && !user?.viewOnly;
-  const isSelf = admin?.userId === user?.id;
-  const canEditThis = Boolean(canManage && admin?.canEdit && !isSelf);
+  const isSelf = isOwnStaffAccount(user, admin);
+  const canEditThis = Boolean(admin?.canEdit && !isSelf);
 
   function load() {
     return fetchStaffAccount(id)
@@ -296,7 +296,7 @@ export default function AdminProfileView({ id }: { id: string }) {
         </div>
       </div>
 
-      {editing ? (
+      {editing && canEditThis && admin ? (
         <StaffAccountForm
           mode="edit"
           initial={admin}

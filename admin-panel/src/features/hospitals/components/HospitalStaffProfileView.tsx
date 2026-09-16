@@ -9,6 +9,7 @@ import { UserAvatar } from "@/components/ui/UserAvatar";
 import { fetchHospitalStaffProfile } from "@/features/hospitals/api";
 import StaffAccountForm from "@/features/admins/components/StaffAccountForm";
 import { deleteStaffAccount, fetchStaffAccount, updateStaffAccount, type StaffRecord } from "@/features/admins/api";
+import { isOwnStaffAccount } from "@/features/admins/identity";
 import { staffLabels, type HospitalStaffProfile, type HospitalStaffType } from "@/features/hospitals/types";
 import { useAuth } from "@/lib/auth";
 import { PERM_LABELS, Perm } from "@/lib/permissions";
@@ -223,9 +224,8 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const canManage = can(Perm.hospitalStaffManage) && !user?.viewOnly;
-  const isSelf = staff?.userId === user?.id;
-  const canEditThis = Boolean(canManage && staff?.canEdit && !isSelf);
+  const isSelf = isOwnStaffAccount(user, staff) || isOwnStaffAccount(user, profile);
+  const canEditThis = Boolean(staff?.canEdit && !isSelf);
 
   function load() {
     return Promise.all([
@@ -400,7 +400,7 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
           <TabContent tab={tab} profile={profile} labels={labels} />
         </div>
       </div>
-      {editing && staff ? (
+      {editing && canEditThis && staff ? (
         <StaffAccountForm
           mode="edit"
           lockedKind={staffType}

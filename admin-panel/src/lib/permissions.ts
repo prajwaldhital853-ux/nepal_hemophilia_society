@@ -99,6 +99,31 @@ export const ACTION_ROUTES: Array<{ test: (pathname: string) => boolean; permiss
   { test: (p) => /^\/dashboard\/patients\/[^/]+\/edit$/.test(p), permission: Perm.patientsView },
 ];
 
+/** Parent nav entries that may expose a fixed subtree (never treat `/dashboard` as a parent). */
+const NAV_PARENT_PREFIXES: Record<string, string> = {
+  "/dashboard/hospitals": "/dashboard/hospitals/",
+};
+
+export function navHrefAllowed(href: string, allowed: string[]) {
+  if (allowed.includes(href)) return true;
+  for (const [parent, prefix] of Object.entries(NAV_PARENT_PREFIXES)) {
+    if (allowed.includes(parent) && href.startsWith(prefix)) return true;
+  }
+  return false;
+}
+
 export function navAllows(pathname: string, nav: string[]) {
-  return nav.some((item) => pathname === item || pathname.startsWith(`${item}/`));
+  return navHrefAllowed(pathname, nav);
+}
+
+export const WEBSITE_ROUTES = [
+  "/dashboard/website",
+  "/dashboard/news",
+  "/dashboard/events",
+  "/dashboard/gallery",
+  "/dashboard/resources",
+] as const;
+
+export function isWebsiteRoute(pathname: string) {
+  return WEBSITE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }

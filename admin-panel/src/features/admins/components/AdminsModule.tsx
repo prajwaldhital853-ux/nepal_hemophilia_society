@@ -14,6 +14,7 @@ import {
   type StaffRecord,
 } from "@/features/admins/api";
 import StaffAccountForm from "@/features/admins/components/StaffAccountForm";
+import { isOwnStaffAccount } from "@/features/admins/identity";
 import { NEPAL_PROVINCES } from "@/lib/constants/provinces";
 import { useAuth } from "@/lib/auth";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
@@ -273,7 +274,7 @@ export default function AdminsModule() {
                         >
                           <Eye className="size-[15px]" />
                         </button>
-                        {canManage && row.status === "Pending" ? (
+                        {canManage && row.canEdit && !isOwnStaffAccount(user, row) && row.status === "Pending" ? (
                           <button
                             type="button"
                             className="rounded-lg p-1.5 text-status-green hover:bg-status-green-soft"
@@ -288,7 +289,7 @@ export default function AdminsModule() {
                             <CheckCircle2 className="size-[15px]" />
                           </button>
                         ) : null}
-                        {canManage ? (
+                        {canManage && row.canEdit && !isOwnStaffAccount(user, row) ? (
                           <button
                             type="button"
                             className="rounded-lg p-1.5 hover:bg-elevated"

@@ -229,6 +229,35 @@ class RbacMatrixTests(APITestCase):
         self.assertNotIn(PERM_INJECTIONS_CORRECT, permissions_for(admin))
         self.assertNotIn("settings.system", permissions_for(admin))
 
+    def test_province_admin_nav_excludes_website_management(self):
+        from apps.accounts.rbac import nav_allowed, permissions_for
+
+        nav = nav_allowed(self.province_user)
+        perms = permissions_for(self.province_user)
+        self.assertNotIn("website.view", perms)
+        self.assertNotIn("/dashboard/website", nav)
+        self.assertNotIn("/dashboard/news", nav)
+        self.assertNotIn("/dashboard/events", nav)
+        self.assertIn("/dashboard", nav)
+        self.assertIn("/dashboard/patients", nav)
+
+    def test_center_admin_nav_excludes_website_management(self):
+        from apps.accounts.rbac import nav_allowed, permissions_for
+
+        nav = nav_allowed(self.center)
+        perms = permissions_for(self.center)
+        self.assertNotIn("website.view", perms)
+        self.assertNotIn("/dashboard/website", nav)
+        self.assertIn("/dashboard/injections", nav)
+
+    def test_national_admin_nav_includes_website_management(self):
+        from apps.accounts.rbac import nav_allowed
+
+        admin = User.objects.create_user(username="natadmin2", password="ChangeMe#2026", role=UserRole.ADMIN)
+        nav = nav_allowed(admin)
+        self.assertIn("/dashboard/website", nav)
+        self.assertIn("/dashboard/news", nav)
+
     def test_website_manager_only_sees_website_nav(self):
         wm = User.objects.create_user(username="webmgr", password="ChangeMe#2026", role=UserRole.WEBSITE_MANAGER)
         self.client.force_authenticate(wm)

@@ -11,7 +11,7 @@ import {
   writeAuthValue,
   removeAuthValue,
 } from "@/lib/authStorage";
-import { ACTION_ROUTES, navAllows } from "@/lib/permissions";
+import { ACTION_ROUTES, isWebsiteRoute, navAllows, Perm } from "@/lib/permissions";
 
 export type AdminRole = "super_admin" | "admin" | "province_admin" | "hospital_admin" | "website_manager";
 export type AdminKind = "super_admin" | "admin" | "province_admin" | "center_admin" | "treatment_admin" | "website_manager";
@@ -70,6 +70,9 @@ export function isAdminUser(user: AuthUser | null): user is AuthUser {
 
 export function pathAllowed(pathname: string, user: AuthUser) {
   if (!isAdminUser(user)) return false;
+  if (isWebsiteRoute(pathname)) {
+    return user.permissions?.includes(Perm.websiteView) ?? false;
+  }
   const action = ACTION_ROUTES.find((route) => route.test(pathname));
   if (action) return user.permissions?.includes(action.permission) ?? false;
   if (pathname === "/dashboard") return user.permissions?.includes("dashboard") ?? user.nav?.includes("/dashboard") ?? false;

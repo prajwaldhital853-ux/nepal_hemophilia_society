@@ -1,3 +1,5 @@
+import { navHrefAllowed } from "@/lib/permissions";
+
 export type NavIconName =
   | "layout"
   | "patients"
@@ -45,15 +47,14 @@ export const mainNav: NavItem[] = [
 ];
 
 export function filterNav(items: NavItem[], allowed: string[]) {
-  const allow = (href: string) => allowed.some((item) => href === item || href.startsWith(`${item}/`) || item.startsWith(`${href}/`));
   return items
     .map((item) => {
       if (item.children?.length) {
-        const children = item.children.filter((child) => allow(child.href));
-        if (!children.length && !allow(item.href)) return null;
+        const children = item.children.filter((child) => navHrefAllowed(child.href, allowed));
+        if (!children.length && !navHrefAllowed(item.href, allowed)) return null;
         return { ...item, children };
       }
-      return allow(item.href) ? item : null;
+      return navHrefAllowed(item.href, allowed) ? item : null;
     })
     .filter((item): item is NavItem => Boolean(item));
 }

@@ -161,6 +161,8 @@ class HospitalStaffViewSet(viewsets.ViewSet):
 
     def update(self, request, display_id=None, staff_type=None):
         profile = self._get_profile(display_id)
+        if profile.user_id == request.user.id:
+            raise PermissionDenied("You cannot edit your own admin account. Ask another administrator.")
         if request.user.role == UserRole.HOSPITAL_ADMIN:
             own = getattr(request.user, "hospital_admin", None)
             if own and own.staff_type == HospitalStaffType.TREATMENT_ADMIN and profile.user_id != request.user.id:

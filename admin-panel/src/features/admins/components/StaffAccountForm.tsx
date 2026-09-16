@@ -20,6 +20,7 @@ import type { HospitalOption } from "@/features/hospitals/types";
 import { provinceDistricts } from "@/features/patients/data/geo";
 import { NEPAL_PROVINCES } from "@/lib/constants/provinces";
 import { apiFetch } from "@/lib/api";
+import { isOwnStaffAccount } from "@/features/admins/identity";
 import { useAuth } from "@/lib/auth";
 import { PERM_LABELS } from "@/lib/permissions";
 
@@ -187,6 +188,8 @@ export default function StaffAccountForm({
   onSaved: () => void;
 }) {
   const { user } = useAuth();
+  const editingSelf = mode === "edit" && isOwnStaffAccount(user, initial);
+
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormState>(() => (initial ? formFromStaff(initial) : { ...emptyForm(), kind: lockedKind || "" }));
   const [roles, setRoles] = useState<AssignableRole[]>([]);
@@ -208,8 +211,10 @@ export default function StaffAccountForm({
 
   const selectedRole = roles.find((role) => role.kind === form.kind);
   const isProvinceAdminRole = form.kind === "province_admin";
-  const lockedProvince = user?.role === "province_admin" ? user.provinceAdmin?.province || "" : "";
+  const isProvinceActor = user?.role === "province_admin" || user?.kind === "province_admin";
+  const lockedProvince = isProvinceActor ? user?.provinceAdmin?.province || form.province || "" : "";
   const requiresHospital = Boolean(selectedRole?.requiresHospital);
+  const provinceFieldValue = lockedProvince || form.province;
 
   function defaultsForKind(kind: StaffKind | "") {
     if (!kind) return [];
@@ -237,9 +242,15 @@ export default function StaffAccountForm({
   }
 
   useEffect(() => {
-    if (!lockedProvince || mode === "edit") return;
-    setForm((current) => (current.province === lockedProvince ? current : { ...current, province: lockedProvince }));
-  }, [lockedProvince, mode]);
+    if (!isProvinceActor || mode === "edit") return;
+    const province = user?.provinceAdmin?.province;
+    if (!province) return;
+    setForm((current) =>
+      current.province === province && current.district
+        ? current
+        : { ...current, province, district: current.province === province ? current.district : "" },
+    );
+  }, [isProvinceActor, mode, user?.provinceAdmin?.province]);
 
   useEffect(() => {
     void fetchHospitals()
@@ -307,7 +318,7 @@ export default function StaffAccountForm({
     return () => URL.revokeObjectURL(url);
   }, [photoFile]);
 
-  const districts = provinceDistricts[form.province] ?? [];
+  const districts = provinceDistricts[provinceFieldValue] ?? [];
 
   function provinceIsTaken(name: string) {
     return taken.includes(name) && !(mode === "edit" && initial?.province === name);
@@ -440,6 +451,22 @@ export default function StaffAccountForm({
     );
   }
 
+  if (editingSelf) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="panel max-w-md p-5">
+          <h2 className="text-[15px] font-semibold text-ink">Cannot edit your own account</h2>
+          <p className="mt-2 text-[12px] text-muted">
+            Another administrator must update your profile, permissions, password, or account status.
+          </p>
+          <button type="button" onClick={onClose} className="mt-4 w-full rounded bg-brand py-2 text-[11px] font-semibold text-white">
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="panel flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden p-4">
@@ -562,7 +589,18 @@ export default function StaffAccountForm({
                   )}
                 </div>
               </div>
-              {isProvinceAdminRole ? (
+              {isProvinceActor && requiresHospital ? (
+                <div className="sm:col-span-2">
+                  <article className="rounded-md border border-brand/30 bg-brand-soft px-3 py-2.5">
+                    <p className="text-[10px] uppercase tracking-wide text-brand">Your province</p>
+                    <p className="mt-0.5 text-[14px] font-semibold text-ink">{lockedProvince || "Loading…"}</p>
+                    <p className="mt-1 text-[10px] text-muted">
+                      Center and treatment admins are always created in your province. Only treatment centers from{" "}
+                      {lockedProvince || "your province"} are listed below.
+                    </p>
+                  </article>
+                </div>
+              ) : isProvinceAdminRole ? (
                 <div className="sm:col-span-2">
                   <Field label="Assigned province" required error={fieldErrors.province}>
                     <select
@@ -583,13 +621,6 @@ export default function StaffAccountForm({
                     </span>
                   </Field>
                 </div>
-              ) : lockedProvince ? (
-                <Field label="Province" required>
-                  <input className={`${fieldClass} bg-elevated/80`} value={lockedProvince} readOnly />
-                  <span className="mt-1 block text-[10px] text-muted">
-                    Center admins can only be assigned to treatment centers in your province.
-                  </span>
-                </Field>
               ) : requiresHospital ? (
                 <Field label="Province" required error={fieldErrors.province}>
                   <select
@@ -617,7 +648,7 @@ export default function StaffAccountForm({
                 </Field>
               )}
               <Field label="Office district">
-                <select className={fieldClass} value={form.district} onChange={(e) => patch({ district: e.target.value })} disabled={!districts.length}>
+                <select className={fieldClass} value={form.district} onChange={(e) => patch({ district: e.target.value })} disabled={!provinceFieldValue || !districts.length}>
                   <option value="">Select district</option>
                   {districts.map((name) => (
                     <option key={name}>{name}</option>
