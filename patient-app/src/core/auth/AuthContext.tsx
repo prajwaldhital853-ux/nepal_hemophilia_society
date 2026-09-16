@@ -2,7 +2,7 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState, type Rea
 
 import { ApiError, AUTH_TIMEOUT_MS, patientApi } from "@/core/api";
 import { AuthContext, type AuthState } from "@/core/auth/context";
-import { clearSession, getDeviceId, loadSession, saveSession } from "@/core/auth/storage";
+import { clearSession, getPatientDeviceAuth, loadSession, saveSession } from "@/core/auth/storage";
 import type { PatientRecord } from "@/core/auth/types";
 
 export type { PatientRecord } from "@/core/auth/types";
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (identifier: string, password: string) => {
-    const deviceId = await getDeviceId();
+    const { deviceId, deviceSignals } = await getPatientDeviceAuth();
     const data = await patientApi("/auth/patient/login/", {
       method: "POST",
       timeoutMs: AUTH_TIMEOUT_MS,
@@ -93,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         identifier: identifier.trim(),
         password: password.trim(),
         deviceId,
+        deviceSignals,
       }),
     });
     if (!data?.access || !data?.refresh) {

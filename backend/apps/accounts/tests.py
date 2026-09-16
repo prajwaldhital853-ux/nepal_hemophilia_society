@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.utils import timezone as dj_timezone
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import AccessToken
@@ -21,19 +22,47 @@ from apps.accounts.rbac import (
     has_perm,
     permissions_for,
 )
+from apps.accounts.device_fingerprint import fingerprint_from_web_signals
 from apps.hospitals.models import Hospital, HospitalAdmin, HospitalStaffType
 from apps.provinces.models import Province, ProvinceAdmin
 
 User = get_user_model()
 TEST_DEVICE = "testdevice-admin-01"
 
+WEB_SIGNALS_A = {
+    "platform": "Win32",
+    "screenW": 1920,
+    "screenH": 1080,
+    "colorDepth": 24,
+    "pixelRatio": 1,
+    "cores": 8,
+    "memory": 8,
+    "touch": 0,
+    "timezone": "Asia/Kathmandu",
+    "locale": "en-US",
+}
+WEB_SIGNALS_B = {
+    "platform": "Linux x86_64",
+    "screenW": 1366,
+    "screenH": 768,
+    "colorDepth": 24,
+    "pixelRatio": 1,
+    "cores": 4,
+    "memory": 4,
+    "touch": 0,
+    "timezone": "Asia/Kathmandu",
+    "locale": "en-NP",
+}
 
-def post_admin_login(client, username, password, device=TEST_DEVICE):
-    return client.post(
-        "/api/v1/auth/login/",
-        {"username": username, "password": password, "deviceId": device},
-        format="json",
-    )
+
+def post_admin_login(client, username, password, device=TEST_DEVICE, signals=None, fake_device_id=None):
+    payload = {"username": username, "password": password}
+    if signals:
+        payload["deviceSignals"] = signals
+        payload["deviceId"] = fake_device_id or fingerprint_from_web_signals(signals)
+    else:
+        payload["deviceId"] = device
+    return client.post("/api/v1/auth/login/", payload, format="json")
 
 
 class RbacMatrixTests(APITestCase):
@@ -587,40 +616,62 @@ class StaffDeleteTests(APITestCase):
 
 class AdminDeviceLockTests(APITestCase):
     def setUp(self):
+        cache.clear()
         self.super = User.objects.create_user(username="super", password="ChangeMe#2026", role=UserRole.SUPER_ADMIN)
-        self.device_a = "lock-device-aaaa-01"
-        self.device_b = "lock-device-bbbb-02"
+        self.device_a = fingerprint_from_web_signals(WEB_SIGNALS_A)
+        self.device_b = fingerprint_from_web_signals(WEB_SIGNALS_B)
 
     def test_third_failure_locks_only_that_device(self):
         for _ in range(3):
-            res = post_admin_login(self.client, "super", "WrongPass#1", self.device_a)
+            res = post_admin_login(self.client, "super", "WrongPass#1", signals=WEB_SIGNALS_A)
         self.assertEqual(res.status_code, 423)
         self.assertEqual(res.data["code"], "device_locked")
-        other = post_admin_login(self.client, "super", "ChangeMe#2026", self.device_b)
+        other = post_admin_login(self.client, "super", "ChangeMe#2026", signals=WEB_SIGNALS_B)
         self.assertEqual(other.status_code, 200, other.data)
-        still_locked = post_admin_login(self.client, "super", "ChangeMe#2026", self.device_a)
+        still_locked = post_admin_login(self.client, "super", "ChangeMe#2026", signals=WEB_SIGNALS_A)
         self.assertEqual(still_locked.status_code, 423)
 
+    def test_same_hardware_signals_lock_across_browsers(self):
+        chrome_uuid = "browser-chrome-local-uuid-aaaa"
+        firefox_uuid = "browser-firefox-local-uuid-bbbb"
+        for fake_id in (chrome_uuid, chrome_uuid, chrome_uuid):
+            res = post_admin_login(
+                self.client,
+                "super",
+                "WrongPass#1",
+                signals=WEB_SIGNALS_A,
+                fake_device_id=fake_id,
+            )
+        self.assertEqual(res.status_code, 423)
+        locked = post_admin_login(
+            self.client,
+            "super",
+            "ChangeMe#2026",
+            signals=WEB_SIGNALS_A,
+            fake_device_id=firefox_uuid,
+        )
+        self.assertEqual(locked.status_code, 423)
+
     def test_idle_hour_resets_attempt_count(self):
-        post_admin_login(self.client, "super", "WrongPass#1", self.device_a)
-        post_admin_login(self.client, "super", "WrongPass#1", self.device_a)
+        post_admin_login(self.client, "super", "WrongPass#1", signals=WEB_SIGNALS_A)
+        post_admin_login(self.client, "super", "WrongPass#1", signals=WEB_SIGNALS_A)
         LoginDeviceLock.objects.filter(device_id=self.device_a).update(
             updated_at=dj_timezone.now() - timedelta(hours=2),
         )
-        first = post_admin_login(self.client, "super", "WrongPass#1", self.device_a)
+        first = post_admin_login(self.client, "super", "WrongPass#1", signals=WEB_SIGNALS_A)
         self.assertEqual(first.status_code, 401)
         self.assertEqual(first.data["attemptsRemaining"], 2)
-        ok = post_admin_login(self.client, "super", "ChangeMe#2026", self.device_a)
+        ok = post_admin_login(self.client, "super", "ChangeMe#2026", signals=WEB_SIGNALS_A)
         self.assertEqual(ok.status_code, 200, ok.data)
 
     def test_lock_expires_after_five_minutes(self):
         for _ in range(3):
-            post_admin_login(self.client, "super", "WrongPass#1", self.device_a)
+            post_admin_login(self.client, "super", "WrongPass#1", signals=WEB_SIGNALS_A)
         LoginDeviceLock.objects.filter(device_id=self.device_a).update(
             locked_until=dj_timezone.now() - timedelta(seconds=5),
             failed_attempts=3,
         )
-        ok = post_admin_login(self.client, "super", "ChangeMe#2026", self.device_a)
+        ok = post_admin_login(self.client, "super", "ChangeMe#2026", signals=WEB_SIGNALS_A)
         self.assertEqual(ok.status_code, 200, ok.data)
 
     def test_login_requires_device_id(self):

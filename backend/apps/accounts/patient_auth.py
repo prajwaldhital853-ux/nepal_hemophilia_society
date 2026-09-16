@@ -11,10 +11,10 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.accounts.device_fingerprint import resolve_device_id
 from apps.accounts.device_lock import (
     MAX_FAILED_ATTEMPTS,
     is_device_locked,
-    is_valid_device_id,
     lockout_payload,
     register_failure,
     register_success,
@@ -72,11 +72,17 @@ class PatientLoginView(APIView):
     def post(self, request):
         identifier = str(request.data.get("identifier") or request.data.get("username") or "").strip()
         password = str(request.data.get("password") or "").strip()
-        device_id = str(request.data.get("deviceId") or request.headers.get("X-Device-Id") or "").strip()
+        device_id = resolve_device_id(request)
         if not identifier or not password:
             return Response({"error": "Email/patient ID and password are required."}, status=400)
-        if not is_valid_device_id(device_id):
-            return Response({"error": "A valid device id is required."}, status=400)
+        if not device_id:
+            return Response(
+                {
+                    "error": "A valid device fingerprint is required. Update the patient app and try again.",
+                    "code": "device_fingerprint_required",
+                },
+                status=400,
+            )
 
         locked = is_device_locked(device_id)
         if locked:
@@ -131,23 +137,6 @@ class PatientChangePasswordView(APIView):
         user = request.user
         if not current_password or not new_password:
             return Response({"error": "Current and new password are required."}, status=400)
-        if new_password != confirm:
-            return Response({"error": "New password confirmation does not match."}, status=400)
-        if not user.check_password(current_password):
-            return Response({"error": "Current password is incorrect."}, status=400)
-        if user.check_password(new_password):
-            return Response({"error": "New password must be different from the temporary password."}, status=400)
-        try:
-            password_validation.validate_password(new_password, user)
-        except Exception as exc:
-            messages = getattr(exc, "messages", [str(exc)])
-            return Response({"error": " ".join(messages)}, status=400)
-        user.set_password(new_password)
-        user.must_change_password = False
-        user.password_changed_at = timezone.now()
-        user.save(update_fields=["password", "must_change_password", "password_changed_at"])
-        return Response(issue_patient_tokens(user))
-
         if new_password != confirm:
             return Response({"error": "New password confirmation does not match."}, status=400)
         if not user.check_password(current_password):

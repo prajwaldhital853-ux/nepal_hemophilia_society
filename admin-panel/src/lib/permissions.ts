@@ -96,12 +96,15 @@ export const PERM_LABELS: Record<string, string> = {
 
 export const ACTION_ROUTES: Array<{ test: (pathname: string) => boolean; permission: string }> = [
   { test: (p) => p === "/dashboard/patients/new", permission: Perm.patientsCreate },
+  { test: (p) => /^\/dashboard\/patients\/[^/]+$/.test(p), permission: Perm.patientsView },
   { test: (p) => /^\/dashboard\/patients\/[^/]+\/edit$/.test(p), permission: Perm.patientsView },
 ];
 
 /** Parent nav entries that may expose a fixed subtree (never treat `/dashboard` as a parent). */
 const NAV_PARENT_PREFIXES: Record<string, string> = {
   "/dashboard/hospitals": "/dashboard/hospitals/",
+  "/dashboard/patients": "/dashboard/patients/",
+  "/dashboard/admins": "/dashboard/admins/",
 };
 
 export function navHrefAllowed(href: string, allowed: string[]) {

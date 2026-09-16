@@ -1,8 +1,37 @@
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APITestCase
 
+from apps.accounts.device_fingerprint import fingerprint_from_mobile_signals
 from apps.accounts.models import UserRole
+
+MOBILE_SIGNALS_A = {
+    "brand": "Samsung",
+    "model": "SM-G991B",
+    "osName": "Android",
+    "osVersion": "14",
+    "memory": 8_000_000_000,
+    "installId": "android-install-aaaa-1111",
+}
+MOBILE_SIGNALS_B = {
+    "brand": "Apple",
+    "model": "iPhone15,2",
+    "osName": "iOS",
+    "osVersion": "17.4",
+    "memory": 6_000_000_000,
+    "installId": "ios-vendor-id-bbbb-2222",
+}
+
+
+def post_patient_login(client, identifier, password, device=None, signals=None, fake_device_id=None):
+    payload = {"identifier": identifier, "password": password}
+    if signals:
+        payload["deviceSignals"] = signals
+        payload["deviceId"] = fake_device_id or fingerprint_from_mobile_signals(signals)
+    else:
+        payload["deviceId"] = device
+    return client.post("/api/v1/auth/patient/login/", payload, format="json")
 from apps.hospitals.models import Hospital, HospitalAdmin, HospitalStaffType
 from apps.patients.models import Patient, VerificationStatus
 from apps.provinces.models import District, Province, ProvinceAdmin
@@ -136,6 +165,7 @@ class PatientAdminApiTests(APITestCase):
 
 class PatientAppAuthTests(APITestCase):
     def setUp(self):
+        cache.clear()
         province = Province.objects.create(name="Bagmati", code="P3")
         district = District.objects.create(province=province, name="Kathmandu")
         Hospital.objects.create(name="Kathmandu Hemophilia Center", province=province, district=district)
@@ -169,19 +199,11 @@ class PatientAppAuthTests(APITestCase):
         created = self.client.post("/api/v1/patients/", payload, format="json")
         self.patient_id = created.data["patient"]["id"]
         self.client.force_authenticate(user=None)
-        self.device_a = "device-aaaa-1111"
-        self.device_b = "device-bbbb-2222"
+        self.device_a = fingerprint_from_mobile_signals(MOBILE_SIGNALS_A)
+        self.device_b = fingerprint_from_mobile_signals(MOBILE_SIGNALS_B)
 
     def test_first_login_requires_password_change_and_scopes_record(self):
-        login = self.client.post(
-            "/api/v1/auth/patient/login/",
-            {
-                "identifier": "app.patient@example.com",
-                "password": "TempPass#2026",
-                "deviceId": self.device_a,
-            },
-            format="json",
-        )
+        login = post_patient_login(self.client, "app.patient@example.com", "TempPass#2026", signals=MOBILE_SIGNALS_A)
         self.assertEqual(login.status_code, 200, login.data)
         self.assertTrue(login.data["mustChangePassword"])
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
@@ -203,57 +225,32 @@ class PatientAppAuthTests(APITestCase):
         self.assertEqual(me.status_code, 200, me.data)
         self.assertEqual(me.data["patient"]["id"], self.patient_id)
         self.assertEqual(me.data["patient"]["email"], "app.patient@example.com")
-        stale = self.client.post(
-            "/api/v1/auth/patient/login/",
-            {
-                "identifier": self.patient_id,
-                "password": "TempPass#2026",
-                "deviceId": self.device_a,
-            },
-            format="json",
-        )
+        stale = post_patient_login(self.client, self.patient_id, "TempPass#2026", signals=MOBILE_SIGNALS_A)
         self.assertEqual(stale.status_code, 401)
-        fresh = self.client.post(
-            "/api/v1/auth/patient/login/",
-            {
-                "identifier": self.patient_id,
-                "password": "NewPass#2026",
-                "deviceId": self.device_a,
-            },
-            format="json",
-        )
+        fresh = post_patient_login(self.client, self.patient_id, "NewPass#2026", signals=MOBILE_SIGNALS_A)
         self.assertEqual(fresh.status_code, 200, fresh.data)
 
     def test_device_lock_is_scoped_to_one_device(self):
         for _ in range(3):
-            res = self.client.post(
-                "/api/v1/auth/patient/login/",
-                {
-                    "identifier": "app.patient@example.com",
-                    "password": "WrongPass#1",
-                    "deviceId": self.device_a,
-                },
-                format="json",
+            res = post_patient_login(
+                self.client,
+                "app.patient@example.com",
+                "WrongPass#1",
+                signals=MOBILE_SIGNALS_A,
             )
         self.assertEqual(res.status_code, 423)
-        other = self.client.post(
-            "/api/v1/auth/patient/login/",
-            {
-                "identifier": "app.patient@example.com",
-                "password": "TempPass#2026",
-                "deviceId": self.device_b,
-            },
-            format="json",
+        other = post_patient_login(
+            self.client,
+            "app.patient@example.com",
+            "TempPass#2026",
+            signals=MOBILE_SIGNALS_B,
         )
         self.assertEqual(other.status_code, 200, other.data)
-        locked = self.client.post(
-            "/api/v1/auth/patient/login/",
-            {
-                "identifier": "app.patient@example.com",
-                "password": "TempPass#2026",
-                "deviceId": self.device_a,
-            },
-            format="json",
+        locked = post_patient_login(
+            self.client,
+            "app.patient@example.com",
+            "TempPass#2026",
+            signals=MOBILE_SIGNALS_A,
         )
         self.assertEqual(locked.status_code, 423)
 
@@ -262,43 +259,19 @@ class PatientAppAuthTests(APITestCase):
         from django.utils import timezone as dj_timezone
         from datetime import timedelta
 
-        self.client.post(
-            "/api/v1/auth/patient/login/",
-            {"identifier": "app.patient@example.com", "password": "WrongPass#1", "deviceId": self.device_a},
-            format="json",
-        )
-        self.client.post(
-            "/api/v1/auth/patient/login/",
-            {"identifier": "app.patient@example.com", "password": "WrongPass#1", "deviceId": self.device_a},
-            format="json",
-        )
+        post_patient_login(self.client, "app.patient@example.com", "WrongPass#1", signals=MOBILE_SIGNALS_A)
+        post_patient_login(self.client, "app.patient@example.com", "WrongPass#1", signals=MOBILE_SIGNALS_A)
         LoginDeviceLock.objects.filter(device_id=self.device_a).update(
             updated_at=dj_timezone.now() - timedelta(hours=2),
         )
-        first = self.client.post(
-            "/api/v1/auth/patient/login/",
-            {"identifier": "app.patient@example.com", "password": "WrongPass#1", "deviceId": self.device_a},
-            format="json",
-        )
+        first = post_patient_login(self.client, "app.patient@example.com", "WrongPass#1", signals=MOBILE_SIGNALS_A)
         self.assertEqual(first.status_code, 401)
         self.assertEqual(first.data["attemptsRemaining"], 2)
-        ok = self.client.post(
-            "/api/v1/auth/patient/login/",
-            {"identifier": "app.patient@example.com", "password": "TempPass#2026", "deviceId": self.device_a},
-            format="json",
-        )
+        ok = post_patient_login(self.client, "app.patient@example.com", "TempPass#2026", signals=MOBILE_SIGNALS_A)
         self.assertEqual(ok.status_code, 200, ok.data)
 
     def test_admin_update_is_visible_on_patient_me(self):
-        login = self.client.post(
-            "/api/v1/auth/patient/login/",
-            {
-                "identifier": "app.patient@example.com",
-                "password": "TempPass#2026",
-                "deviceId": self.device_b,
-            },
-            format="json",
-        )
+        login = post_patient_login(self.client, "app.patient@example.com", "TempPass#2026", signals=MOBILE_SIGNALS_B)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
         self.client.post(
             "/api/v1/auth/patient/change-password/",
@@ -309,14 +282,11 @@ class PatientAppAuthTests(APITestCase):
             },
             format="json",
         )
-        patient_token = self.client.post(
-            "/api/v1/auth/patient/login/",
-            {
-                "identifier": "app.patient@example.com",
-                "password": "NewPass#2026",
-                "deviceId": self.device_b,
-            },
-            format="json",
+        patient_token = post_patient_login(
+            self.client,
+            "app.patient@example.com",
+            "NewPass#2026",
+            signals=MOBILE_SIGNALS_B,
         ).data["access"]
         admin = User.objects.get(username="superadmin")
         self.client.force_authenticate(admin)

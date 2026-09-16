@@ -5,7 +5,7 @@ import {
   readAuthValue,
   writeAuthValue,
 } from "@/lib/authStorage";
-import { getAdminDeviceId } from "@/lib/deviceId";
+import { encodeDeviceSignalsHeader, getAdminDeviceAuth } from "@/lib/deviceId";
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1";
 
@@ -30,6 +30,12 @@ export class ApiClientError extends Error {
     this.lockedUntil = extra?.lockedUntil;
     this.retryAfterSeconds = extra?.retryAfterSeconds;
   }
+}
+
+async function applyDeviceHeaders(headers: Headers) {
+  const { deviceId, deviceSignals } = await getAdminDeviceAuth();
+  headers.set("X-Device-Id", deviceId);
+  headers.set("X-Device-Signals", encodeDeviceSignalsHeader(deviceSignals));
 }
 
 export function resolveMediaUrl(url?: string | null): string {
@@ -68,9 +74,11 @@ export async function refreshAccessToken(): Promise<string | null> {
   const refresh = getRefreshToken();
   if (!refresh) return null;
   try {
+    const headers = new Headers({ "Content-Type": "application/json" });
+    await applyDeviceHeaders(headers);
     const res = await fetch(`${API_BASE}/auth/refresh/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Device-Id": getAdminDeviceId() },
+      headers,
       body: JSON.stringify({ refresh }),
     });
     const data = await res.json().catch(() => ({}));
@@ -101,7 +109,7 @@ export async function apiFetch(path: string, init: ApiInit = {}) {
   const { skipAuthRedirect, _retried, ...rest } = init;
   const headers = new Headers(rest.headers);
   headers.set("Content-Type", "application/json");
-  headers.set("X-Device-Id", getAdminDeviceId());
+  await applyDeviceHeaders(headers);
   const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const res = await fetch(`${API_BASE}${path}`, { ...rest, headers });
@@ -140,7 +148,7 @@ export async function apiFetch(path: string, init: ApiInit = {}) {
 
 export async function apiDownload(path: string, filename: string) {
   const headers = new Headers();
-  headers.set("X-Device-Id", getAdminDeviceId());
+  await applyDeviceHeaders(headers);
   const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
   let res = await fetch(`${API_BASE}${path}`, { headers });
@@ -172,7 +180,7 @@ export async function apiDownload(path: string, filename: string) {
 
 async function fetchFormOnce(path: string, formData: FormData, method: string, token: string) {
   const headers = new Headers();
-  headers.set("X-Device-Id", getAdminDeviceId());
+  await applyDeviceHeaders(headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), API_FORM_TIMEOUT_MS);

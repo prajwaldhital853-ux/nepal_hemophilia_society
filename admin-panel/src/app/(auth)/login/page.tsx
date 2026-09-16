@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { homeForUser, type AuthUser, useAuth } from "@/lib/auth";
 import { ApiClientError, apiFetch, setAuthTokens } from "@/lib/api";
-import { ensureAdminDeviceId, getAdminDeviceId } from "@/lib/deviceId";
+import { ensureAdminDeviceId, getAdminDeviceAuth } from "@/lib/deviceId";
 
 function formatRemaining(untilIso?: string, fallbackSeconds?: number) {
   const until = untilIso ? new Date(untilIso).getTime() : Date.now() + (fallbackSeconds ?? 0) * 1000;
@@ -50,12 +50,11 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const deviceId = getAdminDeviceId();
+      const { deviceId, deviceSignals } = await getAdminDeviceAuth();
       const data = await apiFetch("/auth/login/", {
         method: "POST",
         skipAuthRedirect: true,
-        headers: { "X-Device-Id": deviceId },
-        body: JSON.stringify({ username, password, deviceId }),
+        body: JSON.stringify({ username, password, deviceId, deviceSignals }),
       });
       if (!data.access) throw new Error("Login failed");
       if (data.user?.role === "patient") {
@@ -93,7 +92,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md rounded border border-line bg-card p-6">
         <h1 className="text-[18px] font-semibold text-ink">Admin Login</h1>
         <p className="mt-1 text-[11px] text-muted">
-          Sign in with your username, official email, or Admin ID. This device is locked for 5 minutes after 3 failed
+          Sign in with your username, official email, or Admin ID. This physical device (all browsers on this PC) is
+          locked for 5 minutes after 3 failed
           attempts. Unused attempts reset after 1 hour.
         </p>
         <form className="mt-4 space-y-3" onSubmit={onSubmit}>

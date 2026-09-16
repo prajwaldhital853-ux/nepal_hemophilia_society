@@ -63,8 +63,10 @@ export async function patientApi(path: string, init: ApiOptions = {}) {
     headers.set("Content-Type", "application/json");
   }
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  const { getDeviceId } = await import("@/core/auth/storage");
-  headers.set("X-Device-Id", await getDeviceId());
+  const { encodePatientSignalsHeader, getPatientDeviceAuth } = await import("@/core/auth/storage");
+  const { deviceId, deviceSignals } = await getPatientDeviceAuth();
+  headers.set("X-Device-Id", deviceId);
+  headers.set("X-Device-Signals", encodePatientSignalsHeader(deviceSignals));
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);

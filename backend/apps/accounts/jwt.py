@@ -10,10 +10,10 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, Toke
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from apps.accounts.device_fingerprint import resolve_device_id
 from apps.accounts.device_lock import (
     MAX_FAILED_ATTEMPTS,
     is_device_locked,
-    is_valid_device_id,
     lockout_payload,
     register_failure,
     register_success,
@@ -106,9 +106,15 @@ class NhmsTokenObtainPairView(TokenObtainPairView):
 
     def post(self, request, *args, **kwargs):
         identifier = str(request.data.get("username") or "").strip()
-        device_id = str(request.data.get("deviceId") or request.headers.get("X-Device-Id") or "").strip()
-        if not is_valid_device_id(device_id):
-            return Response({"error": "A valid device id is required."}, status=400)
+        device_id = resolve_device_id(request)
+        if not device_id:
+            return Response(
+                {
+                    "error": "A valid device fingerprint is required. Update the admin app and try again.",
+                    "code": "device_fingerprint_required",
+                },
+                status=400,
+            )
 
         locked = is_device_locked(device_id)
         if locked:
