@@ -290,7 +290,6 @@ export default function StockModule() {
               value={hospitalFilter}
               onChange={(e) => {
                 setHospitalFilter(e.target.value);
-                setHistoryPage(1);
               }}
               className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]"
             >
@@ -302,7 +301,7 @@ export default function StockModule() {
               ))}
             </select>
           ) : null}
-          <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setHistoryPage(1); }} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]">
+          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]">
             {MOVEMENT_TYPES.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.label}

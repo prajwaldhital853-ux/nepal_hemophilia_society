@@ -63,7 +63,8 @@ export function PatientBleedingPanel({
   const { user } = useAuth();
   const canAdd = canLogClinical;
   const resolvedLoggingCenter =
-    loggingCenter ?? user?.hospitalStaff?.treatmentCenter || user?.provinceAdmin?.defaultLoggingCenter || primaryHospital;
+    loggingCenter ??
+    (user?.hospitalStaff?.treatmentCenter || user?.provinceAdmin?.defaultLoggingCenter || primaryHospital);
   const [rows, setRows] = useState<BleedingEpisode[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);

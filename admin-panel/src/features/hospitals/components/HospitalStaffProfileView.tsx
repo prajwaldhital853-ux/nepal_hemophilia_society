@@ -12,7 +12,7 @@ import { deleteStaffAccount, fetchStaffAccount, updateStaffAccount, type StaffRe
 import { isOwnStaffAccount } from "@/features/admins/identity";
 import { staffLabels, type HospitalStaffProfile, type HospitalStaffType } from "@/features/hospitals/types";
 import { useAuth } from "@/lib/auth";
-import { PERM_LABELS, Perm } from "@/lib/permissions";
+import { PERM_LABELS } from "@/lib/permissions";
 
 const tabs = ["Overview", "Activity Log", "Permissions", "Documents"];
 
@@ -217,7 +217,7 @@ function TabContent({ tab, profile, labels }: { tab: string; profile: HospitalSt
 export default function HospitalStaffProfileView({ id, staffType }: { id: string; staffType: HospitalStaffType }) {
   const router = useRouter();
   const labels = staffLabels[staffType];
-  const { can, user } = useAuth();
+  const { user } = useAuth();
   const [tab, setTab] = useState("Overview");
   const [profile, setProfile] = useState<HospitalStaffProfile | null>(null);
   const [staff, setStaff] = useState<StaffRecord | null>(null);
