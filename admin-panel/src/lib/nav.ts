@@ -60,7 +60,7 @@ export function filterNav(items: NavItem[], allowed: string[]) {
 }
 
 export const websiteNav: NavItem[] = [
-  { href: "/dashboard/website", label: "Website Content", icon: "globe" },
+  { href: "/dashboard/website", label: "App Services", icon: "globe" },
   { href: "/dashboard/news", label: "News & Notices", icon: "news" },
   { href: "/dashboard/events", label: "Events", icon: "events" },
   { href: "/dashboard/gallery", label: "Gallery", icon: "gallery" },

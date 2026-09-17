@@ -12,14 +12,18 @@ const iconMap = {
   call: (color: string) => <Ionicons name="call" size={20} color={color} />,
 };
 
-export function QuickActionsSection() {
+export function QuickActionsSection({
+  onActionPress,
+}: {
+  onActionPress?: (key: string) => void;
+}) {
   return (
     <View style={styles.section}>
       <View style={styles.card}>
         <Text style={styles.title}>Quick Actions</Text>
         <View style={styles.row}>
           {quickActions.map((action) => (
-            <Pressable key={action.key} style={styles.actionItem}>
+            <Pressable key={action.key} style={styles.actionItem} onPress={() => onActionPress?.(action.key)}>
               <View style={[styles.iconWrap, { backgroundColor: action.bg }]}>
                 {iconMap[action.icon](action.color)}
               </View>

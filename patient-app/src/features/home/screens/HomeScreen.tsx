@@ -89,7 +89,15 @@ export default function HomeScreen({ navigation }: Props) {
         <BleedingProfileCard />
         <FactorStockCard />
         <InjectionTrendsChart />
-        <QuickActionsSection />
+        <QuickActionsSection
+          onActionPress={(key) => {
+            if (key === "history") navigation.navigate("Injections");
+            if (key === "report") navigation.navigate("Treatments");
+            if (key === "emergency") navigation.navigate("EmergencyId");
+            if (key === "hospital") navigation.navigate("Centers");
+            if (key === "helpline") navigation.navigate("ServiceDetail", { slug: "contact", title: "Contact Us" });
+          }}
+        />
       </ScrollView>
 
       <HomeDrawer

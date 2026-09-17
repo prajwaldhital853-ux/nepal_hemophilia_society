@@ -1,16 +1,18 @@
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
-import type { ServiceCategory } from "@/features/services/data/servicesCatalog";
 import { ServiceCard } from "@/features/services/components/ServiceCard";
 import { servicesColors, servicesSpacing } from "@/features/services/theme/servicesTheme";
+import { toCardItem, type AppService, type ServiceCategoryGroup } from "@/features/services/types";
 
 type ServiceCategorySectionProps = {
-  category: ServiceCategory;
+  category: ServiceCategoryGroup;
+  onPressService?: (service: AppService) => void;
+  onViewAll?: (category: ServiceCategoryGroup) => void;
 };
 
 const GRID_GAP = 5;
 
-export function ServiceCategorySection({ category }: ServiceCategorySectionProps) {
+export function ServiceCategorySection({ category, onPressService, onViewAll }: ServiceCategorySectionProps) {
   const { width: screenWidth } = useWindowDimensions();
   const contentWidth = screenWidth - servicesSpacing.screen * 2;
   const cardWidth = (contentWidth - GRID_GAP * 3) / 4;
@@ -22,14 +24,19 @@ export function ServiceCategorySection({ category }: ServiceCategorySectionProps
           <View style={styles.redBar} />
           <Text style={styles.title}>{category.title}</Text>
         </View>
-        <Pressable hitSlop={8}>
+        <Pressable hitSlop={8} onPress={() => onViewAll?.(category)}>
           <Text style={styles.viewAll}>View All &gt;</Text>
         </Pressable>
       </View>
 
       <View style={styles.grid}>
         {category.services.map((item) => (
-          <ServiceCard key={item.id} item={item} width={cardWidth} />
+          <ServiceCard
+            key={item.slug}
+            item={toCardItem(item)}
+            width={cardWidth}
+            onPress={() => onPressService?.(item)}
+          />
         ))}
       </View>
     </View>

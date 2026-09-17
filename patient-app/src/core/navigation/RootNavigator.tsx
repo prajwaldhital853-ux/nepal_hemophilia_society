@@ -15,6 +15,14 @@ import {
   RegisterScreen,
   ServicesScreen,
   SplashScreen,
+  TreatmentsScreen,
+  BleedingScreen,
+  CentersScreen,
+  EmergencyIdScreen,
+  SettingsScreen,
+  ServiceDetailScreen,
+  ServiceContentListScreen,
+  ServiceContentDetailScreen,
 } from "./screens";
 
 export type RootStackParamList = {
@@ -29,6 +37,14 @@ export type RootStackParamList = {
   Profile: undefined;
   Documents: undefined;
   Injections: undefined;
+  Treatments: undefined;
+  Bleeding: undefined;
+  Centers: undefined;
+  EmergencyId: undefined;
+  Settings: undefined;
+  ServiceDetail: { slug: string; title?: string };
+  ServiceContentList: { kind: string; title: string };
+  ServiceContentDetail: { kind: string; slug: string; title?: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -72,7 +88,15 @@ function AppStack() {
           <Stack.Screen name="Notifications" component={NotificationsScreen} options={mainTabOptions} />
           <Stack.Screen name="Profile" component={ProfileScreen} options={mainTabOptions} />
           <Stack.Screen name="Injections" component={InjectionsScreen} options={{ title: "Injection History" }} />
+          <Stack.Screen name="Treatments" component={TreatmentsScreen} options={{ title: "Treatment History" }} />
+          <Stack.Screen name="Bleeding" component={BleedingScreen} options={{ title: "Bleeding History" }} />
           <Stack.Screen name="Documents" component={DocumentsScreen} options={{ title: "My documents" }} />
+          <Stack.Screen name="Centers" component={CentersScreen} options={{ title: "Treatment Centres" }} />
+          <Stack.Screen name="EmergencyId" component={EmergencyIdScreen} options={{ title: "Emergency ID" }} />
+          <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: "Settings" }} />
+          <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen} options={{ title: "Service" }} />
+          <Stack.Screen name="ServiceContentList" component={ServiceContentListScreen} options={{ title: "Updates" }} />
+          <Stack.Screen name="ServiceContentDetail" component={ServiceContentDetailScreen} options={{ title: "Details" }} />
         </>
       )}
     </Stack.Navigator>

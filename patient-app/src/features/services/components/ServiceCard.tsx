@@ -1,10 +1,17 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 
-import type { ServiceItem } from "@/features/services/data/servicesCatalog";
+import type { ServiceIcon } from "@/features/services/types";
+
+type ServiceCardItem = {
+  id: string;
+  title: string;
+  description: string;
+  icon: ServiceIcon;
+};
 
 type ServiceCardProps = {
-  item: ServiceItem;
+  item: ServiceCardItem;
   width?: number;
   onPress?: () => void;
 };
@@ -12,19 +19,19 @@ type ServiceCardProps = {
 /** Vibrant SS red used for every service icon */
 const ICON_RED = "#E53935";
 
-function ServiceIcon({
+function ServiceGlyph({
   icon,
   size,
   color = ICON_RED,
 }: {
-  icon: ServiceItem["icon"];
+  icon: ServiceIcon;
   size: number;
   color?: string;
 }) {
   if (icon.set === "mci") {
-    return <MaterialCommunityIcons name={icon.name} size={size} color={color} />;
+    return <MaterialCommunityIcons name={icon.name as keyof typeof MaterialCommunityIcons.glyphMap} size={size} color={color} />;
   }
-  return <Ionicons name={icon.name} size={size} color={color} />;
+  return <Ionicons name={icon.name as keyof typeof Ionicons.glyphMap} size={size} color={color} />;
 }
 
 export function ServiceCard({ item, width, onPress }: ServiceCardProps) {
@@ -36,7 +43,7 @@ export function ServiceCard({ item, width, onPress }: ServiceCardProps) {
   return (
     <Pressable style={cardStyle} onPress={onPress}>
       <View style={styles.iconCircle}>
-        <ServiceIcon icon={item.icon} size={30} color={ICON_RED} />
+        <ServiceGlyph icon={item.icon} size={30} color={ICON_RED} />
       </View>
       <View style={styles.textBlock}>
         <Text style={styles.title} numberOfLines={2}>

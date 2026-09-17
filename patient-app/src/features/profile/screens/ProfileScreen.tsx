@@ -23,6 +23,30 @@ export default function ProfileScreen({ navigation }: Props) {
       navigation.navigate("Notifications");
       return;
     }
+    if (item.action === "profile") {
+      navigation.navigate("EmergencyId");
+      return;
+    }
+    if (item.action === "documents") {
+      navigation.navigate("Documents");
+      return;
+    }
+    if (item.action === "events") {
+      navigation.navigate("ServiceContentList", { kind: "events", title: "Events" });
+      return;
+    }
+    if (item.action === "settings") {
+      navigation.navigate("Settings");
+      return;
+    }
+    if (item.action === "help") {
+      navigation.navigate("ServiceDetail", { slug: "help", title: "Help & Support" });
+      return;
+    }
+    if (item.action === "community") {
+      navigation.navigate("ServiceDetail", { slug: "community", title: "Community Support" });
+      return;
+    }
     if (item.action === "logout") {
       void logout().then(() => undefined);
     }

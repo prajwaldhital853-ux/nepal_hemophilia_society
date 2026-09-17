@@ -133,6 +133,7 @@ LOCAL_APPS = [
     "apps.notifications",
     "apps.audit",
     "apps.reports",
+    "apps.cms",
     "apps.core",  # last: collectstatic command overrides cloudinary_storage on Django 6
 ]
 

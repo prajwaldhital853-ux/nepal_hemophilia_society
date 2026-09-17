@@ -1,5 +1,7 @@
-import { PlaceholderPage } from "@/components/layout/PlaceholderPage";
+"use client";
+
+import CmsArticlesModule from "@/features/cms/components/CmsArticlesModule";
 
 export default function Page() {
-  return <PlaceholderPage title="Events" crumb="Events" />;
+  return <CmsArticlesModule kind="event" />;
 }

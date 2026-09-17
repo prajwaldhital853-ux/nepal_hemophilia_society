@@ -1,5 +1,7 @@
-import { PlaceholderPage } from "@/components/layout/PlaceholderPage";
+"use client";
+
+import AppServicesModule from "@/features/cms/components/AppServicesModule";
 
 export default function Page() {
-  return <PlaceholderPage title="Website Content" crumb="Website Content" />;
+  return <AppServicesModule />;
 }

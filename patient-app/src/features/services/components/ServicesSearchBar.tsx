@@ -3,7 +3,12 @@ import { StyleSheet, TextInput, View } from "react-native";
 
 import { servicesColors, servicesRadii } from "@/features/services/theme/servicesTheme";
 
-export function ServicesSearchBar() {
+type Props = {
+  value?: string;
+  onChangeText?: (value: string) => void;
+};
+
+export function ServicesSearchBar({ value, onChangeText }: Props) {
   return (
     <View style={styles.wrap}>
       <Ionicons name="search-outline" size={18} color={servicesColors.textMuted} />
@@ -11,6 +16,8 @@ export function ServicesSearchBar() {
         placeholder="Search services, tools or support..."
         placeholderTextColor={servicesColors.textMuted}
         style={styles.input}
+        value={value}
+        onChangeText={onChangeText}
       />
       <Ionicons name="options-outline" size={20} color={servicesColors.primary} />
     </View>
