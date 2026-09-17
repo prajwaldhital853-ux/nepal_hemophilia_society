@@ -1,7 +1,8 @@
-import { AppConfig } from "@/core/config";
+import { AppConfig, isRemoteApiUrl, networkHelpForApi } from "@/core/config";
 
-export const API_TIMEOUT_MS = 12000;
-export const AUTH_TIMEOUT_MS = 8000;
+/** Render free tier can cold-start 30–60s; allow extra time for remote API. */
+export const API_TIMEOUT_MS = isRemoteApiUrl() ? 45000 : 12000;
+export const AUTH_TIMEOUT_MS = isRemoteApiUrl() ? 45000 : 8000;
 
 export class ApiError extends Error {
   status: number;
@@ -23,9 +24,6 @@ export class ApiError extends Error {
     this.retryAfterSeconds = extra?.retryAfterSeconds;
   }
 }
-
-const NETWORK_HELP =
-  "Start Django with: python manage.py runserver 0.0.0.0:8000 (not 127.0.0.1). Phone and PC must be on the same Wi‑Fi.";
 
 async function parseJsonSafe(res: Response) {
   try {
@@ -102,10 +100,10 @@ export async function patientApi(path: string, init: ApiOptions = {}) {
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if (error instanceof Error && error.name === "AbortError") {
-      throw new ApiError(`Cannot reach server (${AppConfig.apiBaseUrl}). ${NETWORK_HELP}`, 0);
+      throw new ApiError(`Cannot reach server (${AppConfig.apiBaseUrl}). ${networkHelpForApi()}`, 0);
     }
     const message = error instanceof Error ? error.message : "Network error";
-    throw new ApiError(`Network error: ${message}. ${NETWORK_HELP}`, 0);
+    throw new ApiError(`Network error: ${message}. ${networkHelpForApi()}`, 0);
   } finally {
     clearTimeout(timer);
   }

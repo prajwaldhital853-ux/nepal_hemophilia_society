@@ -3,7 +3,7 @@ import { Keyboard, Platform, Pressable, StatusBar, StyleSheet, Text, View } from
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ApiError, checkApiReachable } from "@/core/api";
-import { AppConfig } from "@/core/config";
+import { AppConfig, isRemoteApiUrl, networkHelpForApi } from "@/core/config";
 import { useAuth } from "@/core/auth/AuthContext";
 import { KeyboardFormScroll, type KeyboardFormScrollRef } from "@/features/auth/components/KeyboardFormScroll";
 import { LoginFooter } from "@/features/auth/components/LoginFooter";
@@ -78,15 +78,14 @@ export default function LoginScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    void checkApiReachable(5000)
+    const healthTimeout = isRemoteApiUrl() ? 45000 : 5000;
+    void checkApiReachable(healthTimeout)
       .then(() => {
         if (!cancelled) setConnectionHint("");
       })
       .catch(() => {
         if (!cancelled) {
-          setConnectionHint(
-            `Cannot reach ${AppConfig.apiBaseUrl}. Check Wi‑Fi, firewall, and run: python manage.py runserver 0.0.0.0:8000`,
-          );
+          setConnectionHint(`Cannot reach ${AppConfig.apiBaseUrl}. ${networkHelpForApi()}`);
         }
       });
     return () => {
