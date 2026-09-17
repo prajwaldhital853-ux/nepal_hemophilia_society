@@ -29,12 +29,16 @@ function resolveLocalDevApiUrl() {
 }
 
 function resolveApiBaseUrl() {
-  const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
-  if (fromEnv) return normalizeApiBaseUrl(fromEnv);
-
-  // Expo Go: use Render unless you set EXPO_PUBLIC_USE_LOCAL_API=true in .env
   const useLocal = process.env.EXPO_PUBLIC_USE_LOCAL_API === "true";
-  if (useLocal) return resolveLocalDevApiUrl();
+  const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
+
+  if (useLocal) {
+    if (fromEnv) return normalizeApiBaseUrl(fromEnv);
+    return resolveLocalDevApiUrl();
+  }
+
+  // Expo Go default: Render. Ignore stale local http:// URLs in .env unless USE_LOCAL_API=true.
+  if (fromEnv && isRemoteApiUrl(fromEnv)) return normalizeApiBaseUrl(fromEnv);
 
   return PRODUCTION_API_URL;
 }

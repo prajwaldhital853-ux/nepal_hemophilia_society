@@ -99,10 +99,13 @@ export async function patientApi(path: string, init: ApiOptions = {}) {
     return data;
   } catch (error) {
     if (error instanceof ApiError) throw error;
-    if (error instanceof Error && error.name === "AbortError") {
+    const message = error instanceof Error ? error.message : "Network error";
+    const canceled =
+      (error instanceof Error && error.name === "AbortError") ||
+      /canceled|cancelled/i.test(message);
+    if (canceled) {
       throw new ApiError(`Cannot reach server (${AppConfig.apiBaseUrl}). ${networkHelpForApi()}`, 0);
     }
-    const message = error instanceof Error ? error.message : "Network error";
     throw new ApiError(`Network error: ${message}. ${networkHelpForApi()}`, 0);
   } finally {
     clearTimeout(timer);

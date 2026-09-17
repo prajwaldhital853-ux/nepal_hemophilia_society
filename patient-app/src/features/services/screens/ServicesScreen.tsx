@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -35,18 +35,25 @@ export default function ServicesScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const requestId = useRef(0);
+
   const load = useCallback(async () => {
     if (!token) return;
+    const id = ++requestId.current;
     setError("");
     setLoading(true);
     try {
       const rows = await fetchPatientServices(token, search);
+      if (id !== requestId.current) return;
       setCategories(rows);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load services");
+      if (id !== requestId.current) return;
+      const message = err instanceof Error ? err.message : "Could not load services";
+      if (/canceled|cancelled/i.test(message)) return;
+      setError(message);
       setCategories([]);
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   }, [token, search]);
 
