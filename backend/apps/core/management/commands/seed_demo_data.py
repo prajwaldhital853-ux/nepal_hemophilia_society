@@ -7,6 +7,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 
 from apps.accounts.models import UserRole
 from apps.accounts.rbac import KIND_CENTER, KIND_TREATMENT
@@ -116,6 +117,12 @@ class Command(BaseCommand):
     def _photo_file(self, full_name: str) -> ContentFile:
         return ContentFile(make_portrait_jpeg(full_name), name=f"{full_name.replace(' ', '_').lower()}.jpg")
 
+    def _safe_admin_photo(self, user, full_name: str):
+        try:
+            save_admin_photo(user, self._photo_file(full_name))
+        except (ValidationError, OSError, ValueError) as exc:
+            self.stdout.write(self.style.WARNING(f"  Photo skipped for {full_name}: {exc}"))
+
     def _seed_center_admins(self, actor):
         User = get_user_model()
         created = []
@@ -145,12 +152,17 @@ class Command(BaseCommand):
                 payload["permissions"] = item["permissions"]
             if item.get("viewOnly"):
                 payload["viewOnly"] = True
-            user, _ = create_staff_account(actor, payload)
-            user.must_change_password = False
-            user.notes = DEMO_MARKER
-            user.save(update_fields=["must_change_password", "notes"])
-            created.append(self._staff_row(user, item["hospital"]))
-            self.stdout.write(f"  Center admin: {user.staff_id} — {item['fullName']}")
+            try:
+                payload_no_photo = {**payload, "photo": None}
+                user, _ = create_staff_account(actor, payload_no_photo)
+                user.must_change_password = False
+                user.notes = DEMO_MARKER
+                user.save(update_fields=["must_change_password", "notes"])
+                self._safe_admin_photo(user, item["fullName"])
+                created.append(self._staff_row(user, item["hospital"]))
+                self.stdout.write(f"  Center admin: {user.staff_id} — {item['fullName']}")
+            except (ValidationError, OSError, ValueError) as exc:
+                self.stdout.write(self.style.ERROR(f"  Center admin failed ({item['email']}): {exc}"))
         return created
 
     def _seed_treatment_admins(self, actor):
@@ -183,14 +195,19 @@ class Command(BaseCommand):
                 payload["permissions"] = item["permissions"]
             if item.get("viewOnly"):
                 payload["viewOnly"] = True
-            user, _ = create_staff_account(actor, payload)
-            user.must_change_password = False
-            user.notes = DEMO_MARKER
-            user.save(update_fields=["must_change_password", "notes"])
-            created.append(
-                self._staff_row(user, item["hospital"], access=item.get("accessLabel", "Full access"))
-            )
-            self.stdout.write(f"  Treatment admin: {user.staff_id} — {item['fullName']}")
+            try:
+                payload_no_photo = {**payload, "photo": None}
+                user, _ = create_staff_account(actor, payload_no_photo)
+                user.must_change_password = False
+                user.notes = DEMO_MARKER
+                user.save(update_fields=["must_change_password", "notes"])
+                self._safe_admin_photo(user, item["fullName"])
+                created.append(
+                    self._staff_row(user, item["hospital"], access=item.get("accessLabel", "Full access"))
+                )
+                self.stdout.write(f"  Treatment admin: {user.staff_id} — {item['fullName']}")
+            except (ValidationError, OSError, ValueError) as exc:
+                self.stdout.write(self.style.ERROR(f"  Treatment admin failed ({item['email']}): {exc}"))
         return created
 
     def _enhance_staff(self, user, item: dict):
@@ -219,7 +236,7 @@ class Command(BaseCommand):
                 user.staff_id = profile.display_id
                 user.save(update_fields=["staff_id"])
         if not user.photo:
-            save_admin_photo(user, self._photo_file(item["fullName"]))
+            self._safe_admin_photo(user, item["fullName"])
         self.stdout.write(f"  Updated existing staff: {user.staff_id or user.username} — {item['fullName']}")
 
     def _staff_row(self, user, hospital: str, access: str = "Full access"):
@@ -294,12 +311,15 @@ class Command(BaseCommand):
             patient.user = user
             patient.save(update_fields=["user"])
 
-            photo_bytes = make_portrait_jpeg(item["fullName"])
-            patient.photo.save(
-                f"{patient.unique_patient_id}/photo.jpg",
-                ContentFile(photo_bytes),
-                save=True,
-            )
+            try:
+                photo_bytes = make_portrait_jpeg(item["fullName"])
+                patient.photo.save(
+                    f"{patient.unique_patient_id}/photo.jpg",
+                    ContentFile(photo_bytes),
+                    save=True,
+                )
+            except (OSError, ValueError) as exc:
+                self.stdout.write(self.style.WARNING(f"  Photo skipped for {patient.unique_patient_id}: {exc}"))
 
             self._attach_documents(patient, actor, hospital, item)
             patients.append(patient)

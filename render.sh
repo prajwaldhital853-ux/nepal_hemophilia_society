@@ -36,20 +36,25 @@ python manage.py migrate --noinput
 python manage.py migrate --check
 
 echo "==> Collecting static files"
+mkdir -p staticfiles
 python manage.py collectstatic --noinput
 
+echo "==> render.sh build: demo-seed-v2 (RUN_SEED_ON_START=${RUN_SEED_ON_START:-true}, RUN_DEMO_SEED_ON_START=${RUN_DEMO_SEED_ON_START:-true})"
+
 if [[ "${RUN_SEED_ON_START:-true}" == "true" ]]; then
-  echo "==> Seeding reference data (idempotent) — set RUN_SEED_ON_START=false after first deploy to speed up restarts"
+  echo "==> Seeding reference data (seed_nhms)"
   python manage.py seed_nhms
-  if [[ "${RUN_DEMO_SEED_ON_START:-true}" == "true" ]]; then
-    echo "==> Seeding demo patients/admins (idempotent) — set RUN_DEMO_SEED_ON_START=false after first deploy"
-    python manage.py seed_demo_data
-    python manage.py seed_cms
-  else
-    echo "==> Skipping demo seed (RUN_DEMO_SEED_ON_START=false)"
-  fi
 else
-  echo "==> Skipping seed (RUN_SEED_ON_START=false)"
+  echo "==> Skipping seed_nhms (RUN_SEED_ON_START=false)"
+fi
+
+if [[ "${RUN_DEMO_SEED_ON_START:-true}" == "true" ]]; then
+  echo "==> Seeding demo patients/admins (seed_demo_data)"
+  python manage.py seed_demo_data
+  echo "==> Seeding CMS app services (seed_cms)"
+  python manage.py seed_cms
+else
+  echo "==> Skipping demo seed (RUN_DEMO_SEED_ON_START=false)"
 fi
 
 if [[ -n "${CLOUDINARY_URL:-}" || -n "${CLOUDINARY_CLOUD_NAME:-}" ]]; then
