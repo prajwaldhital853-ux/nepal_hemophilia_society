@@ -41,6 +41,13 @@ python manage.py collectstatic --noinput
 if [[ "${RUN_SEED_ON_START:-true}" == "true" ]]; then
   echo "==> Seeding reference data (idempotent) — set RUN_SEED_ON_START=false after first deploy to speed up restarts"
   python manage.py seed_nhms
+  if [[ "${RUN_DEMO_SEED_ON_START:-true}" == "true" ]]; then
+    echo "==> Seeding demo patients/admins (idempotent) — set RUN_DEMO_SEED_ON_START=false after first deploy"
+    python manage.py seed_demo_data
+    python manage.py seed_cms
+  else
+    echo "==> Skipping demo seed (RUN_DEMO_SEED_ON_START=false)"
+  fi
 else
   echo "==> Skipping seed (RUN_SEED_ON_START=false)"
 fi
