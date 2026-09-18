@@ -107,7 +107,7 @@ class PatientArticlesView(APIView):
         return Response(
             {
                 "kind": resolved,
-                "articles": CmsArticleSerializer(rows, many=True).data,
+                "articles": CmsArticleSerializer(rows, many=True, context={"request": request}).data,
                 "nextCursor": next_cursor,
                 "limit": limit,
             }
@@ -124,7 +124,7 @@ class PatientArticleDetailView(APIView):
         article = CmsArticle.objects.filter(kind=resolved, slug=slug, published=True).first()
         if not article:
             raise NotFound("Content not found.")
-        return Response({"article": CmsArticleSerializer(article).data})
+        return Response({"article": CmsArticleSerializer(article, context={"request": request}).data})
 
 
 class PatientCentersView(APIView):
@@ -239,7 +239,7 @@ class AdminArticlesView(APIView):
         rows, next_cursor, limit = paginate_queryset(qs, request)
         return Response(
             {
-                "articles": CmsArticleSerializer(rows, many=True).data,
+                "articles": CmsArticleSerializer(rows, many=True, context={"request": request}).data,
                 "nextCursor": next_cursor,
                 "limit": limit,
             }
@@ -247,14 +247,14 @@ class AdminArticlesView(APIView):
 
     def post(self, request):
         _require_website(request.user, PERM_WEBSITE_MANAGE, "You cannot add website content.")
-        serializer = CmsArticleSerializer(data=request.data)
+        serializer = CmsArticleSerializer(data=request.data, context={"request": request})
         try:
             serializer.is_valid(raise_exception=True)
         except ValidationError as exc:
             return Response({"error": _flatten_errors(exc.detail)}, status=400)
         article = serializer.save()
         _audit(request, "Created website content", "Website", article.id, article.title)
-        return Response({"article": CmsArticleSerializer(article).data}, status=201)
+        return Response({"article": CmsArticleSerializer(article, context={"request": request}).data}, status=201)
 
 
 class AdminArticleDetailView(APIView):
@@ -265,21 +265,21 @@ class AdminArticleDetailView(APIView):
         article = CmsArticle.objects.filter(pk=pk).first()
         if not article:
             raise NotFound("Content not found.")
-        return Response({"article": CmsArticleSerializer(article).data})
+        return Response({"article": CmsArticleSerializer(article, context={"request": request}).data})
 
     def put(self, request, pk):
         _require_website(request.user, PERM_WEBSITE_MANAGE, "You cannot update website content.")
         article = CmsArticle.objects.filter(pk=pk).first()
         if not article:
             raise NotFound("Content not found.")
-        serializer = CmsArticleSerializer(article, data=request.data, partial=True)
+        serializer = CmsArticleSerializer(article, data=request.data, partial=True, context={"request": request})
         try:
             serializer.is_valid(raise_exception=True)
         except ValidationError as exc:
             return Response({"error": _flatten_errors(exc.detail)}, status=400)
         article = serializer.save()
         _audit(request, "Updated website content", "Website", article.id, article.title)
-        return Response({"article": CmsArticleSerializer(article).data})
+        return Response({"article": CmsArticleSerializer(article, context={"request": request}).data})
 
     def delete(self, request, pk):
         _require_website(request.user, PERM_WEBSITE_DELETE, "You cannot delete website content.")

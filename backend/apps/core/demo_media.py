@@ -102,3 +102,237 @@ def make_simple_pdf(title: str, body_lines: list[str]) -> bytes:
         xref.append(f"{pos:010d} 00000 n \n".encode("ascii"))
     trailer = b"trailer<< /Size 6 /Root 1 0 R >>\nstartxref\n" + str(cursor).encode("ascii") + b"\n%%EOF\n"
     return header + body + b"".join(xref) + trailer
+
+
+# NHS / WFH-inspired palette for patient education PDFs and banners
+NHS_RED = (200, 16, 46)
+NHS_NAVY = (30, 58, 95)
+NHS_TEXT = (31, 41, 55)
+NHS_MUTED = (107, 114, 128)
+NHS_BG = (248, 250, 252)
+NHS_WHITE = (255, 255, 255)
+NHS_CALLOUT = (254, 242, 242)
+
+
+def _load_fonts():
+    from PIL import ImageFont
+
+    candidates = [
+        ("C:/Windows/Fonts/arial.ttf", 36, 28, 22, 18),
+        ("C:/Windows/Fonts/segoeui.ttf", 36, 28, 22, 18),
+        ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36, 28, 22, 18),
+        ("/System/Library/Fonts/Supplemental/Arial.ttf", 36, 28, 22, 18),
+    ]
+    for path, h1, h2, body, small in candidates:
+        try:
+            return (
+                ImageFont.truetype(path, h1),
+                ImageFont.truetype(path, h2),
+                ImageFont.truetype(path, body),
+                ImageFont.truetype(path, small),
+            )
+        except OSError:
+            continue
+    default = ImageFont.load_default()
+    return default, default, default, default
+
+
+def _wrap_text(draw, text: str, font, max_width: int) -> list[str]:
+    words = text.split()
+    if not words:
+        return [""]
+    lines: list[str] = []
+    current = words[0]
+    for word in words[1:]:
+        trial = f"{current} {word}"
+        if draw.textlength(trial, font=font) <= max_width:
+            current = trial
+        else:
+            lines.append(current)
+            current = word
+    lines.append(current)
+    return lines
+
+
+def make_banner_jpeg(title: str, subtitle: str, tag: str = "NHS Patient Guide", width: int = 1200, height: int = 675) -> bytes:
+    from PIL import Image, ImageDraw
+
+    img = Image.new("RGB", (width, height), NHS_NAVY)
+    draw = ImageDraw.Draw(img)
+    font_title, font_sub, font_body, font_small = _load_fonts()
+
+    for y in range(height):
+        blend = y / max(height - 1, 1)
+        color = tuple(int(NHS_NAVY[i] * (1 - blend * 0.35) + NHS_RED[i] * (blend * 0.35)) for i in range(3))
+        draw.line([(0, y), (width, y)], fill=color)
+
+    draw.rounded_rectangle((48, 48, width - 48, height - 48), radius=28, outline=(255, 255, 255, 80), width=3)
+    draw.rounded_rectangle((72, 72, 280, 118), radius=16, fill=NHS_RED)
+    draw.text((92, 82), tag[:34], fill=NHS_WHITE, font=font_small)
+
+    title_lines = _wrap_text(draw, title, font_title, width - 160)[:3]
+    y = 150
+    for line in title_lines:
+        draw.text((72, y), line, fill=NHS_WHITE, font=font_title)
+        y += 46
+
+    sub_lines = _wrap_text(draw, subtitle, font_sub, width - 160)[:2]
+    y += 8
+    for line in sub_lines:
+        draw.text((72, y), line, fill=(226, 232, 240), font=font_sub)
+        y += 34
+
+    draw.text((72, height - 92), "Nepal Hemophilia Society  |  Patient education (editable in admin)", fill=(203, 213, 225), font=font_small)
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=90)
+    return buf.getvalue()
+
+
+def make_education_pdf(title: str, subtitle: str, sections: list[dict]) -> bytes:
+    """Build a multi-page patient-education PDF with headings, bullets, tables, and bar charts."""
+    from PIL import Image, ImageDraw
+
+    page_w, page_h = 1190, 1684
+    margin_x, margin_y = 90, 110
+    content_w = page_w - margin_x * 2
+    font_title, font_h2, font_body, font_small = _load_fonts()
+    pages: list[Image.Image] = []
+
+    def new_page() -> tuple[Image.Image, ImageDraw.ImageDraw, int]:
+        page = Image.new("RGB", (page_w, page_h), NHS_BG)
+        draw = ImageDraw.Draw(page)
+        draw.rectangle((0, 0, page_w, 150), fill=NHS_NAVY)
+        draw.rectangle((0, 150, page_w, 158), fill=NHS_RED)
+        draw.text((margin_x, 42), "Nepal Hemophilia Society", fill=NHS_WHITE, font=font_small)
+        draw.text((margin_x, 78), title[:70], fill=NHS_WHITE, font=font_h2)
+        if subtitle:
+            draw.text((margin_x, 118), subtitle[:90], fill=(226, 232, 240), font=font_small)
+        return page, draw, 190
+
+    page, draw, y = new_page()
+
+    def ensure_space(needed: int):
+        nonlocal page, draw, y
+        if y + needed > page_h - 90:
+            pages.append(page)
+            page, draw, y = new_page()
+
+    def draw_paragraph(text: str, color=NHS_TEXT):
+        nonlocal y
+        for line in _wrap_text(draw, text, font_body, content_w):
+            ensure_space(34)
+            draw.text((margin_x, y), line, fill=color, font=font_body)
+            y += 34
+        y += 10
+
+    def draw_heading(text: str):
+        nonlocal y
+        ensure_space(56)
+        draw.rounded_rectangle((margin_x, y, margin_x + content_w, y + 44), radius=10, fill=(239, 246, 255))
+        draw.text((margin_x + 16, y + 10), text, fill=NHS_NAVY, font=font_h2)
+        y += 58
+
+    def draw_bullets(items: list[str]):
+        nonlocal y
+        for item in items:
+            bullet_lines = _wrap_text(draw, item, font_body, content_w - 36)
+            for idx, line in enumerate(bullet_lines):
+                ensure_space(32)
+                prefix = "•  " if idx == 0 else "   "
+                draw.text((margin_x + 8, y), prefix + line, fill=NHS_TEXT, font=font_body)
+                y += 32
+        y += 8
+
+    def draw_callout(text: str):
+        nonlocal y
+        lines = []
+        for chunk in text.split("\n"):
+            lines.extend(_wrap_text(draw, chunk, font_body, content_w - 48))
+        box_h = len(lines) * 30 + 28
+        ensure_space(box_h + 12)
+        draw.rounded_rectangle((margin_x, y, margin_x + content_w, y + box_h), radius=14, fill=NHS_CALLOUT, outline=NHS_RED, width=2)
+        ty = y + 14
+        for line in lines:
+            draw.text((margin_x + 20, ty), line, fill=NHS_RED, font=font_body)
+            ty += 30
+        y += box_h + 16
+
+    def draw_table(headers: list[str], rows: list[list[str]]):
+        nonlocal y
+        col_w = content_w // max(len(headers), 1)
+        row_h = 42
+        ensure_space(row_h * (len(rows) + 2))
+        x0 = margin_x
+        draw.rectangle((x0, y, x0 + content_w, y + row_h), fill=NHS_NAVY)
+        for i, header in enumerate(headers):
+            draw.text((x0 + i * col_w + 12, y + 10), header[:22], fill=NHS_WHITE, font=font_small)
+        y += row_h
+        for row in rows:
+            draw.rectangle((x0, y, x0 + content_w, y + row_h), outline=(229, 231, 235), width=1, fill=NHS_WHITE)
+            for i, cell in enumerate(row):
+                draw.text((x0 + i * col_w + 12, y + 10), str(cell)[:26], fill=NHS_TEXT, font=font_small)
+            y += row_h
+        y += 14
+
+    def draw_chart(chart_title: str, labels: list[str], values: list[int]):
+        nonlocal y
+        chart_h = 260
+        ensure_space(chart_h + 50)
+        draw.text((margin_x, y), chart_title, fill=NHS_NAVY, font=font_h2)
+        y += 40
+        chart_top = y
+        chart_bottom = y + chart_h - 40
+        draw.rectangle((margin_x, chart_top, margin_x + content_w, chart_bottom), fill=NHS_WHITE, outline=(229, 231, 235), width=2)
+        max_val = max(values) if values else 1
+        bar_w = max(40, (content_w - 80) // max(len(labels), 1) - 20)
+        gap = 20
+        x = margin_x + 40
+        for label, value in zip(labels, values, strict=False):
+            bar_h = int((chart_bottom - chart_top - 60) * (value / max_val))
+            bar_x1 = x
+            bar_x2 = x + bar_w
+            bar_y2 = chart_bottom - 30
+            bar_y1 = bar_y2 - bar_h
+            draw.rounded_rectangle((bar_x1, bar_y1, bar_x2, bar_y2), radius=8, fill=NHS_RED)
+            draw.text((bar_x1, bar_y2 + 6), label[:10], fill=NHS_MUTED, font=font_small)
+            draw.text((bar_x1, bar_y1 - 24), str(value), fill=NHS_NAVY, font=font_small)
+            x += bar_w + gap
+        y = chart_bottom + 24
+
+    def draw_links(items: list[dict]):
+        nonlocal y
+        for item in items:
+            label = item.get("label", "Link")
+            url = item.get("url", "")
+            ensure_space(34)
+            draw.text((margin_x, y), f"→ {label}", fill=NHS_NAVY, font=font_body)
+            y += 28
+            if url:
+                for line in _wrap_text(draw, url, font_small, content_w - 20):
+                    ensure_space(24)
+                    draw.text((margin_x + 16, y), line, fill=NHS_MUTED, font=font_small)
+                    y += 24
+            y += 6
+
+    for section in sections:
+        kind = section.get("type", "paragraph")
+        if kind == "heading":
+            draw_heading(section["text"])
+        elif kind == "paragraph":
+            draw_paragraph(section["text"])
+        elif kind == "bullets":
+            draw_bullets(section.get("items", []))
+        elif kind == "callout":
+            draw_callout(section["text"])
+        elif kind == "table":
+            draw_table(section.get("headers", []), section.get("rows", []))
+        elif kind == "chart":
+            draw_chart(section.get("title", ""), section.get("labels", []), section.get("values", []))
+        elif kind == "links":
+            draw_links(section.get("items", []))
+
+    pages.append(page)
+    buf = io.BytesIO()
+    pages[0].save(buf, format="PDF", save_all=True, append_images=pages[1:], resolution=150.0)
+    return buf.getvalue()

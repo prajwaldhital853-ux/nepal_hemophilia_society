@@ -58,6 +58,17 @@ class AppServiceListSerializer(AppServiceSerializer):
         fields = tuple(f for f in AppServiceSerializer.Meta.fields if f != "body")
 
 
+def _absolute_cms_url(request, value: str) -> str:
+    raw = (value or "").strip()
+    if not raw:
+        return ""
+    if raw.startswith("http://") or raw.startswith("https://"):
+        return raw
+    if request is not None:
+        return request.build_absolute_uri(raw)
+    return raw
+
+
 class CmsArticleSerializer(serializers.ModelSerializer):
     imageUrl = serializers.CharField(source="image_url", required=False, allow_blank=True)
     fileUrl = serializers.CharField(source="file_url", required=False, allow_blank=True)
@@ -84,6 +95,13 @@ class CmsArticleSerializer(serializers.ModelSerializer):
             "published",
             "sortOrder",
         )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        data["imageUrl"] = _absolute_cms_url(request, instance.image_url)
+        data["fileUrl"] = _absolute_cms_url(request, instance.file_url)
+        return data
 
     def validate_kind(self, value):
         if value not in ContentKind.values:

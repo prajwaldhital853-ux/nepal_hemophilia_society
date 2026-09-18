@@ -1,8 +1,10 @@
 """Default patient-app services and sample CMS articles."""
 
-from django.utils import timezone
+from django.utils.text import slugify
 
 from apps.cms.models import AppService, CmsArticle, ContentKind, ServiceAction, ServiceCategory
+from apps.cms.seed_content import ENRICHED_SERVICE_BODIES, build_default_articles
+from apps.cms.seed_media import seed_cms_media_files
 
 DEFAULT_SERVICES = [
     {
@@ -148,6 +150,18 @@ DEFAULT_SERVICES = [
         "sort_order": 30,
     },
     {
+        "slug": "photo-gallery",
+        "title": "Photo Gallery",
+        "description": "Events, camps, and community photos",
+        "body": "Albums from NHS programmes — walks, youth camps, training, and chapter meetings.",
+        "category": ServiceCategory.EDUCATION,
+        "icon_set": "ion",
+        "icon_name": "images-outline",
+        "action_type": ServiceAction.GALLERY,
+        "action_value": "",
+        "sort_order": 50,
+    },
+    {
         "slug": "tools",
         "title": "Hemophilia Tools",
         "description": "Helpful calculators & guides",
@@ -276,80 +290,21 @@ DEFAULT_SERVICES = [
 ]
 
 
-DEFAULT_ARTICLES = [
-    {
-        "kind": ContentKind.NEWS,
-        "slug": "world-hemophilia-day",
-        "title": "World Hemophilia Day",
-        "summary": "Join NHS for awareness activities every 17 April.",
-        "body": "World Hemophilia Day highlights access to care. Watch this space for the current year’s programme.",
-        "sort_order": 10,
-    },
-    {
-        "kind": ContentKind.EVENT,
-        "slug": "family-education-day",
-        "title": "Family Education Day",
-        "summary": "Infusion and physiotherapy orientation for families.",
-        "body": "Dates and venues are announced by NHS. Ask your treatment centre if a session is planned in your province.",
-        "location": "Kathmandu",
-        "sort_order": 10,
-    },
-    {
-        "kind": ContentKind.RESOURCE,
-        "slug": "home-infusion-guide",
-        "title": "Home infusion guide",
-        "summary": "Basic steps for safe factor infusion at home (education only).",
-        "body": "This is not a substitute for training by your haematology team. Always follow the protocol taught at your centre.",
-        "sort_order": 10,
-    },
-    {
-        "kind": ContentKind.GALLERY,
-        "slug": "nhs-community",
-        "title": "NHS community",
-        "summary": "Patients, families, and volunteers across Nepal.",
-        "body": "Photo captions and albums can be added by the website manager.",
-        "sort_order": 10,
-    },
-    {
-        "kind": ContentKind.INSIGHT,
-        "slug": "reading-your-charts",
-        "title": "How to read your charts",
-        "summary": "Bars show how often something happened that month. Compare red bleed bars with factor bars.",
-        "body": "A quiet bleed month with regular prophylaxis usually means treatment is working. A spike in bleeds with fewer injections is a signal to call your centre. Charts never replace a clinical visit.",
-        "sort_order": 10,
-    },
-    {
-        "kind": ContentKind.INSIGHT,
-        "slug": "when-to-call-your-centre",
-        "title": "When to call your centre",
-        "summary": "Head, neck, or abdominal bleeds, or a joint that will not settle, need urgent care.",
-        "body": "Use Emergency Support in the app for NHS numbers. Carry your Emergency ID. Do not wait if a bleed is worsening after treatment.",
-        "sort_order": 20,
-    },
-    {
-        "kind": ContentKind.INSIGHT,
-        "slug": "prophylaxis-vs-on-demand",
-        "title": "Prophylaxis vs on-demand",
-        "summary": "Regular prophylaxis aims to prevent bleeds. On-demand treats a bleed after it starts.",
-        "body": "Your prescribed plan is on your profile. If your injection count drops while bleeds rise, ask your team whether the plan still fits.",
-        "sort_order": 30,
-    },
-]
+def seed_cms_defaults(*, update_existing: bool = False, with_media: bool = True):
+    media_urls = seed_cms_media_files() if with_media else {}
+    articles = build_default_articles(media_urls)
 
-
-def seed_cms_defaults(*, update_existing: bool = False):
-    now = timezone.now()
     for row in DEFAULT_SERVICES:
         defaults = {k: v for k, v in row.items() if k != "slug"}
+        if row["slug"] in ENRICHED_SERVICE_BODIES:
+            defaults["body"] = ENRICHED_SERVICE_BODIES[row["slug"]]
         if update_existing:
             AppService.objects.update_or_create(slug=row["slug"], defaults=defaults)
         else:
             AppService.objects.get_or_create(slug=row["slug"], defaults=defaults)
 
-    for row in DEFAULT_ARTICLES:
+    for row in articles:
         defaults = {k: v for k, v in row.items() if k not in ("slug", "kind")}
-        if row["kind"] == ContentKind.EVENT and not defaults.get("starts_at"):
-            defaults["starts_at"] = now
         if update_existing:
             CmsArticle.objects.update_or_create(kind=row["kind"], slug=row["slug"], defaults=defaults)
         else:

@@ -8,7 +8,11 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--update", action="store_true", help="Overwrite existing seeded rows.")
+        parser.add_argument("--no-media", action="store_true", help="Skip generating CMS PDFs and gallery images.")
 
     def handle(self, *args, **options):
-        seed_cms_defaults(update_existing=options["update"])
+        seed_cms_defaults(
+            update_existing=options["update"],
+            with_media=not options["no_media"],
+        )
         self.stdout.write(self.style.SUCCESS("CMS defaults are in place."))

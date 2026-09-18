@@ -51,8 +51,8 @@ fi
 if [[ "${RUN_DEMO_SEED_ON_START:-true}" == "true" ]]; then
   echo "==> Seeding demo patients/admins (seed_demo_data)"
   python manage.py seed_demo_data
-  echo "==> Seeding CMS app services (seed_cms)"
-  python manage.py seed_cms
+  echo "==> Seeding CMS content + PDFs (seed_cms --update)"
+  python manage.py seed_cms --update
 else
   echo "==> Skipping demo seed (RUN_DEMO_SEED_ON_START=false)"
 fi
