@@ -416,6 +416,7 @@ NAV_PERMISSIONS = {
     "/dashboard/events": PERM_WEBSITE_VIEW,
     "/dashboard/gallery": PERM_WEBSITE_VIEW,
     "/dashboard/resources": PERM_WEBSITE_VIEW,
+    "/dashboard/insights": PERM_WEBSITE_VIEW,
 }
 
 ADMIN_ROLES = (

@@ -10,6 +10,7 @@ export const DocumentsScreen = lazyScreen(() => import("@/features/home/screens/
 export const InjectionsScreen = lazyScreen(() => import("@/features/injections/screens/InjectionsScreen"));
 export const TreatmentsScreen = lazyScreen(() => import("@/features/treatments/screens/TreatmentsScreen"));
 export const BleedingScreen = lazyScreen(() => import("@/features/services/screens/BleedingScreen"));
+export const InsightsScreen = lazyScreen(() => import("@/features/services/screens/InsightsScreen"));
 export const CentersScreen = lazyScreen(() => import("@/features/services/screens/CentersScreen"));
 export const EmergencyIdScreen = lazyScreen(() => import("@/features/services/screens/EmergencyIdScreen"));
 export const SettingsScreen = lazyScreen(() => import("@/features/services/screens/SettingsScreen"));

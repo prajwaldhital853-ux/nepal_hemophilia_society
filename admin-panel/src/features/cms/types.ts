@@ -1,6 +1,6 @@
 export type ServiceCategoryId = "treatment" | "education" | "support" | "more";
 export type ServiceActionType = "content" | "app_screen" | "url" | "news" | "events" | "resources" | "gallery";
-export type ContentKind = "news" | "event" | "resource" | "gallery";
+export type ContentKind = "news" | "event" | "resource" | "gallery" | "insight";
 
 export type AppService = {
   id: number;
@@ -58,6 +58,7 @@ export const SERVICE_ACTIONS: { id: ServiceActionType; label: string }[] = [
 ];
 
 export const APP_SCREENS = [
+  "Insights",
   "Treatments",
   "Injections",
   "Documents",

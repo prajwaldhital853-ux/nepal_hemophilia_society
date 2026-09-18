@@ -15,6 +15,7 @@ from apps.core.clinical import can_view_patient
 from apps.injections.serializers import InjectionRecordSerializer
 from apps.injections.views import _injection_queryset, _scope_injections
 from apps.core.pagination import paginate_queryset
+from apps.patients.insights import build_patient_insights
 from apps.patients.models import Patient
 from apps.treatments.models import HospitalVisit
 from apps.treatments.serializers import HospitalVisitSerializer, TreatmentRecordSerializer
@@ -179,6 +180,16 @@ class PatientMeVisitsView(APIView):
             return Response({"error": "No patient profile linked."}, status=404)
         qs = HospitalVisit.objects.select_related("hospital", "hospital__province").filter(patient=patient)
         return Response({"visits": HospitalVisitSerializer(qs.order_by("-visit_date"), many=True).data})
+
+
+class PatientMeInsightsView(APIView):
+    permission_classes = [IsAuthenticated, IsPatientRole, PatientPasswordUsable]
+
+    def get(self, request):
+        patient = getattr(request.user, "patient_profile", None)
+        if not patient:
+            return Response({"error": "No patient profile linked."}, status=404)
+        return Response({"insights": build_patient_insights(patient)})
 
 
 class PatientMeHistoryView(APIView):

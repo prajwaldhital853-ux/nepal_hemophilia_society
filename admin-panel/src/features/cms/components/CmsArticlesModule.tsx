@@ -32,6 +32,11 @@ const KIND_META: Record<ContentKind, { title: string; crumb: string; hint: strin
     crumb: "Gallery",
     hint: "Photos and captions shown when a service is set to open the gallery.",
   },
+  insight: {
+    title: "Health insight tips",
+    crumb: "Health insights",
+    hint: "Short tips shown on the patient My Health Insights screen, under the live charts. Charts themselves come from patient records.",
+  },
 };
 
 type Props = { kind: ContentKind };

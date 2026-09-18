@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timedelta, time
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -20,9 +20,11 @@ from apps.core.demo_seed_catalog import (
     PATIENTS,
     TREATMENT_ADMINS,
 )
-from apps.factors.models import FactorMedicine
+from apps.factors.models import FactorMedicine, FactorType
 from apps.hospitals.models import Hospital
+from apps.injections.models import InjectionIndication, InjectionRecord, InjectionStatus
 from apps.patients.models import (
+    BleedingEpisode,
     Gender,
     HemophiliaType,
     InhibitorStatus,
@@ -32,6 +34,7 @@ from apps.patients.models import (
     VerificationStatus,
 )
 from apps.provinces.models import District, Province
+from apps.treatments.models import TreatmentRecord, TreatmentStatus, TreatmentType
 
 
 class Command(BaseCommand):
@@ -71,6 +74,11 @@ class Command(BaseCommand):
             center_users = self._seed_center_admins(actor)
             treatment_users = self._seed_treatment_admins(actor)
             patients = self._seed_patients(actor)
+
+        for patient in patients:
+            self._seed_clinical_history(patient, actor)
+            for patient in patients:
+                self._seed_clinical_history(patient, actor)
 
         self.stdout.write(self.style.SUCCESS("\nDemo seed complete.\n"))
         self.stdout.write(f"Password for all demo accounts: {DEMO_PASSWORD}\n")
@@ -328,6 +336,82 @@ class Command(BaseCommand):
                 f"({patient.severity}, {patient.baseline_factor_level}%)"
             )
         return patients
+
+    def _seed_clinical_history(self, patient: Patient, actor):
+        if InjectionRecord.objects.filter(patient=patient).exists():
+            return
+        hospital = patient.primary_hospital
+        factor = patient.prescribed_factor_medicine or FactorMedicine.objects.filter(
+            factor_type=FactorType.FVIII if patient.hemophilia_type == HemophiliaType.A else FactorType.FIX
+        ).first()
+        if not factor or not hospital:
+            return
+        tz = timezone.get_current_timezone()
+        today = timezone.localdate()
+        seed = abs(hash(patient.unique_patient_id))
+        sites = ["Knee", "Elbow", "Ankle", "Calf muscle", "Hip"]
+        indications = [
+            InjectionIndication.PROPHYLAXIS,
+            InjectionIndication.ON_DEMAND,
+            InjectionIndication.PROPHYLAXIS,
+            InjectionIndication.TRAUMA,
+        ]
+        dose = Decimal("1000") if patient.severity == "Mild" else Decimal("1500") if patient.severity == "Moderate" else Decimal("2000")
+        created_inj = 0
+        year, month = today.year, today.month
+        for months_ago in range(7, -1, -1):
+            mm = month - months_ago
+            yy = year
+            while mm <= 0:
+                mm += 12
+                yy -= 1
+            shots = 3 if patient.severity == "Severe" else 2 if patient.severity == "Moderate" else 1
+            for shot in range(shots):
+                day = min(28, 4 + shot * 8 + (seed % 3))
+                when = timezone.make_aware(datetime.combine(date(yy, mm, day), time(10, 30)), tz)
+                if when.date() > today:
+                    continue
+                indication = indications[(seed + months_ago + shot) % len(indications)]
+                if patient.treatment_plan and "Prophylaxis" in patient.treatment_plan:
+                    indication = InjectionIndication.PROPHYLAXIS if shot < shots - 1 else indication
+                InjectionRecord.objects.create(
+                    patient=patient,
+                    hospital=hospital,
+                    administered_by=actor,
+                    factor_medicine=factor,
+                    factor_type=factor.factor_type,
+                    dose=dose,
+                    unit=factor.unit or "IU",
+                    indication=indication,
+                    status=InjectionStatus.COMPLETED,
+                    administered_at=when,
+                    doctor_name="Dr. Sharma",
+                    notes=DEMO_MARKER,
+                )
+                created_inj += 1
+        bleed_count = 4 if patient.severity == "Severe" else 2 if patient.severity == "Moderate" else 1
+        for i in range(bleed_count):
+            episode_day = today - timedelta(days=12 + i * 28 + (seed % 7))
+            BleedingEpisode.objects.create(
+                patient=patient,
+                hospital=hospital,
+                episode_date=episode_day,
+                site=sites[(seed + i) % len(sites)],
+                severity="Severe" if i == 0 and patient.severity == "Severe" else "Moderate",
+                notes="Demo bleed for charts.",
+                recorded_by=actor,
+            )
+        TreatmentRecord.objects.create(
+            patient=patient,
+            hospital=hospital,
+            recorded_by=actor,
+            treatment_type=TreatmentType.PHYSIOTHERAPY,
+            status=TreatmentStatus.COMPLETED,
+            description="Joint physiotherapy session after bleed.",
+            treatment_date=today - timedelta(days=21),
+            notes=DEMO_MARKER,
+        )
+        self.stdout.write(f"  Clinical history: {patient.unique_patient_id} ({created_inj} injections)")
 
     def _attach_documents(self, patient: Patient, actor, hospital: Hospital, item: dict):
         docs = [

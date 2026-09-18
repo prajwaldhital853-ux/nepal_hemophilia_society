@@ -29,4 +29,7 @@ export type PatientRecord = {
   primaryHospital?: string;
   treatmentPlan?: string;
   prescribedFactorMedicineName?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelation?: string;
 };

@@ -23,6 +23,7 @@ import {
   ServiceDetailScreen,
   ServiceContentListScreen,
   ServiceContentDetailScreen,
+  InsightsScreen,
 } from "./screens";
 
 export type RootStackParamList = {
@@ -39,6 +40,7 @@ export type RootStackParamList = {
   Injections: undefined;
   Treatments: undefined;
   Bleeding: undefined;
+  Insights: undefined;
   Centers: undefined;
   EmergencyId: undefined;
   Settings: undefined;
@@ -90,6 +92,7 @@ function AppStack() {
           <Stack.Screen name="Injections" component={InjectionsScreen} options={{ title: "Injection History" }} />
           <Stack.Screen name="Treatments" component={TreatmentsScreen} options={{ title: "Treatment History" }} />
           <Stack.Screen name="Bleeding" component={BleedingScreen} options={{ title: "Bleeding History" }} />
+          <Stack.Screen name="Insights" component={InsightsScreen} options={{ title: "Health Insights" }} />
           <Stack.Screen name="Documents" component={DocumentsScreen} options={{ title: "My documents" }} />
           <Stack.Screen name="Centers" component={CentersScreen} options={{ title: "Treatment Centres" }} />
           <Stack.Screen name="EmergencyId" component={EmergencyIdScreen} options={{ title: "Emergency ID" }} />

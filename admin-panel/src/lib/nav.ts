@@ -65,4 +65,5 @@ export const websiteNav: NavItem[] = [
   { href: "/dashboard/events", label: "Events", icon: "events" },
   { href: "/dashboard/gallery", label: "Gallery", icon: "gallery" },
   { href: "/dashboard/resources", label: "Resources", icon: "resources" },
+  { href: "/dashboard/insights", label: "Health insight tips", icon: "reports" },
 ];

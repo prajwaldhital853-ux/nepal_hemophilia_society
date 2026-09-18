@@ -4,6 +4,7 @@ from apps.patients.bleeding_views import PatientMeBleedingEpisodesView
 from apps.patients.clinical_views import (
     PatientMeHistoryView,
     PatientMeInjectionsView,
+    PatientMeInsightsView,
     PatientMeTreatmentsView,
     PatientMeVisitsView,
 )
@@ -17,6 +18,7 @@ urlpatterns = [
     path("treatments/", PatientMeTreatmentsView.as_view(), name="me-treatments"),
     path("visits/", PatientMeVisitsView.as_view(), name="me-visits"),
     path("history/", PatientMeHistoryView.as_view(), name="me-history"),
+    path("insights/", PatientMeInsightsView.as_view(), name="me-insights"),
     path("documents/", PatientMeDocumentsView.as_view(), name="me-documents"),
     path("stock/", PatientMeStockView.as_view(), name="me-stock"),
     path("bleeding-episodes/", PatientMeBleedingEpisodesView.as_view(), name="me-bleeding"),

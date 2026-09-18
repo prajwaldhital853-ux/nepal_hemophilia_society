@@ -19,6 +19,8 @@ KIND_ALIASES = {
     "resource": ContentKind.RESOURCE,
     "resources": ContentKind.RESOURCE,
     "gallery": ContentKind.GALLERY,
+    "insight": ContentKind.INSIGHT,
+    "insights": ContentKind.INSIGHT,
 }
 
 

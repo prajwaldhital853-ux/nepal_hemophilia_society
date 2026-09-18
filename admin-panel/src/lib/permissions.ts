@@ -125,6 +125,7 @@ export const WEBSITE_ROUTES = [
   "/dashboard/events",
   "/dashboard/gallery",
   "/dashboard/resources",
+  "/dashboard/insights",
 ] as const;
 
 export function isWebsiteRoute(pathname: string) {

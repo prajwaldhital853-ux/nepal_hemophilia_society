@@ -25,6 +25,7 @@ class ContentKind(models.TextChoices):
     EVENT = "event", "Event"
     RESOURCE = "resource", "Resource / Download"
     GALLERY = "gallery", "Gallery"
+    INSIGHT = "insight", "Health insight tip"
 
 
 class AppService(TimeStampedModel):

@@ -12,6 +12,10 @@ export function openPatientService(navigation: Nav, service: AppService) {
     return;
   }
   if (service.actionType === "app_screen") {
+    if (service.slug === "analytics") {
+      navigation.navigate("Insights");
+      return;
+    }
     switch (service.actionValue) {
       case "Treatments":
         navigation.navigate("Treatments");
@@ -27,6 +31,10 @@ export function openPatientService(navigation: Nav, service: AppService) {
         return;
       case "Factor":
         navigation.navigate("Factor");
+        return;
+      case "Insights":
+      case "Analytics":
+        navigation.navigate("Insights");
         return;
       case "Centers":
         navigation.navigate("Centers");

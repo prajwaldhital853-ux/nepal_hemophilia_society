@@ -115,3 +115,10 @@ class CmsApiTests(APITestCase):
         self.client.force_authenticate(self.patient_user)
         res = self.client.get("/api/v1/cms/admin/services/")
         self.assertEqual(res.status_code, 403)
+
+    def test_patient_can_read_insight_tips(self):
+        self.client.force_authenticate(self.patient_user)
+        res = self.client.get("/api/v1/cms/content/insights/")
+        self.assertEqual(res.status_code, 200)
+        titles = [row["title"] for row in res.data["articles"]]
+        self.assertIn("How to read your charts", titles)

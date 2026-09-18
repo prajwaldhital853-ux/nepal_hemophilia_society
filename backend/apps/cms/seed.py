@@ -79,14 +79,14 @@ DEFAULT_SERVICES = [
     },
     {
         "slug": "analytics",
-        "title": "Analytics",
-        "description": "View your health trends and reports",
-        "body": "Charts and stock trends for your factor use. Open Factor & Stock for the full view.",
+        "title": "My Health Insights",
+        "description": "Charts of bleeds, factor use, and this month vs last month",
+        "body": "These charts come from your NHMS treatment records. Tips below are written by NHS staff in the admin panel. This is education only — always follow your haematology team.",
         "category": ServiceCategory.TREATMENT,
         "icon_set": "mci",
         "icon_name": "chart-line",
         "action_type": ServiceAction.APP_SCREEN,
-        "action_value": "Factor",
+        "action_value": "Insights",
         "sort_order": 70,
     },
     {
@@ -310,6 +310,30 @@ DEFAULT_ARTICLES = [
         "body": "Photo captions and albums can be added by the website manager.",
         "sort_order": 10,
     },
+    {
+        "kind": ContentKind.INSIGHT,
+        "slug": "reading-your-charts",
+        "title": "How to read your charts",
+        "summary": "Bars show how often something happened that month. Compare red bleed bars with factor bars.",
+        "body": "A quiet bleed month with regular prophylaxis usually means treatment is working. A spike in bleeds with fewer injections is a signal to call your centre. Charts never replace a clinical visit.",
+        "sort_order": 10,
+    },
+    {
+        "kind": ContentKind.INSIGHT,
+        "slug": "when-to-call-your-centre",
+        "title": "When to call your centre",
+        "summary": "Head, neck, or abdominal bleeds, or a joint that will not settle, need urgent care.",
+        "body": "Use Emergency Support in the app for NHS numbers. Carry your Emergency ID. Do not wait if a bleed is worsening after treatment.",
+        "sort_order": 20,
+    },
+    {
+        "kind": ContentKind.INSIGHT,
+        "slug": "prophylaxis-vs-on-demand",
+        "title": "Prophylaxis vs on-demand",
+        "summary": "Regular prophylaxis aims to prevent bleeds. On-demand treats a bleed after it starts.",
+        "body": "Your prescribed plan is on your profile. If your injection count drops while bleeds rise, ask your team whether the plan still fits.",
+        "sort_order": 30,
+    },
 ]
 
 
@@ -330,6 +354,9 @@ def seed_cms_defaults(*, update_existing: bool = False):
             CmsArticle.objects.update_or_create(kind=row["kind"], slug=row["slug"], defaults=defaults)
         else:
             CmsArticle.objects.get_or_create(kind=row["kind"], slug=row["slug"], defaults=defaults)
+
+    # Existing production rows keep stale action_value unless we patch the analytics card.
+    AppService.objects.filter(slug="analytics").update(action_value="Insights", title="My Health Insights")
 
 
 def ensure_unique_slug(title: str, *, model, kind: str | None = None) -> str:

@@ -4,9 +4,9 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { useAuth } from "@/core/auth/AuthContext";
 import type { RootStackParamList } from "@/core/navigation/RootNavigator";
-import { colors, spacing } from "@/core/theme";
 import { fetchCmsArticle } from "@/features/services/api";
 import type { CmsArticle } from "@/features/services/types";
+import { servicesColors } from "@/features/services/theme/servicesTheme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceContentDetail">;
 
@@ -57,17 +57,24 @@ export default function ServiceContentDetailScreen({ navigation, route }: Props)
   return (
     <ScrollView contentContainerStyle={styles.content}>
       {article.imageUrl ? <Image source={{ uri: article.imageUrl }} style={styles.image} /> : null}
-      <Text style={styles.title}>{article.title}</Text>
-      {article.summary ? <Text style={styles.summary}>{article.summary}</Text> : null}
-      {article.location || article.startsAt ? (
-        <Text style={styles.meta}>
-          {[article.startsAt ? new Date(article.startsAt).toLocaleString() : "", article.location].filter(Boolean).join(" · ")}
-        </Text>
+      <View style={styles.hero}>
+        <Text style={styles.kind}>{article.kind}</Text>
+        <Text style={styles.title}>{article.title}</Text>
+        {article.summary ? <Text style={styles.summary}>{article.summary}</Text> : null}
+        {article.location || article.startsAt ? (
+          <Text style={styles.meta}>
+            {[article.startsAt ? new Date(article.startsAt).toLocaleString() : "", article.location].filter(Boolean).join(" · ")}
+          </Text>
+        ) : null}
+      </View>
+      {article.body ? (
+        <View style={styles.card}>
+          <Text style={styles.body}>{article.body}</Text>
+        </View>
       ) : null}
-      {article.body ? <Text style={styles.body}>{article.body}</Text> : null}
       {article.fileUrl ? (
-        <Pressable onPress={() => void Linking.openURL(article.fileUrl!)}>
-          <Text style={styles.link}>Open download</Text>
+        <Pressable style={styles.download} onPress={() => void Linking.openURL(article.fileUrl!)}>
+          <Text style={styles.downloadText}>Open download</Text>
         </Pressable>
       ) : null}
     </ScrollView>
@@ -75,13 +82,17 @@ export default function ServiceContentDetailScreen({ navigation, route }: Props)
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.lg, paddingBottom: 40, backgroundColor: colors.background },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.lg },
-  image: { width: "100%", height: 180, borderRadius: 12, marginBottom: 16, backgroundColor: "#F3F4F6" },
-  title: { fontSize: 22, fontWeight: "800", color: colors.navy },
-  summary: { marginTop: 8, fontSize: 14, color: colors.textMuted, lineHeight: 20 },
-  meta: { marginTop: 8, fontSize: 13, fontWeight: "600", color: colors.primary },
-  body: { marginTop: 16, fontSize: 15, color: colors.text, lineHeight: 22 },
-  link: { marginTop: 16, fontSize: 14, fontWeight: "700", color: colors.primary },
-  error: { color: colors.primary, textAlign: "center" },
+  content: { padding: 16, paddingBottom: 40, backgroundColor: servicesColors.pageBg },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 16 },
+  image: { width: "100%", height: 180, borderRadius: 16, marginBottom: 14, backgroundColor: "#F3F4F6" },
+  hero: { backgroundColor: servicesColors.navy, borderRadius: 18, padding: 16, marginBottom: 12 },
+  kind: { color: "#FCA5A5", fontSize: 11, fontWeight: "800", textTransform: "uppercase" },
+  title: { marginTop: 6, fontSize: 22, fontWeight: "800", color: "#fff" },
+  summary: { marginTop: 8, fontSize: 14, color: "#E5E7EB", lineHeight: 20 },
+  meta: { marginTop: 8, fontSize: 13, fontWeight: "600", color: "#FECACA" },
+  card: { backgroundColor: "#fff", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: servicesColors.border },
+  body: { fontSize: 15, color: servicesColors.text, lineHeight: 22 },
+  download: { marginTop: 14, backgroundColor: servicesColors.primary, borderRadius: 14, paddingVertical: 14, alignItems: "center" },
+  downloadText: { color: "#fff", fontWeight: "800" },
+  error: { color: servicesColors.primary, textAlign: "center" },
 });

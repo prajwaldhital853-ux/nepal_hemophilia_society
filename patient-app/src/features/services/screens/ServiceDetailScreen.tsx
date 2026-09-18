@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/core/auth/AuthContext";
 import type { RootStackParamList } from "@/core/navigation/RootNavigator";
-import { colors, spacing } from "@/core/theme";
 import { fetchPatientService } from "@/features/services/api";
 import { openPatientService } from "@/features/services/navigateService";
 import type { AppService } from "@/features/services/types";
+import { servicesColors } from "@/features/services/theme/servicesTheme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
 
@@ -43,7 +44,7 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color={servicesColors.primary} />
       </View>
     );
   }
@@ -60,32 +61,52 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     service.actionType !== "content" &&
     (Boolean(service.actionValue) || ["news", "events", "resources", "gallery"].includes(service.actionType));
 
+  const paragraphs = (service.body || "").split(/\n{2,}/).filter(Boolean);
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.kicker}>{service.categoryLabel || service.category}</Text>
-      <Text style={styles.title}>{service.title}</Text>
-      <Text style={styles.summary}>{service.description}</Text>
-      {service.body ? <Text style={styles.body}>{service.body}</Text> : null}
+      <View style={styles.hero}>
+        <Text style={styles.kicker}>{service.categoryLabel || service.category}</Text>
+        <Text style={styles.title}>{service.title}</Text>
+        <Text style={styles.summary}>{service.description}</Text>
+        <Text style={styles.adminNote}>Copy on this page is published from the NHS admin panel.</Text>
+      </View>
 
-      {service.phone ? (
-        <Pressable onPress={() => void Linking.openURL(`tel:${service.phone}`)}>
-          <Text style={styles.link}>Call {service.phone}</Text>
-        </Pressable>
+      {paragraphs.map((block, index) => (
+        <View key={index} style={styles.block}>
+          <Text style={styles.body}>{block}</Text>
+        </View>
+      ))}
+
+      <View style={styles.actions}>
+        {service.phone ? (
+          <Pressable style={styles.action} onPress={() => void Linking.openURL(`tel:${service.phone}`)}>
+            <Ionicons name="call" size={18} color="#fff" />
+            <Text style={styles.actionText}>Call {service.phone}</Text>
+          </Pressable>
+        ) : null}
+        {service.email ? (
+          <Pressable style={[styles.action, styles.actionAlt]} onPress={() => void Linking.openURL(`mailto:${service.email}`)}>
+            <Ionicons name="mail" size={18} color={servicesColors.primary} />
+            <Text style={styles.actionAltText}>{service.email}</Text>
+          </Pressable>
+        ) : null}
+        {service.websiteUrl ? (
+          <Pressable style={[styles.action, styles.actionAlt]} onPress={() => void Linking.openURL(service.websiteUrl!)}>
+            <Ionicons name="open-outline" size={18} color={servicesColors.primary} />
+            <Text style={styles.actionAltText}>Open website</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      {service.address ? (
+        <View style={styles.block}>
+          <Text style={styles.addrLabel}>Address</Text>
+          <Text style={styles.body}>{service.address}</Text>
+        </View>
       ) : null}
-      {service.email ? (
-        <Pressable onPress={() => void Linking.openURL(`mailto:${service.email}`)}>
-          <Text style={styles.link}>{service.email}</Text>
-        </Pressable>
-      ) : null}
-      {service.websiteUrl ? (
-        <Pressable onPress={() => void Linking.openURL(service.websiteUrl!)}>
-          <Text style={styles.link}>{service.websiteUrl}</Text>
-        </Pressable>
-      ) : null}
-      {service.address ? <Text style={styles.meta}>{service.address}</Text> : null}
 
       {hasShortcut ? (
-        <Pressable style={styles.cta} onPress={() => openPatientService(navigation, { ...service, actionType: service.actionType === "content" ? "content" : service.actionType })}>
+        <Pressable style={styles.cta} onPress={() => openPatientService(navigation, service)}>
           <Text style={styles.ctaText}>Open related page</Text>
         </Pressable>
       ) : null}
@@ -94,22 +115,37 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, paddingBottom: 40 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.lg },
-  kicker: { fontSize: 11, fontWeight: "700", color: colors.primary, textTransform: "uppercase" },
-  title: { marginTop: 6, fontSize: 22, fontWeight: "800", color: colors.navy },
-  summary: { marginTop: 8, fontSize: 14, color: colors.textMuted, lineHeight: 20 },
-  body: { marginTop: 16, fontSize: 15, color: colors.text, lineHeight: 22 },
-  link: { marginTop: 12, fontSize: 14, fontWeight: "700", color: colors.primary },
-  meta: { marginTop: 8, fontSize: 13, color: colors.textMuted },
-  error: { color: colors.primary, textAlign: "center" },
-  cta: {
-    marginTop: 24,
-    backgroundColor: colors.primary,
-    borderRadius: 12,
+  screen: { flex: 1, backgroundColor: servicesColors.pageBg },
+  content: { padding: 16, paddingBottom: 40 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 16 },
+  hero: { backgroundColor: servicesColors.navy, borderRadius: 18, padding: 18, marginBottom: 12 },
+  kicker: { fontSize: 11, fontWeight: "800", color: "#FECACA", textTransform: "uppercase" },
+  title: { marginTop: 6, fontSize: 24, fontWeight: "800", color: "#fff" },
+  summary: { marginTop: 8, fontSize: 14, color: "#E5E7EB", lineHeight: 20 },
+  adminNote: { marginTop: 10, fontSize: 11, color: "#FCA5A5" },
+  block: { backgroundColor: "#fff", borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: servicesColors.border },
+  body: { fontSize: 15, color: servicesColors.text, lineHeight: 22 },
+  addrLabel: { fontSize: 11, fontWeight: "800", color: servicesColors.primary, marginBottom: 4, textTransform: "uppercase" },
+  actions: { gap: 8, marginTop: 4 },
+  action: {
+    backgroundColor: servicesColors.primary,
+    borderRadius: 14,
     paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  actionAlt: { backgroundColor: "#fff", borderWidth: 1, borderColor: servicesColors.border },
+  actionText: { color: "#fff", fontWeight: "700" },
+  actionAltText: { color: servicesColors.primary, fontWeight: "700", flexShrink: 1 },
+  error: { color: servicesColors.primary, textAlign: "center" },
+  cta: {
+    marginTop: 8,
+    backgroundColor: servicesColors.navy,
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: "center",
   },
-  ctaText: { color: "#fff", fontWeight: "700" },
+  ctaText: { color: "#fff", fontWeight: "800" },
 });
