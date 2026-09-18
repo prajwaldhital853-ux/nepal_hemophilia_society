@@ -12,6 +12,22 @@ from apps.provinces.models import Province, ProvinceAdmin
 User = get_user_model()
 
 
+class CronPingTests(APITestCase):
+    def test_api_cron_ping_returns_200(self):
+        res = self.client.get("/api/v1/cron/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["status"], "ok")
+
+    def test_root_ping_returns_200(self):
+        res = self.client.get("/ping/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["status"], "ok")
+
+    def test_cron_ping_head_returns_200(self):
+        res = self.client.head("/api/v1/cron/")
+        self.assertEqual(res.status_code, 200)
+
+
 class BackupApiTests(APITestCase):
     def setUp(self):
         self.super = User.objects.create_user(username="super", password="ChangeMe#2026", role=UserRole.SUPER_ADMIN)

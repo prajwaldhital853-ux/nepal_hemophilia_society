@@ -5,9 +5,11 @@ API v1 URL routing — each feature app owns its own urlpatterns.
 from django.urls import include, path
 
 from apps.core.backup_views import BackupDownloadView, BackupListCreateView
+from apps.core.urls import CronPingView
 
 urlpatterns = [
     path("health/", include("apps.core.urls")),
+    path("cron/", CronPingView.as_view(), name="cron-ping"),
     path("backups/", BackupListCreateView.as_view(), name="backups"),
     path("backups/<str:filename>/download/", BackupDownloadView.as_view(), name="backup-download"),
     path("auth/", include("apps.accounts.urls")),
