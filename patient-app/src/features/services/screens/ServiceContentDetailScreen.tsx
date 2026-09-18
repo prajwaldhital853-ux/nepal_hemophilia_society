@@ -42,7 +42,7 @@ export default function ServiceContentDetailScreen({ navigation, route }: Props)
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color={servicesColors.primary} />
       </View>
     );
   }
