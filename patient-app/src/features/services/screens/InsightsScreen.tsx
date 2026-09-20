@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { StackScreenProps } from "@react-navigation/stack";
 
 import { useAuth } from "@/core/auth/AuthContext";
 import type { RootStackParamList } from "@/core/navigation/types";
@@ -16,7 +16,7 @@ import { DonutChart, InteractiveChart } from "@/features/services/components/cha
 import { fetchPatientInsights, type PatientInsights } from "@/features/services/insights";
 import { servicesColors, servicesSpacing } from "@/features/services/theme/servicesTheme";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Insights">;
+type Props = StackScreenProps<RootStackParamList, "Insights">;
 
 const SLICE_COLORS = ["#C1121F", "#001D3D", "#F59E0B", "#0F766E", "#7C3AED", "#2563EB"];
 

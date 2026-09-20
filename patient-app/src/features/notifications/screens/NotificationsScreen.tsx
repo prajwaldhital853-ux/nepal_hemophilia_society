@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { StackScreenProps } from "@react-navigation/stack";
 
 import type { RootStackParamList } from "@/core/navigation/types";
 import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
@@ -12,7 +12,7 @@ import type { NotificationFilterId } from "@/features/notifications/data/notific
 import { usePatientNotifications } from "@/features/notifications/hooks/usePatientNotifications";
 import { notificationsColors, notificationsSpacing } from "@/features/notifications/theme/notificationsTheme";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Notifications">;
+type Props = StackScreenProps<RootStackParamList, "Notifications">;
 
 const FILTER_TO_CATEGORY: Record<NotificationFilterId, string> = {
   all: "all",

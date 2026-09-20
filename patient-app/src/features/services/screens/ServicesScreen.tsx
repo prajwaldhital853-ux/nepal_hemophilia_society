@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { StackScreenProps } from "@react-navigation/stack";
 
 import { useAuth } from "@/core/auth/AuthContext";
 import type { RootStackParamList } from "@/core/navigation/types";
@@ -24,7 +24,7 @@ import { openPatientService } from "@/features/services/navigateService";
 import type { ServiceCategoryGroup } from "@/features/services/types";
 import { servicesColors, servicesSpacing } from "@/features/services/theme/servicesTheme";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Services">;
+type Props = StackScreenProps<RootStackParamList, "Services">;
 
 export default function ServicesScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();

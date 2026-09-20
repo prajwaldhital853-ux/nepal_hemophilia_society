@@ -1,5 +1,4 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import * as SplashScreen from "expo-splash-screen";
 import { InteractionManager } from "react-native";
 
 import { ApiError, AUTH_TIMEOUT_MS, patientApi } from "@/core/api";
@@ -93,13 +92,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       task.cancel();
     };
   }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    void SplashScreen.hideAsync().catch(() => {
-      // Ignore if splash was already hidden.
-    });
-  }, [ready]);
 
   const login = useCallback(async (identifier: string, password: string) => {
     const { deviceId, deviceSignals } = await getPatientDeviceAuth();

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { StackScreenProps } from "@react-navigation/stack";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/core/auth/AuthContext";
@@ -10,7 +10,7 @@ import { openPatientService } from "@/features/services/navigateService";
 import type { AppService } from "@/features/services/types";
 import { servicesColors } from "@/features/services/theme/servicesTheme";
 
-type Props = NativeStackScreenProps<RootStackParamList, "ServiceDetail">;
+type Props = StackScreenProps<RootStackParamList, "ServiceDetail">;
 
 export default function ServiceDetailScreen({ navigation, route }: Props) {
   const { token } = useAuth();

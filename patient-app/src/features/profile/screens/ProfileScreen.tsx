@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { StackScreenProps } from "@react-navigation/stack";
 
 import type { RootStackParamList } from "@/core/navigation/types";
 import { useAuth } from "@/core/auth/AuthContext";
@@ -12,7 +12,7 @@ import { ProfileMenuList } from "@/features/profile/components/ProfileMenuList";
 import type { ProfileMenuItem } from "@/features/profile/data/profileMenu";
 import { homeColors, homeSpacing } from "@/features/home/theme/homeTheme";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
+type Props = StackScreenProps<RootStackParamList, "Profile">;
 
 export default function ProfileScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();

@@ -1,10 +1,10 @@
 import { StyleSheet, Text, TextInput, View } from "react-native";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { StackScreenProps } from "@react-navigation/stack";
 
 import type { RootStackParamList } from "@/core/navigation/types";
 import { colors, spacing } from "@/core/theme";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Register">;
+type Props = StackScreenProps<RootStackParamList, "Register">;
 
 export default function RegisterScreen(_props: Props) {
   return (

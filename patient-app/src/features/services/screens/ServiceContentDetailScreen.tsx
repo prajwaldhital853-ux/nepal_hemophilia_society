@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { StackScreenProps } from "@react-navigation/stack";
 
 import { useAuth } from "@/core/auth/AuthContext";
 import type { RootStackParamList } from "@/core/navigation/types";
@@ -8,7 +8,7 @@ import { fetchCmsArticle } from "@/features/services/api";
 import type { CmsArticle } from "@/features/services/types";
 import { servicesColors } from "@/features/services/theme/servicesTheme";
 
-type Props = NativeStackScreenProps<RootStackParamList, "ServiceContentDetail">;
+type Props = StackScreenProps<RootStackParamList, "ServiceContentDetail">;
 
 export default function ServiceContentDetailScreen({ navigation, route }: Props) {
   const { token } = useAuth();

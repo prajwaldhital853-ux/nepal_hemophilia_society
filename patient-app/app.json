@@ -2,7 +2,7 @@
   "expo": {
     "name": "NHMS Patient",
     "slug": "nhms-patient-app",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/nhs-logo-icon-clear.png",
     "userInterfaceStyle": "light",
@@ -49,16 +49,6 @@
           "ios": {
             "newArchEnabled": false
           }
-        }
-      ],
-      "expo-font",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/nhs-logo-icon-clear.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#FFFFFF"
         }
       ]
     ],

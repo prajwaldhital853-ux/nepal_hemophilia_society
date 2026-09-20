@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { StackScreenProps } from "@react-navigation/stack";
 
 import type { RootStackParamList } from "@/core/navigation/types";
 import { useAuth } from "@/core/auth/AuthContext";
@@ -9,7 +9,7 @@ import { AuthTextField } from "@/features/auth/components/AuthTextField";
 import { KeyboardFormScroll, type KeyboardFormScrollRef } from "@/features/auth/components/KeyboardFormScroll";
 import { nhmsColors } from "@/features/auth/theme/nhmsTheme";
 
-type Props = NativeStackScreenProps<RootStackParamList, "ChangePassword">;
+type Props = StackScreenProps<RootStackParamList, "ChangePassword">;
 
 export default function ChangePasswordScreen({}: Props) {
   const insets = useSafeAreaInsets();

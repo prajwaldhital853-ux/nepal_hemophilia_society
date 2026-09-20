@@ -1,4 +1,4 @@
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createStackNavigator } from "@react-navigation/stack";
 
 import {
   BleedingScreen,
@@ -20,19 +20,19 @@ import {
 } from "./lazyScreens";
 import type { RootStackParamList } from "./types";
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const Stack = createStackNavigator<RootStackParamList>();
 
 const mainTabOptions = {
   headerShown: false,
-  animation: "fade" as const,
+  animationEnabled: false,
 };
 
 const headerOptions = {
   headerStyle: { backgroundColor: "#DC2626" },
   headerTintColor: "#FFFFFF",
   headerTitleStyle: { fontWeight: "600" as const },
-  contentStyle: { backgroundColor: "#F8FAFC" },
-  animation: "fade" as const,
+  cardStyle: { backgroundColor: "#F8FAFC" },
+  animationEnabled: false,
 };
 
 export function MainNavigator() {

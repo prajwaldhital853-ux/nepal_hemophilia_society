@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Linking, Pressable, ScrollView, StatusBar, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { StackScreenProps } from "@react-navigation/stack";
 
 import { patientApi } from "@/core/api";
 import { useAuth } from "@/core/auth/AuthContext";
@@ -18,7 +18,7 @@ type Doc = {
   center?: string;
 };
 
-type Props = NativeStackScreenProps<RootStackParamList, "Documents">;
+type Props = StackScreenProps<RootStackParamList, "Documents">;
 
 export default function DocumentsScreen({}: Props) {
   const insets = useSafeAreaInsets();

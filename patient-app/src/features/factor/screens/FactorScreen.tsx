@@ -1,6 +1,6 @@
 import { ScrollView, StatusBar, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { StackScreenProps } from "@react-navigation/stack";
 
 import type { RootStackParamList } from "@/core/navigation/types";
 import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
@@ -15,7 +15,7 @@ import { MonthlyFactorUsageChart } from "@/features/factor/components/MonthlyFac
 import { RecentFactorTransactions } from "@/features/factor/components/RecentFactorTransactions";
 import { factorColors, factorSpacing } from "@/features/factor/theme/factorTheme";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Factor">;
+type Props = StackScreenProps<RootStackParamList, "Factor">;
 
 export default function FactorScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();

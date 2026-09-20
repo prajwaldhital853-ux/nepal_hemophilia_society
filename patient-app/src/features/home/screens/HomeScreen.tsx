@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { PanResponder, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { StackScreenProps } from "@react-navigation/stack";
 
 import { useAuth } from "@/core/auth/AuthContext";
 
@@ -20,7 +20,7 @@ import { ProfileSummaryCard } from "@/features/home/components/ProfileSummaryCar
 import { QuickActionsSection } from "@/features/home/components/QuickActionsSection";
 import { homeColors } from "@/features/home/theme/homeTheme";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Home">;
+type Props = StackScreenProps<RootStackParamList, "Home">;
 
 export default function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
