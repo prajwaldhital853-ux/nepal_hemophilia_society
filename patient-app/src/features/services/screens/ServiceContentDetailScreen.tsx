@@ -3,7 +3,7 @@ import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, T
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { useAuth } from "@/core/auth/AuthContext";
-import type { RootStackParamList } from "@/core/navigation/RootNavigator";
+import type { RootStackParamList } from "@/core/navigation/types";
 import { fetchCmsArticle } from "@/features/services/api";
 import type { CmsArticle } from "@/features/services/types";
 import { servicesColors } from "@/features/services/theme/servicesTheme";

@@ -3,7 +3,7 @@ import { ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
-import type { RootStackParamList } from "@/core/navigation/RootNavigator";
+import type { RootStackParamList } from "@/core/navigation/types";
 import { useAuth } from "@/core/auth/AuthContext";
 import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
 import { HomeHeader } from "@/features/home/components/HomeHeader";

@@ -1,8 +1,4 @@
 import { Platform } from "react-native";
-import * as Application from "expo-application";
-import * as Crypto from "expo-crypto";
-import * as Device from "expo-device";
-import * as SecureStore from "expo-secure-store";
 
 const ACCESS = "nhms-patient-access";
 const REFRESH = "nhms-patient-refresh";
@@ -10,16 +6,6 @@ const DEVICE_FP = "nhms-patient-device-fp";
 
 let memoryFingerprint = "";
 let memorySignals: Record<string, string | number> | null = null;
-
-async function installId(): Promise<string> {
-  if (Platform.OS === "android") {
-    return Application.androidId || "";
-  }
-  if (Platform.OS === "ios") {
-    return (await Application.getIosIdForVendorAsync()) || "";
-  }
-  return Application.applicationId || "unknown-install";
-}
 
 export type PatientDeviceSignals = {
   brand: string;
@@ -30,7 +16,35 @@ export type PatientDeviceSignals = {
   installId: string;
 };
 
+async function secureStore() {
+  return import("expo-secure-store");
+}
+
+async function applicationModule() {
+  return import("expo-application");
+}
+
+async function deviceModule() {
+  return import("expo-device");
+}
+
+async function cryptoModule() {
+  return import("expo-crypto");
+}
+
+async function installId(): Promise<string> {
+  const Application = await applicationModule();
+  if (Platform.OS === "android") {
+    return Application.androidId || "";
+  }
+  if (Platform.OS === "ios") {
+    return (await Application.getIosIdForVendorAsync()) || "";
+  }
+  return Application.applicationId || "unknown-install";
+}
+
 export async function collectPatientDeviceSignals(): Promise<PatientDeviceSignals> {
+  const Device = await deviceModule();
   const install = await installId();
   return {
     brand: Device.brand || "",
@@ -43,6 +57,7 @@ export async function collectPatientDeviceSignals(): Promise<PatientDeviceSignal
 }
 
 async function hashPatientSignals(signals: PatientDeviceSignals): Promise<string> {
+  const Crypto = await cryptoModule();
   const parts = [
     signals.brand,
     signals.model,
@@ -54,11 +69,10 @@ async function hashPatientSignals(signals: PatientDeviceSignals): Promise<string
   return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, parts);
 }
 
-export function encodePatientSignalsHeader(signals: PatientDeviceSignals): string {
-  const bytes = new TextEncoder().encode(JSON.stringify(signals));
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
+function encodeBase64(bytes: Uint8Array): string {
   if (typeof globalThis.btoa === "function") {
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
     return globalThis.btoa(binary);
   }
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -75,11 +89,17 @@ export function encodePatientSignalsHeader(signals: PatientDeviceSignals): strin
   return out;
 }
 
+export function encodePatientSignalsHeader(signals: PatientDeviceSignals): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(signals));
+  return encodeBase64(bytes);
+}
+
 export async function getPatientDeviceAuth(): Promise<{ deviceId: string; deviceSignals: PatientDeviceSignals }> {
   if (memoryFingerprint && memorySignals) {
     return { deviceId: memoryFingerprint, deviceSignals: memorySignals as PatientDeviceSignals };
   }
   try {
+    const SecureStore = await secureStore();
     const cached = await SecureStore.getItemAsync(DEVICE_FP);
     if (cached) {
       const parsed = JSON.parse(cached) as { deviceId: string; deviceSignals: PatientDeviceSignals };
@@ -97,6 +117,7 @@ export async function getPatientDeviceAuth(): Promise<{ deviceId: string; device
   memoryFingerprint = deviceId;
   memorySignals = deviceSignals;
   try {
+    const SecureStore = await secureStore();
     await SecureStore.setItemAsync(DEVICE_FP, JSON.stringify({ deviceId, deviceSignals }));
   } catch {
     // in-memory only for this session
@@ -111,6 +132,7 @@ export async function getDeviceId() {
 
 export async function saveSession(access: string, refresh: string) {
   try {
+    const SecureStore = await secureStore();
     await SecureStore.setItemAsync(ACCESS, access);
     await SecureStore.setItemAsync(REFRESH, refresh);
   } catch {
@@ -120,6 +142,7 @@ export async function saveSession(access: string, refresh: string) {
 
 export async function loadSession() {
   try {
+    const SecureStore = await secureStore();
     const access = (await SecureStore.getItemAsync(ACCESS)) ?? "";
     const refresh = (await SecureStore.getItemAsync(REFRESH)) ?? "";
     return { access, refresh };
@@ -130,6 +153,7 @@ export async function loadSession() {
 
 export async function clearSession() {
   try {
+    const SecureStore = await secureStore();
     await SecureStore.deleteItemAsync(ACCESS);
     await SecureStore.deleteItemAsync(REFRESH);
   } catch {

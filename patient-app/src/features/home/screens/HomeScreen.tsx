@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { useAuth } from "@/core/auth/AuthContext";
 
-import type { RootStackParamList } from "@/core/navigation/RootNavigator";
+import type { RootStackParamList } from "@/core/navigation/types";
 import { BleedingProfileCard } from "@/features/home/components/BleedingProfileCard";
 import { FactorStockCard } from "@/features/home/components/FactorStockCard";
 import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";

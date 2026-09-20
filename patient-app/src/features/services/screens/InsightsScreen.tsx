@@ -11,7 +11,7 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { useAuth } from "@/core/auth/AuthContext";
-import type { RootStackParamList } from "@/core/navigation/RootNavigator";
+import type { RootStackParamList } from "@/core/navigation/types";
 import { DonutChart, InteractiveChart } from "@/features/services/components/charts";
 import { fetchPatientInsights, type PatientInsights } from "@/features/services/insights";
 import { servicesColors, servicesSpacing } from "@/features/services/theme/servicesTheme";

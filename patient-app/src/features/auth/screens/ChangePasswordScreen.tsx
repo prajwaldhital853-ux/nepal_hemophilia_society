@@ -3,7 +3,7 @@ import { Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View } from
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
-import type { RootStackParamList } from "@/core/navigation/RootNavigator";
+import type { RootStackParamList } from "@/core/navigation/types";
 import { useAuth } from "@/core/auth/AuthContext";
 import { AuthTextField } from "@/features/auth/components/AuthTextField";
 import { KeyboardFormScroll, type KeyboardFormScrollRef } from "@/features/auth/components/KeyboardFormScroll";

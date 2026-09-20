@@ -4,7 +4,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/core/auth/AuthContext";
-import type { RootStackParamList } from "@/core/navigation/RootNavigator";
+import type { RootStackParamList } from "@/core/navigation/types";
 import { fetchPatientService } from "@/features/services/api";
 import { openPatientService } from "@/features/services/navigateService";
 import type { AppService } from "@/features/services/types";

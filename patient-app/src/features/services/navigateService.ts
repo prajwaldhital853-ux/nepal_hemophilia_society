@@ -1,7 +1,7 @@
 import { Linking } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import type { RootStackParamList } from "@/core/navigation/RootNavigator";
+import type { RootStackParamList } from "@/core/navigation/types";
 import type { AppService } from "@/features/services/types";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;

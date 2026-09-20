@@ -1,0 +1,22 @@
+export type RootStackParamList = {
+  Splash: undefined;
+  Login: undefined;
+  Register: undefined;
+  ChangePassword: undefined;
+  Home: undefined;
+  Services: undefined;
+  Factor: undefined;
+  Notifications: undefined;
+  Profile: undefined;
+  Documents: undefined;
+  Injections: undefined;
+  Treatments: undefined;
+  Bleeding: undefined;
+  Insights: undefined;
+  Centers: undefined;
+  EmergencyId: undefined;
+  Settings: undefined;
+  ServiceDetail: { slug: string; title?: string };
+  ServiceContentList: { kind: string; title: string };
+  ServiceContentDetail: { kind: string; slug: string; title?: string };
+};

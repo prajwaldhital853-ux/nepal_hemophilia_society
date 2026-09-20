@@ -1,12 +1,14 @@
 import { lazyScreen } from "./lazyScreen";
 
-/** Auth screens — eager so they share the same AuthContext module instance as App. */
-export { default as LoginScreen } from "@/features/auth/screens/LoginScreen";
-export { default as ChangePasswordScreen } from "@/features/auth/screens/ChangePasswordScreen";
-
-/** Eager — must load immediately on cold start (lazy + Suspense can crash release APKs). */
-export { default as SplashScreen } from "@/features/splash/screens/SplashScreen";
+/** Every route screen is lazy so cold start only loads splash + auth bootstrap. */
+export const LoginScreen = lazyScreen(() => import("@/features/auth/screens/LoginScreen"));
+export const ChangePasswordScreen = lazyScreen(() => import("@/features/auth/screens/ChangePasswordScreen"));
 export const RegisterScreen = lazyScreen(() => import("@/features/auth/screens/RegisterScreen"));
+export const HomeScreen = lazyScreen(() => import("@/features/home/screens/HomeScreen"));
+export const ServicesScreen = lazyScreen(() => import("@/features/services/screens/ServicesScreen"));
+export const FactorScreen = lazyScreen(() => import("@/features/factor/screens/FactorScreen"));
+export const NotificationsScreen = lazyScreen(() => import("@/features/notifications/screens/NotificationsScreen"));
+export const ProfileScreen = lazyScreen(() => import("@/features/profile/screens/ProfileScreen"));
 export const DocumentsScreen = lazyScreen(() => import("@/features/home/screens/DocumentsScreen"));
 export const InjectionsScreen = lazyScreen(() => import("@/features/injections/screens/InjectionsScreen"));
 export const TreatmentsScreen = lazyScreen(() => import("@/features/treatments/screens/TreatmentsScreen"));
@@ -20,10 +22,3 @@ export const ServiceContentListScreen = lazyScreen(() => import("@/features/serv
 export const ServiceContentDetailScreen = lazyScreen(
   () => import("@/features/services/screens/ServiceContentDetailScreen"),
 );
-
-/** Main tabs — eager for instant tab switching. */
-export { default as HomeScreen } from "@/features/home/screens/HomeScreen";
-export { default as ServicesScreen } from "@/features/services/screens/ServicesScreen";
-export { default as FactorScreen } from "@/features/factor/screens/FactorScreen";
-export { default as NotificationsScreen } from "@/features/notifications/screens/NotificationsScreen";
-export { default as ProfileScreen } from "@/features/profile/screens/ProfileScreen";

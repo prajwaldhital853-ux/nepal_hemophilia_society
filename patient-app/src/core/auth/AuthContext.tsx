@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as SplashScreen from "expo-splash-screen";
+import { InteractionManager } from "react-native";
 
 import { ApiError, AUTH_TIMEOUT_MS, patientApi } from "@/core/api";
 import { AuthContext, type AuthState } from "@/core/auth/context";
@@ -35,7 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      void (async () => {
       try {
         const session = await loadSession();
         if (cancelled) return;
@@ -84,9 +86,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } finally {
         if (!cancelled) setReady(true);
       }
-    })();
+      })();
+    });
     return () => {
       cancelled = true;
+      task.cancel();
     };
   }, []);
 

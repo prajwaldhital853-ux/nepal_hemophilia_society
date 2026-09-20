@@ -2,7 +2,7 @@
   "expo": {
     "name": "NHMS Patient",
     "slug": "nhms-patient-app",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/nhs-logo-icon-clear.png",
     "userInterfaceStyle": "light",
@@ -41,7 +41,13 @@
             "targetSdkVersion": 36,
             "buildToolsVersion": "36.0.0",
             "minSdkVersion": 24,
-            "usesCleartextTraffic": true
+            "usesCleartextTraffic": true,
+            "newArchEnabled": false,
+            "enableMinifyInReleaseBuilds": false,
+            "enableShrinkResourcesInReleaseBuilds": false
+          },
+          "ios": {
+            "newArchEnabled": false
           }
         }
       ],
