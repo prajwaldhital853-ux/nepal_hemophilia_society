@@ -2,10 +2,15 @@
   "expo": {
     "name": "NHMS Patient",
     "slug": "nhms-patient-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/images/nhs-logo-icon-clear.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/images/nhs-logo-icon-clear.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
     "experiments": {
       "tsconfigPaths": true
     },
@@ -17,22 +22,15 @@
       "package": "org.nepalhemophilia.patient",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
-        "backgroundColor": "#DC2626",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/images/nhs-logo-icon-clear.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "extra": {
-      "eas": {
-        "projectId": "919b9ff9-f3df-4bb9-a84a-dab5e33ff200"
-      }
-    },
-    "owner": "ipo_bulk_v2",
+    "owner": "bulkipo",
     "plugins": [
       "expo-secure-store",
       [
@@ -47,7 +45,21 @@
           }
         }
       ],
-      "expo-font"
-    ]
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/nhs-logo-icon-clear.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5949c31a-d08d-4fd2-8889-810a877cf039"
+      }
+    }
   }
 }

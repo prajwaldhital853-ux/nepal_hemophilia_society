@@ -1,14 +1,16 @@
-import { StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
 
+import { APP_LOGO } from "@/core/assets";
 import { AppConfig } from "@/core/config";
 import { colors, spacing } from "@/core/theme";
 
 export default function SplashScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>🩸</Text>
+      <Image source={APP_LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="NHMS logo" />
       <Text style={styles.title}>{AppConfig.appName}</Text>
       <Text style={styles.subtitle}>Nepal Hemophilia Society</Text>
+      <ActivityIndicator style={styles.loader} size="large" color={colors.primary} />
     </View>
   );
 }
@@ -18,13 +20,15 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.background,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: spacing.lg,
   },
-  icon: {
-    fontSize: 56,
+  logo: {
+    width: 140,
+    height: 140,
+    marginBottom: spacing.md,
   },
   title: {
-    marginTop: spacing.md,
     fontSize: 24,
     fontWeight: "700",
     color: colors.text,
@@ -33,5 +37,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     fontSize: 14,
     color: colors.textMuted,
+    textAlign: "center",
+  },
+  loader: {
+    marginTop: spacing.xl,
   },
 });

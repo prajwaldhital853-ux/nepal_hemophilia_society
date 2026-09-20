@@ -4,7 +4,8 @@ import { lazyScreen } from "./lazyScreen";
 export { default as LoginScreen } from "@/features/auth/screens/LoginScreen";
 export { default as ChangePasswordScreen } from "@/features/auth/screens/ChangePasswordScreen";
 
-export const SplashScreen = lazyScreen(() => import("@/features/splash/screens/SplashScreen"));
+/** Eager — must load immediately on cold start (lazy + Suspense can crash release APKs). */
+export { default as SplashScreen } from "@/features/splash/screens/SplashScreen";
 export const RegisterScreen = lazyScreen(() => import("@/features/auth/screens/RegisterScreen"));
 export const DocumentsScreen = lazyScreen(() => import("@/features/home/screens/DocumentsScreen"));
 export const InjectionsScreen = lazyScreen(() => import("@/features/injections/screens/InjectionsScreen"));

@@ -1,4 +1,5 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import * as SplashScreen from "expo-splash-screen";
 
 import { ApiError, AUTH_TIMEOUT_MS, patientApi } from "@/core/api";
 import { AuthContext, type AuthState } from "@/core/auth/context";
@@ -35,46 +36,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const session = await loadSession();
-      if (cancelled) return;
-      if (!session.access) {
-        setReady(true);
-        return;
-      }
-      setToken(session.access);
       try {
-        const data = await patientApi("/me/patient/", { token: session.access, timeoutMs: AUTH_TIMEOUT_MS });
-        if (!cancelled) {
-          setPatient(data.patient);
-          setMustChangePassword(false);
-        }
-      } catch (error) {
+        const session = await loadSession();
         if (cancelled) return;
-        if (error instanceof ApiError && error.status === 403) {
-          setMustChangePassword(true);
-        } else if (error instanceof ApiError && error.status === 401) {
-          const session = await loadSession();
-          if (session.refresh) {
-            try {
-              const refreshed = await patientApi("/auth/refresh/", {
-                method: "POST",
-                body: JSON.stringify({ refresh: session.refresh }),
-                timeoutMs: AUTH_TIMEOUT_MS,
-              });
-              if (refreshed?.access) {
-                await saveSession(refreshed.access, refreshed.refresh ?? session.refresh);
-                setToken(refreshed.access);
-                const retry = await patientApi("/me/patient/", { token: refreshed.access, timeoutMs: AUTH_TIMEOUT_MS });
-                if (!cancelled) setPatient(retry.patient);
-                return;
-              }
-            } catch {
-              // fall through to clear session
-            }
+        if (!session.access) return;
+
+        setToken(session.access);
+        try {
+          const data = await patientApi("/me/patient/", { token: session.access, timeoutMs: AUTH_TIMEOUT_MS });
+          if (!cancelled) {
+            setPatient(data.patient);
+            setMustChangePassword(false);
           }
-          await clearSession();
-          setToken("");
+        } catch (error) {
+          if (cancelled) return;
+          if (error instanceof ApiError && error.status === 403) {
+            setMustChangePassword(true);
+          } else if (error instanceof ApiError && error.status === 401) {
+            const stored = await loadSession();
+            if (stored.refresh) {
+              try {
+                const refreshed = await patientApi("/auth/refresh/", {
+                  method: "POST",
+                  body: JSON.stringify({ refresh: stored.refresh }),
+                  timeoutMs: AUTH_TIMEOUT_MS,
+                });
+                if (refreshed?.access) {
+                  await saveSession(refreshed.access, refreshed.refresh ?? stored.refresh);
+                  setToken(refreshed.access);
+                  const retry = await patientApi("/me/patient/", {
+                    token: refreshed.access,
+                    timeoutMs: AUTH_TIMEOUT_MS,
+                  });
+                  if (!cancelled) setPatient(retry.patient);
+                  return;
+                }
+              } catch {
+                // fall through to clear session
+              }
+            }
+            await clearSession();
+            setToken("");
+          }
         }
+      } catch {
+        // Never crash on cold start — show login if bootstrap fails.
       } finally {
         if (!cancelled) setReady(true);
       }
@@ -83,6 +89,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    void SplashScreen.hideAsync().catch(() => {
+      // Ignore if splash was already hidden.
+    });
+  }, [ready]);
 
   const login = useCallback(async (identifier: string, password: string) => {
     const { deviceId, deviceSignals } = await getPatientDeviceAuth();
