@@ -19,6 +19,7 @@ import { Download, FileBarChart } from "lucide-react";
 import { InjectionOverviewChart, StockSummaryChart } from "@/features/dashboard/components/DashboardCharts";
 import type { DashboardTrendPoint, ProvinceStat, StockByHospital, StockUsageTrend, SystemOverview } from "@/features/dashboard/types";
 import { PaginatedScroll } from "@/components/ui/PaginatedScroll";
+import { ReportsPageSkeleton } from "@/components/ui/Skeleton";
 import { apiFetch } from "@/lib/api";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { useAuth } from "@/lib/auth";
@@ -90,8 +91,10 @@ export default function ReportsModule() {
   const [devices, setDevices] = useState<DeviceRow[]>([]);
   const [overview, setOverview] = useState<SystemOverview>(EMPTY_OVERVIEW);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    setLoading(true);
     setError("");
     const q = new URLSearchParams();
     if (from) q.set("from", from);
@@ -123,6 +126,8 @@ export default function ReportsModule() {
       const message = err instanceof Error ? err.message : "Could not load reports";
       setError(message);
       toast.show(message);
+    } finally {
+      setLoading(false);
     }
   }, [from, to, user?.role, toast]);
 
@@ -146,44 +151,51 @@ export default function ReportsModule() {
   ];
 
   return (
-    <div className="flex flex-col gap-3 pb-6">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h1 className="text-[15px] font-semibold text-ink">Reports & Analytics</h1>
-          <p className="text-[11px] text-muted">
-            Home &gt; Reports — {scopeLabel || "your scope"}. Super Admin sees national data; Admin sees the system except Super Admin accounts; others see their province or center only.
-          </p>
+    <div className="admin-page">
+      <div className="admin-page-sticky admin-page-sticky--fixed space-y-2">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h1 className="text-[15px] font-semibold text-ink">Reports & Analytics</h1>
+            <p className="text-[11px] text-muted">
+              Home &gt; Reports — {scopeLabel || "your scope"}. Super Admin sees national data; Admin sees the system except Super Admin accounts; others see their province or center only.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
+            <button
+              type="button"
+              className="panel flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
+              onClick={() =>
+                downloadCsv(
+                  stampFilename("nhms-report"),
+                  ["Center", "Province", "Patients", "Injections", "Treatments", "Visits", "Stock"],
+                  centers.map((row) => [
+                    row.hospitalName,
+                    row.province,
+                    row.patients,
+                    row.injections,
+                    row.treatments,
+                    row.visits,
+                    row.stockOnHand,
+                  ]),
+                )
+              }
+            >
+              <Download className="size-3.5" />
+              Export centers
+            </button>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
-          <button
-            type="button"
-            className="panel flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
-            onClick={() =>
-              downloadCsv(
-                stampFilename("nhms-report"),
-                ["Center", "Province", "Patients", "Injections", "Treatments", "Visits", "Stock"],
-                centers.map((row) => [
-                  row.hospitalName,
-                  row.province,
-                  row.patients,
-                  row.injections,
-                  row.treatments,
-                  row.visits,
-                  row.stockOnHand,
-                ]),
-              )
-            }
-          >
-            <Download className="size-3.5" />
-            Export centers
-          </button>
-        </div>
+
+        {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
       </div>
 
-      {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
-
+      <div className="flex flex-col gap-3 pb-6">
+      {loading ? (
+        <ReportsPageSkeleton />
+      ) : (
+      <>
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {kpis.map((kpi) => (
           <article key={kpi.label} className="panel p-2.5">
@@ -491,6 +503,9 @@ export default function ReportsModule() {
           </table>
         </PaginatedScroll>
       </article>
+      </>
+      )}
+      </div>
     </div>
   );
 }

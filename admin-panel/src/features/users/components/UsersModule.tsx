@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Download, Search, Users } from "lucide-react";
 
 import { PaginatedScroll } from "@/components/ui/PaginatedScroll";
+import { StatCardsSkeleton, TableBodySkeleton, TablePanelSkeleton } from "@/components/ui/Skeleton";
 import { apiFetch } from "@/lib/api";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { useAuth } from "@/lib/auth";
@@ -162,8 +163,17 @@ export default function UsersModule() {
     return all.filter((item) => ["All", "patient", "center_admin", "treatment_admin"].includes(item.id));
   }, [user?.role]);
 
+  const usersPage = useVisibleSlice(rows, 10);
   const loginPage = useVisibleSlice(loginTracking, 10);
   const devicePage = useVisibleSlice(devices, 10);
+
+  async function loadMoreUsers() {
+    if (usersPage.hasMore) {
+      usersPage.loadMore();
+      return;
+    }
+    await loadMore();
+  }
 
   return (
     <div className="admin-page">
@@ -215,6 +225,9 @@ export default function UsersModule() {
         </div>
       </div>
 
+      {loading ? (
+        <StatCardsSkeleton count={4} />
+      ) : (
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {[
           ["Total in scope", counts.total],
@@ -228,41 +241,42 @@ export default function UsersModule() {
           </article>
         ))}
       </div>
+      )}
 
       {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
-
-        <div className="filter-bar">
-          <label className="panel-inset flex h-8 min-w-[180px] flex-1 items-center gap-2 px-2.5 shadow-none">
-            <Search className="size-3.5 text-faint" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
-              placeholder="Search name, email, ID…"
-            />
-          </label>
-          <select value={kind} onChange={(e) => setKind(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]">
-            {kinds.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]">
-            {["All", "Active", "Pending", "Inactive", "Rejected"].map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
-        </div>
       </div>
 
-      <section className="panel overflow-x-auto">
+      <div className="filter-bar admin-filter-sticky">
+        <label className="panel-inset flex h-8 min-w-[180px] flex-1 items-center gap-2 px-2.5 shadow-none">
+          <Search className="size-3.5 text-faint" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
+            placeholder="Search name, email, ID…"
+          />
+        </label>
+        <select value={kind} onChange={(e) => setKind(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]">
+          {kinds.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]">
+          {["All", "Active", "Pending", "Inactive", "Rejected"].map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
+        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
+      </div>
+
+      <section className="panel p-3">
         {loading ? (
-          <p className="px-3 py-8 text-center text-[11px] text-muted">Loading users…</p>
+          <TablePanelSkeleton rows={10} columns={7} />
         ) : rows.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
             <span className="flex size-12 items-center justify-center rounded-full bg-brand-soft text-brand">
@@ -271,9 +285,17 @@ export default function UsersModule() {
             <p className="text-[13px] font-semibold text-ink">No accounts in this filter</p>
           </div>
         ) : (
-          <>
+          <PaginatedScroll
+            showing={usersPage.showing}
+            total={rows.length}
+            hasMore={usersPage.hasMore || Boolean(nextCursor)}
+            onLoadMore={() => void loadMoreUsers()}
+            loading={loadingMore}
+            label="users"
+            className="admin-panel-scroll--rows-10"
+          >
             <table className="data-table w-full min-w-[960px] text-left text-sm">
-              <thead className="bg-elevated text-[11px] uppercase text-muted">
+              <thead className="sticky top-0 z-10 bg-elevated text-[11px] uppercase text-muted">
                 <tr>
                   {["ID", "Name", "Role", "Email", "Province / Center", "Status", "Last login"].map((h) => (
                     <th key={h} className="px-3 py-3 font-medium">
@@ -283,7 +305,7 @@ export default function UsersModule() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {usersPage.visible.map((row) => (
                   <tr
                     key={`${row.kind}-${row.id}`}
                     className="cursor-pointer hover:bg-elevated/70"
@@ -314,19 +336,7 @@ export default function UsersModule() {
                 ))}
               </tbody>
             </table>
-            {nextCursor ? (
-              <div className="flex justify-end px-3 py-2">
-                <button
-                  type="button"
-                  onClick={() => void loadMore()}
-                  disabled={loadingMore}
-                  className="rounded border border-line px-2 py-1 text-[11px] font-semibold text-brand disabled:opacity-60"
-                >
-                  {loadingMore ? "Loading…" : "Load more"}
-                </button>
-              </div>
-            ) : null}
-          </>
+          </PaginatedScroll>
         )}
       </section>
 
@@ -339,11 +349,10 @@ export default function UsersModule() {
             hasMore={loginPage.hasMore}
             onLoadMore={loginPage.loadMore}
             label="logins"
-            className="mt-2"
-            scroll={false}
+            className="mt-2 admin-panel-scroll--rows-10"
           >
             <table className="inner-table w-full text-left">
-              <thead className="sticky top-0 bg-card text-[10px] uppercase text-faint">
+              <thead className="sticky top-0 z-10 bg-card text-[10px] uppercase text-faint">
                 <tr>
                   {["User", "Role", "Last login", "Active"].map((h) => (
                     <th key={h} className="px-2 py-2">
@@ -353,7 +362,9 @@ export default function UsersModule() {
                 </tr>
               </thead>
               <tbody>
-                {loginTracking.length === 0 ? (
+                {loading ? (
+                  <TableBodySkeleton rows={10} columns={4} />
+                ) : loginTracking.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-2 py-4 text-[11px] text-muted">
                       No login history yet.
@@ -384,11 +395,10 @@ export default function UsersModule() {
             hasMore={devicePage.hasMore}
             onLoadMore={devicePage.loadMore}
             label="devices"
-            className="mt-2"
-            scroll={false}
+            className="mt-2 admin-panel-scroll--rows-10"
           >
             <table className="inner-table w-full text-left">
-              <thead className="sticky top-0 bg-card text-[10px] uppercase text-faint">
+              <thead className="sticky top-0 z-10 bg-card text-[10px] uppercase text-faint">
                 <tr>
                   {["Identifier", "User", "Failed tries", "Locked until"].map((h) => (
                     <th key={h} className="px-2 py-2">
@@ -398,7 +408,9 @@ export default function UsersModule() {
                 </tr>
               </thead>
               <tbody>
-                {devices.length === 0 ? (
+                {loading ? (
+                  <TableBodySkeleton rows={10} columns={4} />
+                ) : devices.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-2 py-4 text-[11px] text-muted">
                       No device lock events.

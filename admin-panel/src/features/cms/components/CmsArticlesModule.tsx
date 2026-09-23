@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
 
 import { PaginatedScroll } from "@/components/ui/PaginatedScroll";
+import { TablePanelSkeleton } from "@/components/ui/Skeleton";
 import { deleteAdminArticle, fetchAdminArticles, saveAdminArticle } from "@/features/cms/api";
 import type { CmsArticle, ContentKind } from "@/features/cms/types";
 import { useAuth } from "@/lib/auth";
@@ -247,7 +248,7 @@ export default function CmsArticlesModule({ kind }: Props) {
 
       <section className="panel overflow-x-auto p-3">
         {loading ? (
-          <p className="px-3 py-6 text-center text-[12px] text-muted">Loading…</p>
+          <TablePanelSkeleton rows={10} columns={4} />
         ) : (
         <PaginatedScroll
           showing={contentPage.showing}

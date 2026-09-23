@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarPlus, Search, Trash2, X } from "lucide-react";
 
+import { TableBodySkeleton } from "@/components/ui/Skeleton";
 import { apiFetch } from "@/lib/api";
 
 type Appointment = {
@@ -317,11 +318,7 @@ export default function AppointmentsModule() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-[11px] text-muted">
-                    Loading…
-                  </td>
-                </tr>
+                <TableBodySkeleton rows={10} columns={7} />
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-3 py-8 text-center text-[11px] text-muted">

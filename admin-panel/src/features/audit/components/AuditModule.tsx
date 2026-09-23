@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ChevronDown, Download, Search, ShieldAlert } from "lucide-react";
 
+import { StatCardsSkeleton, TablePanelSkeleton } from "@/components/ui/Skeleton";
 import { AUDIT_MODULES, type AuditLog, type AuditSeverity } from "@/features/audit/types";
 import { apiFetch } from "@/lib/api";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
@@ -21,6 +22,7 @@ export default function AuditModule() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -32,6 +34,7 @@ export default function AuditModule() {
     if (from) q.set("from", from);
     if (to) q.set("to", to);
     q.set("limit", "25");
+    setLoading(true);
     void apiFetch(`/audit/${q.toString() ? `?${q}` : ""}`)
       .then((data) => {
         const next = (data.logs ?? []).map((row: Record<string, string>) => ({
@@ -48,7 +51,8 @@ export default function AuditModule() {
         setNextCursor(data.nextCursor ?? null);
         if (next[0]) setOpenId(String(next[0].id));
       })
-      .catch((err: Error) => setError(err.message || "Audit logs are Super Admin only."));
+      .catch((err: Error) => setError(err.message || "Audit logs are Super Admin only."))
+      .finally(() => setLoading(false));
   }, [query, moduleFilter, from, to]);
 
   async function loadMore() {
@@ -114,6 +118,9 @@ export default function AuditModule() {
       </div>
       {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
 
+      {loading ? (
+        <StatCardsSkeleton count={4} />
+      ) : (
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <article className="panel p-2.5">
           <p className="text-[10px] text-muted">Total in trail</p>
@@ -132,6 +139,7 @@ export default function AuditModule() {
           <p className="text-[15px] font-semibold text-ink">{uniqueActors}</p>
         </article>
       </div>
+      )}
 
           <div className="filter-bar">
             <label className="panel-inset flex h-8 min-w-[180px] flex-1 items-center gap-2 px-2.5 shadow-none">
@@ -194,6 +202,10 @@ export default function AuditModule() {
       <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[minmax(0,1fr)_280px]">
         <section className="panel admin-list-panel overflow-hidden">
           <div className="admin-table-scroll">
+          {loading ? (
+            <TablePanelSkeleton rows={10} columns={4} />
+          ) : (
+          <>
           <ul className="divide-y divide-line-subtle">
             {rows.map((row) => (
               <li key={row.id}>
@@ -236,6 +248,8 @@ export default function AuditModule() {
               </button>
             </div>
           ) : null}
+          </>
+          )}
           </div>
         </section>
 

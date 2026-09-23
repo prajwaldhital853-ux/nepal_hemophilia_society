@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Loader2, Search } from "lucide-react";
+import { Search } from "lucide-react";
 
+import { ListSkeleton } from "@/components/ui/Skeleton";
 import { runGlobalSearch, type GlobalSearchHit } from "@/lib/globalSearch";
 import { useAuth } from "@/lib/auth";
 import { useLocale } from "@/lib/i18n";
@@ -89,10 +90,7 @@ export function GlobalSearch() {
           className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-80 overflow-auto panel shadow-lg"
         >
           {loading ? (
-            <p className="flex items-center gap-2 px-3 py-2.5 text-[11px] text-muted">
-              <Loader2 className="size-3.5 animate-spin" />
-              {t("common.loading")}
-            </p>
+            <ListSkeleton rows={5} />
           ) : hits.length === 0 ? (
             <p className="px-3 py-2.5 text-[11px] text-muted">No matches for “{debounced}”.</p>
           ) : (

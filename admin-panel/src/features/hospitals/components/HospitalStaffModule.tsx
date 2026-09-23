@@ -27,6 +27,7 @@ import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
 import { usePageRbac } from "@/components/rbac/ReadOnlyBanner";
 import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
+import { TableBodySkeleton } from "@/components/ui/Skeleton";
 
 function statusClass(status: HospitalStaffRow["status"]) {
   if (status === "Active") return "bg-status-green-soft text-status-green";
@@ -259,11 +260,7 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={8} className="px-3 py-8 text-center text-[11px] text-muted">
-                    Loading…
-                  </td>
-                </tr>
+                <TableBodySkeleton rows={10} columns={8} />
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-3 py-8 text-center text-[11px] text-muted">

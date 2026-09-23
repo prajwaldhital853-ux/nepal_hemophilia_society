@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
 
 import { PaginatedScroll } from "@/components/ui/PaginatedScroll";
+import { TablePanelSkeleton } from "@/components/ui/Skeleton";
 import { deleteAdminService, fetchAdminServices, saveAdminService } from "@/features/cms/api";
 import {
   APP_SCREENS,
@@ -229,7 +230,7 @@ export default function AppServicesModule() {
 
       <section className="panel overflow-x-auto p-3">
         {loading ? (
-          <p className="px-3 py-6 text-center text-[12px] text-muted">Loading…</p>
+          <TablePanelSkeleton rows={10} columns={5} />
         ) : (
         <PaginatedScroll
           showing={servicesPage.showing}

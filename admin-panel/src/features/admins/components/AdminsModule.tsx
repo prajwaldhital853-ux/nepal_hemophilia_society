@@ -22,6 +22,7 @@ import { formatNumber } from "@/lib/format";
 import { Perm } from "@/lib/permissions";
 import { usePageRbac } from "@/components/rbac/ReadOnlyBanner";
 import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
+import { TableBodySkeleton } from "@/components/ui/Skeleton";
 import { useLocale } from "@/lib/i18n";
 
 function statusClass(status: string) {
@@ -268,11 +269,7 @@ export default function AdminsModule() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={8} className="px-3 py-8 text-center text-[11px] text-muted">
-                    {t("common.loading")}
-                  </td>
-                </tr>
+                <TableBodySkeleton rows={10} columns={8} />
               ) : visible.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-3 py-8 text-center text-[11px] text-muted">

@@ -20,6 +20,7 @@ import { formatNumber } from "@/lib/format";
 import { apiFetch } from "@/lib/api";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
+import { TableBodySkeleton } from "@/components/ui/Skeleton";
 import { Perm } from "@/lib/permissions";
 
 function ageFromDob(dob: string) {
@@ -284,11 +285,7 @@ export default function PatientsModule() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={8} className="px-3 py-8 text-center text-[11px] text-muted">
-                    Loading…
-                  </td>
-                </tr>
+                <TableBodySkeleton rows={10} columns={8} />
               ) : visible.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-3 py-8 text-center text-[11px] text-muted">

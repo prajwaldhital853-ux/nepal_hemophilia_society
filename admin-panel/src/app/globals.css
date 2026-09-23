@@ -37,6 +37,15 @@
   --sidebar-w: 220px;
 }
 
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 html.dark {
   color-scheme: dark;
   --surface: #121414;
@@ -115,6 +124,12 @@ body {
   html.dark .panel,
   html.dark .panel-inset {
     border-color: var(--line-subtle);
+  }
+
+  .skeleton-shimmer {
+    background: linear-gradient(90deg, var(--elevated) 0%, var(--line-subtle) 50%, var(--elevated) 100%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
   }
 
   .admin-page {
@@ -203,6 +218,10 @@ body {
 
   .admin-panel-scroll--15 {
     max-height: min(40rem, calc(100dvh - var(--topbar-h) - 12rem));
+  }
+
+  .admin-panel-scroll--rows-10 {
+    max-height: min(24rem, calc(100dvh - var(--topbar-h) - 16rem));
   }
 
   .admin-page--fill .admin-list-panel .admin-table-scroll {

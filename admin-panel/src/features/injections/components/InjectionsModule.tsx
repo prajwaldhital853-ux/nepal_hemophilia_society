@@ -37,6 +37,7 @@ import {
 } from "@/features/injections/api";
 import LogInjectionDialog from "@/features/injections/components/LogInjectionDialog";
 import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
+import { InjectionsSummarySkeleton, TableBodySkeleton } from "@/components/ui/Skeleton";
 import { formatNumber } from "@/lib/format";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { CHART_BAR_PROPS, useChartColors } from "@/lib/chartColors";
@@ -303,6 +304,10 @@ export default function InjectionsModule() {
       </div>
 
       <div className="admin-page-summary admin-page-summary--natural">
+      {loading ? (
+        <InjectionsSummarySkeleton />
+      ) : (
+      <>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {[
           ["Total logged", formatNumber(liveStats.total)],
@@ -517,6 +522,8 @@ export default function InjectionsModule() {
           </div>
         </article>
       ) : null}
+      </>
+      )}
       </div>
 
       <div className="filter-bar admin-filter-sticky">
@@ -645,11 +652,7 @@ export default function InjectionsModule() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr>
-                    <td colSpan={7} className="px-3 py-8 text-center text-[11px] text-muted">
-                      Loading…
-                    </td>
-                  </tr>
+                  <TableBodySkeleton rows={10} columns={7} />
                 ) : filtered.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-3 py-8 text-center text-[11px] text-muted">

@@ -23,6 +23,7 @@ import { apiFetch } from "@/lib/api";
 import { isOwnStaffAccount } from "@/features/admins/identity";
 import { useAuth } from "@/lib/auth";
 import { PERM_LABELS } from "@/lib/permissions";
+import { showToast } from "@/lib/toastBus";
 
 const steps = [
   { id: 1, label: "Identity", icon: UserRound },
@@ -374,7 +375,10 @@ export default function StaffAccountForm({
   function goNext() {
     const nextErrors = validateStep(step, form, selectedRole, mode, taken, lockedProvince);
     setFieldErrors(nextErrors);
-    if (Object.keys(nextErrors).length) return;
+    if (Object.keys(nextErrors).length) {
+      showToast(Object.values(nextErrors)[0]);
+      return;
+    }
     setStep((value) => Math.min(5, value + 1));
   }
 
@@ -389,6 +393,7 @@ export default function StaffAccountForm({
     );
     if (firstInvalid) {
       setStep(firstInvalid);
+      showToast(Object.values(allErrors)[0]);
       return;
     }
     setSaving(true);
@@ -424,7 +429,9 @@ export default function StaffAccountForm({
       if (data.credentials) setCredentials(data.credentials);
       else onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save admin");
+      const message = err instanceof Error ? err.message : "Could not save admin";
+      setError(message);
+      showToast(message);
     } finally {
       setSaving(false);
     }

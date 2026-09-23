@@ -161,7 +161,6 @@ export default function PatientFormWizard({
   } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [factors, setFactors] = useState<FactorOption[]>([]);
-  const [serverError, setServerError] = useState("");
   const [form, setForm] = useState<PatientPayload>(() => normalizePatientForm(initial));
 
   useEffect(() => {
@@ -249,7 +248,6 @@ export default function PatientFormWizard({
   }
 
   function showServerError(message: string) {
-    setServerError(message);
     showToast(message);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -264,7 +262,6 @@ export default function PatientFormWizard({
       return;
     }
     setSaving(true);
-    setServerError("");
     try {
       const body = new FormData();
       const skip = new Set([
@@ -362,18 +359,6 @@ export default function PatientFormWizard({
       </div>
 
       <div className="admin-page-body">
-      {Object.keys(fieldErrors).length ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
-          <p className="font-semibold">Please fix the highlighted fields before continuing:</p>
-          {Object.values(fieldErrors).map((err) => (
-            <p key={err}>• {err}</p>
-          ))}
-        </div>
-      ) : null}
-      {serverError ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-600">{serverError}</div>
-      ) : null}
-
       {credentials ? (
         <section className="panel p-4">
           <h2 className="text-[14px] font-semibold text-ink">Patient created — share these login details once</h2>

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { DashboardPageSkeleton } from "@/components/ui/Skeleton";
 import { AdminActivityFeed } from "@/features/dashboard/components/AdminActivityFeed";
 import {
   CenterStatusChart,
@@ -77,34 +78,41 @@ export default function DashboardOverview() {
   const [provinceCounts, setProvinceCounts] = useState<Record<string, number>>({});
   const [stockQty, setStockQty] = useState<string | number | null>(null);
   const [dashboard, setDashboard] = useState<DashboardData>(EMPTY_DASHBOARD);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void apiFetch("/reports/")
-      .then((data) => setTotals(data.totals as ReportTotals))
-      .catch(() => setTotals(null));
-    void apiFetch("/patients/")
-      .then((data) => {
-        const patients = (data.patients ?? []) as RecentPatient[];
-        setRecent(patients.slice(0, 20));
-        const counts: Record<string, number> = {};
-        for (const row of patients) {
-          if (!row.province) continue;
-          counts[row.province] = (counts[row.province] ?? 0) + 1;
-        }
-        setProvinceCounts(counts);
-      })
-      .catch(() => {
-        setRecent([]);
-        setProvinceCounts({});
-      });
+    setLoading(true);
+    const tasks: Promise<void>[] = [
+      apiFetch("/reports/")
+        .then((data) => setTotals(data.totals as ReportTotals))
+        .catch(() => setTotals(null)),
+      apiFetch("/patients/")
+        .then((data) => {
+          const patients = (data.patients ?? []) as RecentPatient[];
+          setRecent(patients.slice(0, 20));
+          const counts: Record<string, number> = {};
+          for (const row of patients) {
+            if (!row.province) continue;
+            counts[row.province] = (counts[row.province] ?? 0) + 1;
+          }
+          setProvinceCounts(counts);
+        })
+        .catch(() => {
+          setRecent([]);
+          setProvinceCounts({});
+        }),
+      apiFetch("/reports/dashboard/")
+        .then((data) => setDashboard(data as DashboardData))
+        .catch(() => setDashboard(EMPTY_DASHBOARD)),
+    ];
     if (user?.permissions?.includes(Perm.stockView)) {
-      void apiFetch("/stock/")
-        .then((data) => setStockQty(data.totalQuantity ?? 0))
-        .catch(() => setStockQty(0));
+      tasks.push(
+        apiFetch("/stock/")
+          .then((data) => setStockQty(data.totalQuantity ?? 0))
+          .catch(() => setStockQty(0)),
+      );
     }
-    void apiFetch("/reports/dashboard/")
-      .then((data) => setDashboard(data as DashboardData))
-      .catch(() => setDashboard(EMPTY_DASHBOARD));
+    void Promise.all(tasks).finally(() => setLoading(false));
   }, [user?.permissions]);
 
   const title =
@@ -210,6 +218,10 @@ export default function DashboardOverview() {
     () => Object.values(provinceCounts).reduce((sum, count) => sum + count, 0),
     [provinceCounts],
   );
+
+  if (loading) {
+    return <DashboardPageSkeleton />;
+  }
 
   return (
     <div className="flex flex-col gap-2">

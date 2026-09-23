@@ -20,6 +20,7 @@ import {
   type StockMovementRow,
 } from "@/features/stock/api";
 import { PaginatedScroll } from "@/components/ui/PaginatedScroll";
+import { StatCardsSkeleton, TablePanelSkeleton } from "@/components/ui/Skeleton";
 import { isNationalScope, useAuth } from "@/lib/auth";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { Perm } from "@/lib/permissions";
@@ -173,6 +174,9 @@ export default function StockModule() {
         )}
       </div>
 
+      {loading ? (
+        <StatCardsSkeleton count={3} className="grid gap-2 sm:grid-cols-3" />
+      ) : (
       <div className="grid gap-2 sm:grid-cols-3">
         <article className="panel p-3">
           <p className="text-[10px] uppercase text-faint">On hand</p>
@@ -187,6 +191,7 @@ export default function StockModule() {
           <p className="text-[18px] font-semibold text-ink">{movements.length}</p>
         </article>
       </div>
+      )}
 
       {error ? <p className="text-[12px] text-red-600">{error}</p> : null}
 
@@ -217,7 +222,7 @@ export default function StockModule() {
           </div>
         </div>
         {loading ? (
-          <p className="text-[11px] text-muted">Loading stock…</p>
+          <TablePanelSkeleton rows={10} columns={7} />
         ) : lots.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-10 text-center">
             <span className="flex size-12 items-center justify-center rounded-full bg-brand-soft text-brand">
