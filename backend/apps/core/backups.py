@@ -126,7 +126,7 @@ def email_backup_to_super_admins(zip_bytes: bytes, meta: dict) -> int:
     body = (
         "Nepal Hemophilia Digital Management System — daily encrypted backup archive.\n\n"
         f"File: {zip_name}\n"
-        "Extract the zip to open Excel (.xlsx) spreadsheets for patients, admins, stock, and clinical data.\n"
+        "Extract the zip and open nhms-backup.xlsx — one workbook with a tab per table (users, patients, stock, etc.).\n"
         "Store this file securely on the Super Admin workstation only.\n"
     )
     message = EmailMessage(

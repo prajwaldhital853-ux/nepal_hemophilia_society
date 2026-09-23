@@ -216,9 +216,9 @@ export default function SettingsModule() {
           {isSuper ? (
             <>
               <p className="mt-2 text-[11px] text-muted">
-                Daily Excel (.xlsx) backups run automatically on the server (no login required). Super Admins receive
-                the zip by email when SMTP is configured. When you log in, today&apos;s backup also downloads once to
-                this device. Server keeps the last 14 encrypted copies.
+                Daily Excel backups run automatically on the server (no login required). Each backup is one workbook
+                with a tab per table. Super Admins receive the zip by email when SMTP is configured. When you log in,
+                today&apos;s backup also downloads once to this device. Server keeps the last 14 encrypted copies.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button

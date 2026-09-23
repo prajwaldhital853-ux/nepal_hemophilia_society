@@ -1,4 +1,4 @@
-"""Build NHMS backup archives as Excel workbooks inside a zip."""
+"""Build NHMS backup as one Excel workbook (multiple sheets) inside a zip."""
 
 from __future__ import annotations
 
@@ -21,38 +21,48 @@ def _excel_cell_value(value):
     return str(value)
 
 
-def rows_to_xlsx_bytes(sheet_name: str, rows: list[dict]) -> bytes:
-    workbook = Workbook()
-    sheet = workbook.active
-    sheet.title = sheet_name[:31]
+def _write_rows_to_sheet(sheet, rows: list[dict]) -> None:
     if not rows:
         sheet.append(["(no rows)"])
-    else:
-        headers: list[str] = []
-        seen: set[str] = set()
-        for row in rows:
-            for key in row.keys():
-                if key not in seen:
-                    seen.add(key)
-                    headers.append(key)
-        sheet.append(headers)
-        for row in rows:
-            sheet.append([_excel_cell_value(row.get(header)) for header in headers])
+        return
+    headers: list[str] = []
+    seen: set[str] = set()
+    for row in rows:
+        for key in row.keys():
+            if key not in seen:
+                seen.add(key)
+                headers.append(key)
+    sheet.append(headers)
+    for row in rows:
+        sheet.append([_excel_cell_value(row.get(header)) for header in headers])
+
+
+def build_excel_workbook(payload: dict) -> bytes:
+    workbook = Workbook()
+    workbook.remove(workbook.active)
+    skip = {"format", "generatedAt"}
+    for key, value in payload.items():
+        if key in skip or not isinstance(value, list):
+            continue
+        sheet = workbook.create_sheet(title=key[:31])
+        _write_rows_to_sheet(sheet, value)
+    if not workbook.sheetnames:
+        sheet = workbook.create_sheet(title="info")
+        sheet.append(["(no data)"])
     buffer = BytesIO()
     workbook.save(buffer)
     return buffer.getvalue()
 
 
 def build_excel_zip(payload: dict) -> bytes:
-    skip = {"format", "generatedAt"}
+    xlsx = build_excel_workbook(payload)
     buffer = BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr(
             "README.txt",
-            "NHMS daily backup. Each .xlsx file is one data table. Open with Microsoft Excel or LibreOffice.\n",
+            "NHMS daily backup.\n"
+            "Open nhms-backup.xlsx in Microsoft Excel or LibreOffice.\n"
+            "Each worksheet tab is one data table (users, patients, stock, etc.).\n",
         )
-        for key, value in payload.items():
-            if key in skip or not isinstance(value, list):
-                continue
-            archive.writestr(f"{key}.xlsx", rows_to_xlsx_bytes(key, value))
+        archive.writestr("nhms-backup.xlsx", xlsx)
     return buffer.getvalue()
