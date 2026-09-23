@@ -17,6 +17,7 @@ class BackupListCreateView(APIView):
     def get(self, request):
         auto = maybe_auto_backup(actor=request.user)
         if auto:
+            auto.pop("rawZipBytes", None)
             from apps.notifications.services import notify_backup
 
             notify_backup("saved", auto.get("filename") or "backup", actor=request.user)
@@ -28,6 +29,7 @@ class BackupListCreateView(APIView):
         if kind not in ("manual", "auto"):
             kind = "manual"
         meta = write_encrypted_backup(kind, actor=request.user)
+        meta.pop("rawZipBytes", None)
         prune_backups()
         from apps.notifications.services import notify_backup
 

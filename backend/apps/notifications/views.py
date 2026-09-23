@@ -98,15 +98,15 @@ class AdminNotificationsView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
     def get(self, request):
-        qs = AdminNotification.objects.filter(recipient=request.user)
-        general = qs.exclude(category="appointment")
-        appointments = qs.filter(category="appointment")
+        qs = AdminNotification.objects.filter(recipient=request.user, is_read=False)
+        general = qs.exclude(category="appointment").order_by("-created_at")
+        appointments = qs.filter(category="appointment").order_by("-created_at")
         return Response(
             {
                 "notifications": AdminNotificationSerializer(general[:80], many=True).data,
-                "unreadCount": general.filter(is_read=False).count(),
+                "unreadCount": general.count(),
                 "appointmentNotifications": AdminNotificationSerializer(appointments[:40], many=True).data,
-                "appointmentUnreadCount": appointments.filter(is_read=False).count(),
+                "appointmentUnreadCount": appointments.count(),
                 "total": qs.count(),
             }
         )

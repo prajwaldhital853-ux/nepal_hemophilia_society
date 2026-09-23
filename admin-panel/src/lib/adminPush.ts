@@ -15,6 +15,8 @@ type FirebasePayload = {
   data?: Record<string, string>;
 };
 
+const SW_PATH = "/firebase-messaging-sw.js";
+
 function firebaseConfigured() {
   return Boolean(
     process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY &&
@@ -45,13 +47,29 @@ function loadFirebaseCompat(): Promise<FirebaseCompat> {
   });
 }
 
+async function serviceWorkerRegistration() {
+  let registration = await navigator.serviceWorker.getRegistration(SW_PATH);
+  if (!registration) {
+    registration = await navigator.serviceWorker.register(SW_PATH, {
+      scope: "/",
+      updateViaCache: "none",
+    });
+  }
+  await navigator.serviceWorker.ready;
+  return registration;
+}
+
+export function isAdminPushConfigured() {
+  return firebaseConfigured();
+}
+
 export async function registerAdminWebPush() {
   if (typeof window === "undefined" || !("serviceWorker" in navigator) || !firebaseConfigured()) return false;
 
-  const permission = await Notification.requestPermission();
+  const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
   if (permission !== "granted") return false;
 
-  const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+  const registration = await serviceWorkerRegistration();
   const firebase = await loadFirebaseCompat();
   if (!firebase.apps.length) {
     firebase.initializeApp({
@@ -89,5 +107,6 @@ export async function registerAdminWebPush() {
     method: "POST",
     body: JSON.stringify({ token, platform: "web", app: "admin" }),
   });
+  localStorage.setItem("nhms-admin-push-ready", "1");
   return true;
 }

@@ -2,9 +2,11 @@
 
 import logging
 
+from django.db import transaction
+
 from apps.accounts.models import User, UserRole
 from apps.notifications.models import AdminNotification, NotificationCategory, PatientNotification
-from apps.notifications.push import dispatch_push
+from apps.notifications.push import dispatch_push, send_push_now
 from apps.patients.models import Patient
 
 logger = logging.getLogger(__name__)
@@ -131,17 +133,24 @@ def notify_admins(
                 for user in users
             ]
         )
-        dispatch_push(
-            [user.id for user in users],
-            title,
-            message,
-            {
-                "category": category,
-                "audience": "admin",
-                "relatedType": related_type or category,
-                "id": related_id or "",
-            },
-        )
+
+        def _push_each():
+            for row in rows:
+                if not row.pk:
+                    continue
+                send_push_now(
+                    [row.recipient_id],
+                    title,
+                    message,
+                    {
+                        "category": category,
+                        "audience": "admin",
+                        "relatedType": related_type or category,
+                        "id": str(row.pk),
+                    },
+                )
+
+        transaction.on_commit(_push_each)
         return rows
     except Exception:
         logger.exception("Failed to create admin notifications")

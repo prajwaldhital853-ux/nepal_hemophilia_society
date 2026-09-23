@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { homeForUser, needsPasswordChange, type AuthUser, useAuth } from "@/lib/auth";
+import { needsPasswordChange, useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
-  const { user, setSession } = useAuth();
+  const { user, logout } = useAuth();
   const expired = Boolean(user?.passwordExpired && !user?.must_change_password);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -21,12 +21,12 @@ export default function ChangePasswordPage() {
     setError("");
     setLoading(true);
     try {
-      const data = await apiFetch("/auth/change-password/", {
+      await apiFetch("/auth/change-password/", {
         method: "POST",
         body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
       });
-      if (data.user) setSession(data.user as AuthUser);
-      router.push(data.user ? homeForUser(data.user as AuthUser) : "/dashboard");
+      logout();
+      router.replace("/login?message=password-changed");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update password");
     } finally {

@@ -73,7 +73,6 @@ type FormState = {
   email: string;
   phone: string;
   nationalId: string;
-  employeeId: string;
   designation: string;
   province: string;
   district: string;
@@ -94,7 +93,6 @@ const emptyForm = (): FormState => ({
   email: "",
   phone: "",
   nationalId: "",
-  employeeId: "",
   designation: "",
   province: "",
   district: "",
@@ -116,7 +114,6 @@ function formFromStaff(staff: StaffRecord): FormState {
     email: staff.email,
     phone: staff.phone,
     nationalId: staff.nationalId || "",
-    employeeId: staff.employeeId || "",
     designation: staff.designation || "",
     province: staff.province || "",
     district: "",
@@ -394,7 +391,6 @@ export default function StaffAccountForm({
         email: form.email,
         phone: form.phone,
         nationalId: form.nationalId,
-        employeeId: form.employeeId,
         designation: form.designation,
         province: lockedProvince || form.province,
         officeAddress: form.district ? `${form.officeAddress}, ${form.district}` : form.officeAddress,
@@ -556,9 +552,6 @@ export default function StaffAccountForm({
               </Field>
               <Field label="Citizenship / National ID">
                 <input className={fieldClass} value={form.nationalId} onChange={(e) => patch({ nationalId: e.target.value })} />
-              </Field>
-              <Field label="Employee ID">
-                <input className={fieldClass} value={form.employeeId} onChange={(e) => patch({ employeeId: e.target.value })} />
               </Field>
               <Field label="Designation" required error={fieldErrors.designation}>
                 <input className={fieldClass} value={form.designation} onChange={(e) => patch({ designation: e.target.value })} placeholder="Province Coordinator" />

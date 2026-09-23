@@ -56,6 +56,37 @@ class Appointment(TimeStampedModel):
         return f"{self.patient.unique_patient_id} — {self.get_visit_type_display()}"
 
 
+class SlotRepeatMode(models.TextChoices):
+    EVERY_DAY = "every_day", "Every day"
+    WEEKDAYS = "weekdays", "Weekdays (Mon–Fri)"
+    EXCEPT_DAYS = "except_days", "Every day except selected days"
+
+
+class AppointmentSlotSchedule(TimeStampedModel):
+    """Recurring rule that publishes bookable times (e.g. daily at 10:00, except Sunday)."""
+
+    hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, related_name="appointment_slot_schedules")
+    times = models.JSONField(default=list)
+    repeat_mode = models.CharField(max_length=20, choices=SlotRepeatMode.choices, default=SlotRepeatMode.EVERY_DAY)
+    exclude_weekdays = models.JSONField(default=list, blank=True)
+    weeks_ahead = models.PositiveSmallIntegerField(default=8)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="appointment_slot_schedules_created",
+    )
+
+    class Meta:
+        db_table = "appointment_slot_schedules"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.hospital.name} — {self.get_repeat_mode_display()}"
+
+
 class AppointmentSlot(TimeStampedModel):
     """A bookable date and time published by a treatment centre."""
 

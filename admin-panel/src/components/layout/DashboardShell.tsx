@@ -1,6 +1,8 @@
 "use client";
 
 import { AdminNotificationAlerts } from "@/components/layout/AdminNotificationAlerts";
+import { BackupAutoDownload } from "@/components/layout/BackupAutoDownload";
+import { NotificationPageSync } from "@/components/layout/NotificationPageSync";
 import { Header } from "@/components/layout/Header";
 import { MobileNavProvider, useMobileNav } from "@/components/layout/MobileNavContext";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -24,6 +26,8 @@ function DashboardFrame({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Header />
         <AdminNotificationAlerts />
+        <NotificationPageSync />
+        <BackupAutoDownload />
         <main className="admin-scroll flex min-h-0 flex-1 flex-col overflow-y-auto p-2.5 sm:p-3">
           <div className="animate-pageIn mx-auto w-full max-w-[1360px]">
             <ViewOnlyBar />

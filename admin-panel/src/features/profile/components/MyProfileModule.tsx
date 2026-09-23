@@ -19,7 +19,6 @@ type Profile = {
   phone: string;
   username: string;
   designation: string;
-  employeeId: string;
   nationalId: string;
   officeAddress: string;
   province: string;
@@ -124,7 +123,6 @@ export default function MyProfileModule() {
             items={[
               ["Role", roleLabel],
               ["Designation", profile.designation],
-              ["Employee ID", profile.employeeId],
               ["National ID", profile.nationalId],
               ["Province", profile.province],
               ["Centre", profile.treatmentCenter],

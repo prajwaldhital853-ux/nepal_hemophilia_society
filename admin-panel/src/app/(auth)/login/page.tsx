@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { homeForUser, type AuthUser, useAuth } from "@/lib/auth";
+import { registerAdminWebPush } from "@/lib/adminPush";
 import { ApiClientError, apiFetch, setAuthTokens } from "@/lib/api";
 import { ensureAdminDeviceId, getAdminDeviceAuth } from "@/lib/deviceId";
 
@@ -18,6 +19,7 @@ function formatRemaining(untilIso?: string, fallbackSeconds?: number) {
 export default function LoginPage() {
   const router = useRouter();
   const { setSession } = useAuth();
+  const [passwordChanged, setPasswordChanged] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -28,6 +30,9 @@ export default function LoginPage() {
   useEffect(() => {
     setPassword("");
     ensureAdminDeviceId();
+    if (window.location.search.includes("password-changed")) {
+      setPasswordChanged(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -66,6 +71,9 @@ export default function LoginPage() {
         router.push("/change-password");
         return;
       }
+      if (typeof window !== "undefined" && Notification.permission === "granted") {
+        void registerAdminWebPush().catch(() => undefined);
+      }
       router.push(data.user ? homeForUser(data.user as AuthUser) : "/dashboard");
     } catch (err) {
       if (err instanceof ApiClientError) {
@@ -96,6 +104,11 @@ export default function LoginPage() {
           locked for 5 minutes after 3 failed
           attempts. Unused attempts reset after 1 hour.
         </p>
+        {passwordChanged ? (
+          <p className="mt-2 rounded bg-brand-soft px-2.5 py-2 text-[11px] text-brand">
+            Password updated. Sign in again with your new password.
+          </p>
+        ) : null}
         <form className="mt-4 space-y-3" onSubmit={onSubmit}>
           <div>
             <label className="mb-1 block text-[11px] font-medium text-ink">Username, email, or Admin ID</label>

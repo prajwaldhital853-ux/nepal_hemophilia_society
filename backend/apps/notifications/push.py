@@ -17,23 +17,29 @@ logger = logging.getLogger(__name__)
 EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
 
 
+def send_push_now(user_ids, title: str, body: str, data: dict | None = None):
+    """Send push immediately (call from inside transaction.on_commit)."""
+    ids = [uid for uid in user_ids if uid]
+    if not ids:
+        return
+    tokens = list(PushDevice.objects.filter(user_id__in=ids))
+    if not tokens:
+        logger.info("No push tokens registered for users %s", ids)
+        return
+    payload = data or {}
+    expo = [row.token for row in tokens if row.token.startswith("ExponentPushToken")]
+    fcm = [row.token for row in tokens if not row.token.startswith("ExponentPushToken")]
+    if expo:
+        _send_expo(expo, title, body, payload)
+    if fcm:
+        _send_fcm(fcm, title, body, payload)
+
+
 def dispatch_push(user_ids, title: str, body: str, data: dict | None = None):
     ids = [uid for uid in user_ids if uid]
     if not ids:
         return
-
-    def _send():
-        tokens = list(PushDevice.objects.filter(user_id__in=ids))
-        if not tokens:
-            return
-        expo = [row.token for row in tokens if row.token.startswith("ExponentPushToken")]
-        fcm = [row.token for row in tokens if not row.token.startswith("ExponentPushToken")]
-        if expo:
-            _send_expo(expo, title, body, data or {})
-        if fcm:
-            _send_fcm(fcm, title, body, data or {})
-
-    transaction.on_commit(_send)
+    transaction.on_commit(lambda: send_push_now(ids, title, body, data))
 
 
 def _send_expo(tokens: list[str], title: str, body: str, data: dict):
@@ -120,6 +126,7 @@ def _send_fcm(tokens: list[str], title: str, body: str, data: dict):
                     notification=messaging.Notification(title=title[:120], body=body[:240]),
                     data=payload,
                     webpush=messaging.WebpushConfig(
+                        headers={"Urgency": "high"},
                         notification=messaging.WebpushNotification(
                             title=title[:120],
                             body=body[:240],

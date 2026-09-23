@@ -79,17 +79,11 @@ def build_payload() -> dict:
 
 
 def write_encrypted_backup(kind: str = "auto", actor=None) -> dict:
+    from apps.core.backup_excel import build_excel_zip
+
     payload = build_payload()
     stamp = timezone.localtime().strftime("%Y%m%d-%H%M%S")
-    inner_name = f"nhms-{kind}-{stamp}.json"
-    zip_buffer = BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr(inner_name, json.dumps(payload, default=_json_default))
-        archive.writestr(
-            "README.txt",
-            "NHMS encrypted backup. Keep this file on the Super Admin workstation only.\n",
-        )
-    raw = zip_buffer.getvalue()
+    raw = build_excel_zip(payload)
     token = _fernet().encrypt(raw)
     filename = f"nhms-{kind}-{stamp}.zip.enc"
     path = backup_root() / filename
@@ -105,6 +99,63 @@ def write_encrypted_backup(kind: str = "auto", actor=None) -> dict:
         "recordCounts": {key: len(value) if isinstance(value, list) else 0 for key, value in payload.items()},
     }
     (backup_root() / f"{filename}.meta.json").write_text(json.dumps(meta, indent=2))
+    meta["rawZipBytes"] = raw
+    return meta
+
+
+def email_backup_to_super_admins(zip_bytes: bytes, meta: dict) -> int:
+    """Email the Excel zip to every active super admin (works without browser login)."""
+    from django.conf import settings
+    from django.core.mail import EmailMessage
+
+    if not zip_bytes:
+        return 0
+    from apps.accounts.models import User, UserRole
+
+    recipients = list(
+        User.objects.filter(role=UserRole.SUPER_ADMIN, is_active=True, is_active_account=True)
+        .exclude(email="")
+        .values_list("email", flat=True)
+    )
+    if not recipients:
+        return 0
+    if not getattr(settings, "EMAIL_HOST_USER", ""):
+        return 0
+
+    zip_name = str(meta.get("filename", "nhms-backup.zip.enc")).replace(".zip.enc", ".zip")
+    body = (
+        "Nepal Hemophilia Digital Management System — daily encrypted backup archive.\n\n"
+        f"File: {zip_name}\n"
+        "Extract the zip to open Excel (.xlsx) spreadsheets for patients, admins, stock, and clinical data.\n"
+        "Store this file securely on the Super Admin workstation only.\n"
+    )
+    message = EmailMessage(
+        subject=f"NHMS daily backup — {zip_name}",
+        body=body,
+        from_email=getattr(settings, "DEFAULT_FROM_EMAIL", settings.EMAIL_HOST_USER),
+        to=recipients,
+    )
+    message.attach(zip_name, zip_bytes, "application/zip")
+    try:
+        message.send(fail_silently=False)
+        return len(recipients)
+    except Exception:
+        return 0
+
+
+def run_daily_backup(actor=None) -> dict | None:
+    """Create today's backup on the server and email super admins the Excel zip."""
+    rows = list_backups()
+    autos = [row for row in rows if row.get("kind") == "auto"]
+    if autos:
+        created = parse_datetime(str(autos[0].get("createdAt") or ""))
+        if created and timezone.localtime(created).date() >= timezone.localdate():
+            return None
+    meta = write_encrypted_backup("auto", actor=actor)
+    raw_zip = meta.pop("rawZipBytes", b"")
+    emailed = email_backup_to_super_admins(raw_zip, meta)
+    meta["emailedSuperAdmins"] = emailed
+    prune_backups()
     return meta
 
 
@@ -152,12 +203,5 @@ def prune_backups(keep: int = 14) -> int:
 
 
 def maybe_auto_backup(actor=None) -> dict | None:
-    rows = list_backups()
-    autos = [row for row in rows if row.get("kind") == "auto"]
-    if autos:
-        created = parse_datetime(str(autos[0].get("createdAt") or ""))
-        if created and timezone.now() - created < timedelta(hours=20):
-            return None
-    meta = write_encrypted_backup("auto", actor=actor)
-    prune_backups()
-    return meta
+    """Fallback when a super admin opens backups — prefer server cron for daily runs."""
+    return run_daily_backup(actor=actor)

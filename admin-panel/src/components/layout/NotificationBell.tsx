@@ -72,7 +72,10 @@ export function NotificationBell() {
     const permission = await requestBrowserNotificationPermission();
     setBrowserAlerts(permission);
     if (permission === "granted") {
-      await registerAdminWebPush().catch(() => undefined);
+      const ok = await registerAdminWebPush().catch(() => false);
+      if (!ok) {
+        window.alert("Browser alerts are on, but push registration failed. Check Firebase env keys on Vercel and redeploy.");
+      }
     }
   }
 
@@ -98,18 +101,20 @@ export function NotificationBell() {
 
   return (
     <div className="relative overflow-visible">
-      <button
-        type="button"
-        className="panel relative overflow-visible p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink"
-        aria-label="Notifications"
-        onClick={() => {
-          setOpen((value) => !value);
-          void load();
-        }}
-      >
-        <Bell className="size-4" />
+      <span className="relative inline-flex align-middle">
+        <button
+          type="button"
+          className="panel p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink"
+          aria-label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
+          onClick={() => {
+            setOpen((value) => !value);
+            void load();
+          }}
+        >
+          <Bell className="size-4" />
+        </button>
         <UnreadBadge count={unread} />
-      </button>
+      </span>
       {open ? (
         <div className="absolute right-0 z-50 mt-2 w-[340px] max-w-[80vw] rounded-xl border border-black/10 bg-card shadow-lg">
           <div className="flex items-center justify-between border-b border-black/5 px-3 py-2">

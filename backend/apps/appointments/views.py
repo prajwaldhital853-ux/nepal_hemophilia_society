@@ -7,7 +7,15 @@ from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsAdminRole, IsPatientRole, PatientPasswordUsable
 from apps.accounts.rbac import PERM_APPOINTMENTS_DELETE, PERM_APPOINTMENTS_UPDATE, PERM_APPOINTMENTS_VIEW, has_perm
-from apps.appointments.models import Appointment, AppointmentSlot, AppointmentStatus, VisitType
+from apps.appointments.models import (
+    Appointment,
+    AppointmentSlot,
+    AppointmentSlotSchedule,
+    AppointmentStatus,
+    SlotRepeatMode,
+    VisitType,
+)
+from apps.appointments.slot_schedules import generate_slots_for_schedule
 from apps.appointments.scope import appointments_for_admin
 from apps.appointments.serializers import AppointmentSerializer
 from apps.hospitals.models import Hospital
@@ -246,6 +254,127 @@ class AdminAppointmentSlotDetailView(APIView):
         if not slot:
             raise NotFound("Slot not found.")
         slot.delete()
+        return Response(status=204)
+
+
+DAY_NAME_TO_INDEX = {
+    "monday": 0,
+    "tuesday": 1,
+    "wednesday": 2,
+    "thursday": 3,
+    "friday": 4,
+    "saturday": 5,
+    "sunday": 6,
+}
+
+
+def _normalize_weekdays(raw) -> list[int]:
+    if not raw:
+        return []
+    values = raw if isinstance(raw, list) else [raw]
+    out: list[int] = []
+    for item in values:
+        if isinstance(item, int) or (isinstance(item, str) and item.isdigit()):
+            out.append(int(item) % 7)
+            continue
+        key = str(item).strip().lower()
+        if key in DAY_NAME_TO_INDEX:
+            out.append(DAY_NAME_TO_INDEX[key])
+    return sorted(set(out))
+
+
+def _schedule_payload(schedule: AppointmentSlotSchedule) -> dict:
+    return {
+        "id": schedule.id,
+        "hospitalId": schedule.hospital_id,
+        "hospitalName": schedule.hospital.name,
+        "times": schedule.times,
+        "repeatMode": schedule.repeat_mode,
+        "repeatModeLabel": schedule.get_repeat_mode_display(),
+        "excludeWeekdays": schedule.exclude_weekdays,
+        "weeksAhead": schedule.weeks_ahead,
+        "isActive": schedule.is_active,
+    }
+
+
+def _schedules_scope(user):
+    from apps.accounts.rbac import hospital_id_for, is_national_scope, province_id_for
+
+    qs = AppointmentSlotSchedule.objects.select_related("hospital").filter(is_active=True)
+    if is_national_scope(user):
+        return qs
+    hospital_id = hospital_id_for(user)
+    if hospital_id and getattr(user, "role", "") == "hospital_admin":
+        return qs.filter(hospital_id=hospital_id)
+    province_id = province_id_for(user)
+    if province_id:
+        return qs.filter(hospital__province_id=province_id)
+    return qs.none()
+
+
+class AdminAppointmentSlotSchedulesView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def get(self, request):
+        if not has_perm(request.user, PERM_APPOINTMENTS_VIEW):
+            raise PermissionDenied("You cannot view appointment schedules.")
+        rows = [_schedule_payload(row) for row in _schedules_scope(request.user)[:50]]
+        return Response({"schedules": rows})
+
+    def post(self, request):
+        if not has_perm(request.user, PERM_APPOINTMENTS_UPDATE):
+            raise PermissionDenied("You cannot add appointment schedules.")
+        hospital_id = request.data.get("hospitalId")
+        hospital = Hospital.objects.filter(pk=hospital_id, is_active=True).select_related("province").first()
+        if not hospital:
+            raise ValidationError({"hospitalId": "Choose a treatment centre."})
+        from apps.accounts.rbac import hospital_id_for, is_national_scope, province_id_for
+
+        if not is_national_scope(request.user):
+            own_hospital = hospital_id_for(request.user)
+            if getattr(request.user, "role", "") == "hospital_admin":
+                if own_hospital != hospital.id:
+                    raise PermissionDenied("You can only add schedules for your own centre.")
+            elif province_id_for(request.user) != hospital.province_id:
+                raise PermissionDenied("This centre is outside your province.")
+
+        raw_times = request.data.get("times") or []
+        if isinstance(raw_times, str):
+            raw_times = [part.strip() for part in raw_times.replace(";", ",").split(",")]
+        times = [str(item).strip() for item in raw_times if str(item).strip()]
+        if not times:
+            raise ValidationError({"times": "Enter at least one time, for example 10:00."})
+
+        repeat_mode = str(request.data.get("repeatMode") or SlotRepeatMode.EVERY_DAY).strip()
+        if repeat_mode not in SlotRepeatMode.values:
+            raise ValidationError({"repeatMode": "Invalid repeat mode."})
+
+        exclude_weekdays = _normalize_weekdays(request.data.get("excludeDays") or request.data.get("excludeWeekdays"))
+        weeks_ahead = min(26, max(1, int(request.data.get("weeksAhead") or 8)))
+
+        schedule = AppointmentSlotSchedule.objects.create(
+            hospital=hospital,
+            times=times,
+            repeat_mode=repeat_mode,
+            exclude_weekdays=exclude_weekdays,
+            weeks_ahead=weeks_ahead,
+            created_by=request.user,
+        )
+        created = generate_slots_for_schedule(schedule, actor=request.user)
+        return Response({"schedule": _schedule_payload(schedule), "slotsCreated": created}, status=201)
+
+
+class AdminAppointmentSlotScheduleDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def delete(self, request, pk):
+        if not has_perm(request.user, PERM_APPOINTMENTS_UPDATE):
+            raise PermissionDenied("You cannot remove appointment schedules.")
+        schedule = _schedules_scope(request.user).filter(pk=pk).first()
+        if not schedule:
+            raise NotFound("Schedule not found.")
+        schedule.is_active = False
+        schedule.save(update_fields=["is_active", "updated_at"])
         return Response(status=204)
 
 

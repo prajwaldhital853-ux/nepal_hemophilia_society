@@ -464,21 +464,43 @@ export default function AppointmentsModule() {
   );
 }
 
+type SlotSchedule = {
+  id: number;
+  hospitalName: string;
+  times: string[];
+  repeatMode: string;
+  repeatModeLabel: string;
+  excludeWeekdays: number[];
+  weeksAhead: number;
+};
+
+const WEEKDAY_OPTIONS = [
+  { value: 5, label: "Saturday" },
+  { value: 6, label: "Sunday" },
+];
+
 function SlotManager({ onError }: { onError: (message: string) => void }) {
   const [slots, setSlots] = useState<Slot[]>([]);
+  const [schedules, setSchedules] = useState<SlotSchedule[]>([]);
   const [centers, setCenters] = useState<Center[]>([]);
   const [hospitalId, setHospitalId] = useState<number | null>(null);
   const [date, setDate] = useState("");
   const [times, setTimes] = useState("10:00, 11:00, 14:00");
+  const [repeatMode, setRepeatMode] = useState<"every_day" | "weekdays" | "except_days">("every_day");
+  const [excludeDays, setExcludeDays] = useState<number[]>([5, 6]);
+  const [weeksAhead, setWeeksAhead] = useState(8);
   const [saving, setSaving] = useState(false);
+  const [savingSchedule, setSavingSchedule] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [slotData, centerData] = await Promise.all([
+      const [slotData, scheduleData, centerData] = await Promise.all([
         apiFetch("/appointments/slots/") as Promise<{ slots?: Slot[] }>,
+        apiFetch("/appointments/slots/schedules/") as Promise<{ schedules?: SlotSchedule[] }>,
         apiFetch("/hospitals/") as Promise<{ hospitals?: Center[] }>,
       ]);
       setSlots(Array.isArray(slotData.slots) ? slotData.slots : []);
+      setSchedules(Array.isArray(scheduleData.schedules) ? scheduleData.schedules : []);
       const rows = Array.isArray(centerData.hospitals) ? centerData.hospitals : [];
       setCenters(rows);
       setHospitalId((current) => current ?? rows[0]?.id ?? null);
@@ -527,6 +549,55 @@ function SlotManager({ onError }: { onError: (message: string) => void }) {
     } catch (err) {
       onError(err instanceof Error ? err.message : "Could not remove the slot");
     }
+  }
+
+  async function addRecurring() {
+    if (!hospitalId) {
+      onError("Pick a centre first.");
+      return;
+    }
+    const parsed = times
+      .split(/[,;\s]+/)
+      .map((item) => item.trim())
+      .filter((item) => /^\d{1,2}:\d{2}$/.test(item));
+    if (parsed.length === 0) {
+      onError("Enter at least one time, for example 10:00.");
+      return;
+    }
+    setSavingSchedule(true);
+    onError("");
+    try {
+      await apiFetch("/appointments/slots/schedules/", {
+        method: "POST",
+        body: JSON.stringify({
+          hospitalId,
+          times: parsed,
+          repeatMode,
+          excludeDays: repeatMode === "weekdays" ? [] : excludeDays,
+          weeksAhead,
+        }),
+      });
+      await load();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Could not save the recurring schedule");
+    } finally {
+      setSavingSchedule(false);
+    }
+  }
+
+  async function removeSchedule(id: number) {
+    try {
+      await apiFetch(`/appointments/slots/schedules/${id}/`, { method: "DELETE" });
+      setSchedules((rows) => rows.filter((row) => row.id !== id));
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Could not remove the schedule");
+    }
+  }
+
+  function toggleExcludeDay(day: number) {
+    setExcludeDays((current) =>
+      current.includes(day) ? current.filter((item) => item !== day) : [...current, day].sort(),
+    );
   }
 
   const grouped = useMemo(() => {
@@ -585,8 +656,77 @@ function SlotManager({ onError }: { onError: (message: string) => void }) {
           onClick={() => void add()}
           className="h-8 rounded bg-brand px-3 text-[11px] font-semibold text-white hover:bg-brand-blueDark disabled:opacity-60"
         >
-          {saving ? "Saving…" : "Publish times"}
+          {saving ? "Saving…" : "Publish one day"}
         </button>
+      </div>
+
+      <div className="mt-4 rounded border border-line-subtle p-3">
+        <h3 className="text-[12px] font-semibold text-ink">Recurring weekly schedule</h3>
+        <p className="mt-0.5 text-[11px] text-muted">
+          Publish the same times every day, on weekdays only, or every day except selected days (e.g. skip Saturday and
+          Sunday).
+        </p>
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <label className="block text-[11px] font-medium text-ink">
+            Repeat
+            <select
+              value={repeatMode}
+              onChange={(event) => setRepeatMode(event.target.value as typeof repeatMode)}
+              className="panel-inset mt-1 block h-8 min-w-[200px] px-2.5 text-[12px] text-ink outline-none"
+            >
+              <option value="every_day">Every day</option>
+              <option value="weekdays">Weekdays (Mon–Fri)</option>
+              <option value="except_days">Every day except selected days</option>
+            </select>
+          </label>
+          <label className="block text-[11px] font-medium text-ink">
+            Weeks ahead
+            <input
+              type="number"
+              min={1}
+              max={26}
+              value={weeksAhead}
+              onChange={(event) => setWeeksAhead(Number(event.target.value) || 8)}
+              className="panel-inset mt-1 block h-8 w-20 px-2.5 text-[12px] text-ink outline-none"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={savingSchedule}
+            onClick={() => void addRecurring()}
+            className="h-8 rounded bg-brand px-3 text-[11px] font-semibold text-white hover:bg-brand-blueDark disabled:opacity-60"
+          >
+            {savingSchedule ? "Publishing…" : "Publish recurring times"}
+          </button>
+        </div>
+        {repeatMode !== "weekdays" ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {WEEKDAY_OPTIONS.map((day) => (
+              <label key={day.value} className="flex items-center gap-1 text-[11px] text-ink">
+                <input
+                  type="checkbox"
+                  checked={excludeDays.includes(day.value)}
+                  onChange={() => toggleExcludeDay(day.value)}
+                />
+                Skip {day.label}
+              </label>
+            ))}
+          </div>
+        ) : null}
+        {schedules.length > 0 ? (
+          <ul className="mt-3 space-y-1 text-[11px] text-muted">
+            {schedules.map((row) => (
+              <li key={row.id} className="flex items-center justify-between gap-2">
+                <span>
+                  {row.hospitalName} · {row.repeatModeLabel} · {row.times.join(", ")} · {row.weeksAhead} wk
+                </span>
+                <button type="button" className="text-red-600" onClick={() => void removeSchedule(row.id)}>
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
 
       {grouped.length === 0 ? (

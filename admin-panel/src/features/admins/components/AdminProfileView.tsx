@@ -244,7 +244,6 @@ export default function AdminProfileView({ id }: { id: string }) {
                     ["Email", admin.email],
                     ["Role", roleLabel],
                     ["Designation", admin.designation || ""],
-                    ["Employee ID", admin.employeeId || ""],
                     ["Status", admin.status],
                     [
                       "Must change password",

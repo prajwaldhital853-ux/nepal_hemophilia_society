@@ -70,19 +70,21 @@ export function AppointmentInbox() {
   }
 
   return (
-    <div className="relative hidden sm:block">
-      <button
-        type="button"
-        className="panel relative p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink"
-        aria-label="Appointment messages"
-        onClick={() => {
-          setOpen((value) => !value);
-          void load();
-        }}
-      >
-        <Mail className="size-4" />
+    <div className="relative hidden overflow-visible sm:block">
+      <span className="relative inline-flex align-middle">
+        <button
+          type="button"
+          className="panel p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink"
+          aria-label={unread > 0 ? `Appointment messages (${unread} unread)` : "Appointment messages"}
+          onClick={() => {
+            setOpen((value) => !value);
+            void load();
+          }}
+        >
+          <Mail className="size-4" />
+        </button>
         <UnreadBadge count={unread} />
-      </button>
+      </span>
       {open ? (
         <div className="absolute right-0 z-50 mt-2 w-[340px] max-w-[80vw] rounded-xl border border-black/10 bg-card shadow-lg">
           <div className="border-b border-black/5 px-3 py-2">
