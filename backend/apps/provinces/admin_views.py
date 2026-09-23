@@ -164,30 +164,23 @@ class ProvinceAdminDetailView(APIView):
         profile = ProvinceAdmin.objects.select_related("user", "province").filter(display_id=display_id).first()
         if not profile:
             raise NotFound("Province admin not found.")
-        user = profile.user
-        if request.data.get("fullName"):
-            first, last = split_name(str(request.data["fullName"]))
-            user.first_name = first
-            user.last_name = last
-        if request.data.get("email"):
-            user.email = str(request.data["email"]).strip().lower()
-        if request.data.get("phone") is not None:
-            user.mobile = str(request.data.get("phone") or "")
-        if request.data.get("status") == "Inactive":
-            user.is_active_account = False
-        elif request.data.get("status") == "Active":
-            user.is_active_account = True
-        if request.data.get("designation") is not None:
-            user.designation = str(request.data.get("designation") or "")[:120]
-        if request.data.get("employeeId") is not None:
-            user.employee_id = str(request.data.get("employeeId") or "")[:40]
-        if request.data.get("nationalId") is not None:
-            user.national_id = str(request.data.get("nationalId") or "")[:40]
-        if request.data.get("officeAddress") is not None or request.data.get("address") is not None:
-            user.office_address = str(request.data.get("officeAddress") or request.data.get("address") or "")
-        if request.data.get("gender") is not None:
-            user.gender = str(request.data.get("gender") or "")[:20]
-        user.save()
+        user = User.objects.get(pk=profile.user_id)
+        from apps.accounts.staffing import apply_profile_fields
+
+        apply_profile_fields(
+            user,
+            {
+                "fullName": request.data.get("fullName"),
+                "email": request.data.get("email"),
+                "phone": request.data.get("phone"),
+                "status": request.data.get("status"),
+                "designation": request.data.get("designation"),
+                "employeeId": request.data.get("employeeId"),
+                "nationalId": request.data.get("nationalId"),
+                "officeAddress": request.data.get("officeAddress") or request.data.get("address"),
+                "gender": request.data.get("gender"),
+            },
+        )
         if "permissions" in request.data or "viewOnly" in request.data:
             apply_assigned_access(
                 request.user,

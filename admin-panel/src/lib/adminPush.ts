@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import { markAdminAlertSeen, shouldShowAdminAlertPopup } from "@/lib/adminNotificationSeen";
 import { showBrowserNotification } from "@/lib/browserNotifications";
 
 type FirebaseCompat = {
@@ -18,6 +19,9 @@ type FirebasePayload = {
 const SW_PATH = "/firebase-messaging-sw.js";
 
 export type AdminPushResult = { ok: true } | { ok: false; error: string };
+
+let pushSetupPromise: Promise<AdminPushResult> | null = null;
+let foregroundHandlerAttached = false;
 
 function firebaseConfig() {
   return {
@@ -72,8 +76,8 @@ function loadFirebaseCompat(): Promise<FirebaseCompat> {
 }
 
 async function serviceWorkerRegistration() {
-  let registration = await navigator.serviceWorker.getRegistration(SW_PATH);
-  if (!registration) {
+  let registration = await navigator.serviceWorker.getRegistration("/");
+  if (!registration || !registration.active?.scriptURL.includes("firebase-messaging-sw")) {
     registration = await navigator.serviceWorker.register(SW_PATH, {
       scope: "/",
       updateViaCache: "none",
@@ -83,11 +87,31 @@ async function serviceWorkerRegistration() {
   return registration;
 }
 
-export function isAdminPushConfigured() {
-  return firebaseConfigured();
+function handleForegroundPush(payload: FirebasePayload) {
+  const title = payload.notification?.title || payload.data?.title || "NHMS";
+  const body = payload.notification?.body || payload.data?.body || "";
+  const category = payload.data?.category || "";
+  const relatedType = payload.data?.relatedType || category;
+  const id = Number(payload.data?.id || 0);
+  if (id) markAdminAlertSeen(id);
+  if (!shouldShowAdminAlertPopup(id || Date.now())) return;
+  showBrowserNotification({
+    id: id || Date.now(),
+    category,
+    relatedType,
+    title,
+    message: body,
+  });
+  window.dispatchEvent(new Event("nhms-notifications-refresh"));
 }
 
-export async function registerAdminWebPush(): Promise<AdminPushResult> {
+function attachForegroundHandler(messaging: ReturnType<FirebaseCompat["messaging"]>) {
+  if (foregroundHandlerAttached) return;
+  foregroundHandlerAttached = true;
+  messaging.onMessage(handleForegroundPush);
+}
+
+async function setupAdminWebPush(): Promise<AdminPushResult> {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
     return { ok: false, error: "This browser does not support service workers." };
   }
@@ -119,20 +143,7 @@ export async function registerAdminWebPush(): Promise<AdminPushResult> {
     }
 
     const messaging = firebase.messaging();
-    messaging.onMessage((payload) => {
-      const title = payload.notification?.title || payload.data?.title || "NHMS";
-      const body = payload.notification?.body || payload.data?.body || "";
-      const category = payload.data?.category || "";
-      const relatedType = payload.data?.relatedType || category;
-      showBrowserNotification({
-        id: Number(payload.data?.id || Date.now()),
-        category,
-        relatedType,
-        title,
-        message: body,
-      });
-      window.dispatchEvent(new Event("nhms-notifications-refresh"));
-    });
+    attachForegroundHandler(messaging);
 
     const token = await messaging.getToken({
       vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY!,
@@ -151,4 +162,18 @@ export async function registerAdminWebPush(): Promise<AdminPushResult> {
   } catch (err) {
     return { ok: false, error: pushErrorMessage(err) };
   }
+}
+
+export function isAdminPushConfigured() {
+  return firebaseConfigured();
+}
+
+export async function registerAdminWebPush(): Promise<AdminPushResult> {
+  if (!pushSetupPromise) {
+    pushSetupPromise = setupAdminWebPush().then((result) => {
+      if (!result.ok) pushSetupPromise = null;
+      return result;
+    });
+  }
+  return pushSetupPromise;
 }

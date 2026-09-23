@@ -3,28 +3,12 @@
 import { useCallback, useEffect, useRef } from "react";
 
 import { apiFetch } from "@/lib/api";
-import { isAdminPushConfigured, registerAdminWebPush } from "@/lib/adminPush";
+import { registerAdminWebPush } from "@/lib/adminPush";
+import { loadAdminAlertSeenIds, saveAdminAlertSeenIds, shouldShowAdminAlertPopup } from "@/lib/adminNotificationSeen";
 import { showBrowserNotification, type AlertNote } from "@/lib/browserNotifications";
 import { useAuth } from "@/lib/auth";
 
 type AdminNote = AlertNote & { isRead?: boolean };
-
-const SEEN_KEY = "nhms-admin-alert-ids";
-
-function loadSeenIds() {
-  if (typeof window === "undefined") return new Set<number>();
-  try {
-    const raw = sessionStorage.getItem(SEEN_KEY);
-    const parsed = raw ? (JSON.parse(raw) as number[]) : [];
-    return new Set(parsed.filter((id) => Number.isFinite(id)));
-  } catch {
-    return new Set<number>();
-  }
-}
-
-function saveSeenIds(ids: Set<number>) {
-  sessionStorage.setItem(SEEN_KEY, JSON.stringify(Array.from(ids).slice(-500)));
-}
 
 function unreadRows(rows: AdminNote[]) {
   return rows.filter((row) => !row.isRead);
@@ -36,10 +20,10 @@ function unreadRows(rows: AdminNote[]) {
  */
 export function AdminNotificationAlerts() {
   const { user } = useAuth();
-  const seenIds = useRef<Set<number>>(loadSeenIds());
+  const seenIds = useRef<Set<number>>(loadAdminAlertSeenIds());
   const bootstrapped = useRef(false);
   const pushRegistered = useRef(false);
-  const pushReady = useRef(isAdminPushConfigured());
+  const pushReady = useRef(false);
 
   const poll = useCallback(async () => {
     if (!user || typeof window === "undefined") return;
@@ -57,7 +41,7 @@ export function AdminNotificationAlerts() {
 
       if (!bootstrapped.current) {
         combined.forEach((row) => seenIds.current.add(row.id));
-        saveSeenIds(seenIds.current);
+        saveAdminAlertSeenIds(seenIds.current);
         bootstrapped.current = true;
         window.dispatchEvent(new Event("nhms-notifications-refresh"));
         return;
@@ -68,12 +52,12 @@ export function AdminNotificationAlerts() {
       for (const note of combined) {
         if (seenIds.current.has(note.id)) continue;
         seenIds.current.add(note.id);
-        if (usePollingPopups) {
+        if (usePollingPopups && shouldShowAdminAlertPopup(note.id)) {
           showBrowserNotification(note);
         }
         hasNew = true;
       }
-      saveSeenIds(seenIds.current);
+      saveAdminAlertSeenIds(seenIds.current);
       if (hasNew) {
         window.dispatchEvent(new Event("nhms-notifications-refresh"));
       }
@@ -90,7 +74,7 @@ export function AdminNotificationAlerts() {
       return;
     }
 
-    seenIds.current = loadSeenIds();
+    seenIds.current = loadAdminAlertSeenIds();
     void poll();
     const timer = window.setInterval(() => void poll(), 10000);
     const onRefresh = () => void poll();

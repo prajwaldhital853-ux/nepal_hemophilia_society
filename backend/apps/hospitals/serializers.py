@@ -351,7 +351,8 @@ class HospitalStaffUpdateSerializer(HospitalStaffSerializer):
                 user.must_change_password = False
                 user_update_fields.append("must_change_password")
 
-        if reset_temp and str(reset_temp).strip():
+        wants_reset = parse_bool(self.initial_data.get("resetPassword"))
+        if wants_reset and reset_temp and str(reset_temp).strip():
             try:
                 password_validation.validate_password(str(reset_temp))
             except Exception as exc:

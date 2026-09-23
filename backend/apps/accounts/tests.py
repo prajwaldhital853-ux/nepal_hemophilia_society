@@ -563,6 +563,50 @@ class RbacMatrixTests(APITestCase):
         relogin = post_admin_login(self.client, "keeper.admin@hemophilia.org.np", "OwnPass#2026")
         self.assertEqual(relogin.status_code, 200, relogin.data)
 
+    def test_staff_photo_update_does_not_clobber_changed_password(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        self.client.force_authenticate(self.super)
+        created = self.client.post(
+            "/api/v1/admins/staff/",
+            {
+                "kind": "admin",
+                "fullName": "Photo Keeper",
+                "email": "photo.keeper@hemophilia.org.np",
+                "phone": "9841889900",
+                "designation": "Coordinator",
+                "temporaryPassword": "TempPass#123",
+            },
+            format="json",
+        )
+        self.assertEqual(created.status_code, 201, created.data)
+        admin_id = created.data["admin"]["id"]
+        self.client.force_authenticate(None)
+        login = post_admin_login(self.client, "photo.keeper@hemophilia.org.np", "TempPass#123")
+        self.assertEqual(login.status_code, 200, login.data)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        changed = self.client.post(
+            "/api/v1/auth/change-password/",
+            {
+                "currentPassword": "TempPass#123",
+                "newPassword": "OwnPass#2026",
+                "confirmPassword": "OwnPass#2026",
+            },
+            format="json",
+        )
+        self.assertEqual(changed.status_code, 200, changed.data)
+        self.client.force_authenticate(self.super)
+        photo = SimpleUploadedFile("avatar.jpg", b"fake-image-bytes", content_type="image/jpeg")
+        updated = self.client.put(
+            f"/api/v1/admins/staff/{admin_id}/",
+            {"designation": "Lead Coordinator", "photo": photo},
+            format="multipart",
+        )
+        self.assertEqual(updated.status_code, 200, updated.data)
+        self.client.force_authenticate(None)
+        relogin = post_admin_login(self.client, "photo.keeper@hemophilia.org.np", "OwnPass#2026")
+        self.assertEqual(relogin.status_code, 200, relogin.data)
+
     def test_super_marks_pending_admin_active_without_first_login(self):
         self.client.force_authenticate(self.super)
         created = self.client.post(

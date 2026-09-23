@@ -139,7 +139,8 @@ def save_admin_photo(user, upload):
         filename = f"{display}/photo{ext}"
         if user.photo:
             user.photo.delete(save=False)
-        user.photo.save(filename, upload, save=True)
+        user.photo.save(filename, upload, save=False)
+        user.save(update_fields=["photo"])
     except Exception as exc:
         message = str(exc)
         if "Invalid Signature" in message or "invalid signature" in message.lower():
@@ -444,6 +445,7 @@ def update_staff_account(actor, user, data: dict):
     if account_kind(user) == KIND_SUPER and account_kind(actor) != KIND_SUPER:
         raise PermissionDenied("Only Super Admin can change a Super Admin.")
 
+    user = User.objects.get(pk=user.pk)
     apply_profile_fields(user, data)
 
     kind = account_kind(user)

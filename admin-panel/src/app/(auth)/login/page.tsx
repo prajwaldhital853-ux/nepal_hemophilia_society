@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { homeForUser, type AuthUser, useAuth } from "@/lib/auth";
-import { registerAdminWebPush } from "@/lib/adminPush";
 import { ApiClientError, apiFetch, setAuthTokens } from "@/lib/api";
 import { ensureAdminDeviceId, getAdminDeviceAuth } from "@/lib/deviceId";
 
@@ -70,9 +69,6 @@ export default function LoginPage() {
       if (data.mustChangePassword || data.passwordExpired || data.user?.must_change_password || data.user?.passwordExpired) {
         router.push("/change-password");
         return;
-      }
-      if (typeof window !== "undefined" && Notification.permission === "granted") {
-        void registerAdminWebPush().catch(() => undefined);
       }
       router.push(data.user ? homeForUser(data.user as AuthUser) : "/dashboard");
     } catch (err) {

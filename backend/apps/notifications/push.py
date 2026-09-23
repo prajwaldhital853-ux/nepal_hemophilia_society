@@ -119,26 +119,43 @@ def _send_fcm(tokens: list[str], title: str, body: str, data: dict):
     payload = {k: str(v) for k, v in data.items()}
     payload.setdefault("title", title[:120])
     payload.setdefault("body", body[:240])
+    devices = {row.token: row for row in PushDevice.objects.filter(token__in=tokens)}
     for token in tokens:
         try:
-            messaging.send(
-                messaging.Message(
-                    notification=messaging.Notification(title=title[:120], body=body[:240]),
-                    data=payload,
-                    webpush=messaging.WebpushConfig(
-                        headers={"Urgency": "high"},
-                        notification=messaging.WebpushNotification(
-                            title=title[:120],
-                            body=body[:240],
-                            icon=f"{_admin_link(payload).split('/dashboard')[0]}/nhs-logo.png",
+            device = devices.get(token)
+            is_admin_web = bool(device and device.platform == "web" and device.app == "admin")
+            if is_admin_web:
+                # Data-only for admin web — our service worker / foreground handler shows one notification.
+                messaging.send(
+                    messaging.Message(
+                        data=payload,
+                        webpush=messaging.WebpushConfig(
+                            headers={"Urgency": "high"},
+                            fcm_options=messaging.WebpushFCMOptions(link=_admin_link(payload)),
                         ),
-                        fcm_options=messaging.WebpushFCMOptions(
-                            link=_admin_link(payload),
-                        ),
+                        token=token,
                     ),
-                    token=token,
-                ),
-                app=app,
-            )
+                    app=app,
+                )
+            else:
+                messaging.send(
+                    messaging.Message(
+                        notification=messaging.Notification(title=title[:120], body=body[:240]),
+                        data=payload,
+                        webpush=messaging.WebpushConfig(
+                            headers={"Urgency": "high"},
+                            notification=messaging.WebpushNotification(
+                                title=title[:120],
+                                body=body[:240],
+                                icon=f"{_admin_link(payload).split('/dashboard')[0]}/nhs-logo.png",
+                            ),
+                            fcm_options=messaging.WebpushFCMOptions(
+                                link=_admin_link(payload),
+                            ),
+                        ),
+                        token=token,
+                    ),
+                    app=app,
+                )
         except Exception:
             logger.exception("FCM send failed for a device token")

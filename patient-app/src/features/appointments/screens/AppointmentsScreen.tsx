@@ -171,12 +171,16 @@ export default function AppointmentsScreen({ route }: Props) {
 
   async function cancel(id: number) {
     if (!token) return;
-    await patientApi(`/me/patient/appointments/${id}/`, {
-      method: "POST",
-      token,
-      body: JSON.stringify({ action: "cancel" }),
-    });
-    await load();
+    try {
+      await patientApi(`/me/patient/appointments/${id}/`, {
+        method: "POST",
+        token,
+        body: JSON.stringify({ action: "cancel" }),
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not cancel appointment");
+    }
   }
 
   return (
