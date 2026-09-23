@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import { showBrowserNotification, type AlertNote } from "@/lib/browserNotifications";
+import { showBrowserNotification } from "@/lib/browserNotifications";
 
 type FirebaseCompat = {
   apps: unknown[];

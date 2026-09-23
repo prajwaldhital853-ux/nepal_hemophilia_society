@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Bell, Database, Globe, Lock, Moon, Save, Shield } from "lucide-react";
 
 import { useTheme } from "@/lib/theme";
@@ -47,7 +47,7 @@ export default function SettingsModule() {
     );
   }
 
-  async function loadBackups(autoDownloadLatest = false) {
+  const loadBackups = useCallback(async (autoDownloadLatest = false) => {
     if (!isSuper) return;
     setBackupStatus("");
     try {
@@ -61,7 +61,7 @@ export default function SettingsModule() {
     } catch (err) {
       setBackupStatus(err instanceof Error ? err.message : "Could not load backups");
     }
-  }
+  }, [isSuper]);
 
   async function createManualBackup() {
     if (!isSuper || backupBusy) return;
@@ -84,7 +84,7 @@ export default function SettingsModule() {
 
   useEffect(() => {
     if (tab === "Backups" && isSuper) void loadBackups(true);
-  }, [tab, isSuper]);
+  }, [tab, isSuper, loadBackups]);
 
   return (
     <div className="flex flex-col gap-2">

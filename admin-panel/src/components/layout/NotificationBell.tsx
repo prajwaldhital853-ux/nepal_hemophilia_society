@@ -121,6 +121,17 @@ export function NotificationBell() {
               Mark all read
             </button>
           </div>
+          {canUseBrowserNotifications() && browserAlerts !== "granted" ? (
+            <div className="border-b border-black/5 px-3 py-2">
+              <button
+                type="button"
+                className="w-full rounded bg-brand px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-blueDark"
+                onClick={() => void enableBrowserAlerts()}
+              >
+                Turn on browser alerts
+              </button>
+            </div>
+          ) : null}
           <div className="max-h-96 overflow-y-auto">
             {items.length === 0 ? (
               <p className="px-3 py-6 text-center text-[12px] text-muted">No notifications yet.</p>

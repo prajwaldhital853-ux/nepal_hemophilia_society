@@ -171,7 +171,7 @@ export default function PatientFormWizard({
     if (mode === "edit" && !mayEdit) {
       router.replace(initial?.id ? `/dashboard/patients/${initial.id}` : "/dashboard/patients");
     }
-  }, [can, initial?.id, mode, router]);
+  }, [can, initial?.canEdit, initial?.id, mode, router]);
 
   useEffect(() => {
     if (lockedProvince) {
