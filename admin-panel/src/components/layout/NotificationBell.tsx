@@ -13,6 +13,7 @@ import {
 } from "@/lib/browserNotifications";
 import { useAuth } from "@/lib/auth";
 import { hrefForNotification } from "@/components/layout/notificationHref";
+import { UnreadBadge } from "@/components/ui/UnreadBadge";
 
 type AdminNote = {
   id: number;
@@ -96,10 +97,10 @@ export function NotificationBell() {
   }
 
   return (
-    <div className="relative">
+    <div className="relative overflow-visible">
       <button
         type="button"
-        className="panel relative p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink"
+        className="panel relative overflow-visible p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink"
         aria-label="Notifications"
         onClick={() => {
           setOpen((value) => !value);
@@ -107,11 +108,7 @@ export function NotificationBell() {
         }}
       >
         <Bell className="size-4" />
-        {unread > 0 ? (
-          <span className="absolute -right-1.5 -top-1.5 min-w-[18px] rounded-full bg-red-600 px-1 text-center text-[11px] font-bold leading-[18px] text-white">
-            {unread > 99 ? "99+" : unread}
-          </span>
-        ) : null}
+        <UnreadBadge count={unread} />
       </button>
       {open ? (
         <div className="absolute right-0 z-50 mt-2 w-[340px] max-w-[80vw] rounded-xl border border-black/10 bg-card shadow-lg">

@@ -31,8 +31,8 @@ export function showBrowserNotification(note: AlertNote) {
   try {
     const notification = new Notification(note.title, {
       body: note.message,
-      icon: "/favicon.ico",
-      badge: "/favicon.ico",
+      icon: "/nhs-logo.png",
+      badge: "/nhs-logo.png",
       tag,
       data: { href, id: note.id },
     });

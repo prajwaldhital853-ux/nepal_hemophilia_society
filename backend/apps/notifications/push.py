@@ -123,7 +123,7 @@ def _send_fcm(tokens: list[str], title: str, body: str, data: dict):
                         notification=messaging.WebpushNotification(
                             title=title[:120],
                             body=body[:240],
-                            icon="/favicon.ico",
+                            icon=f"{_admin_link(payload).split('/dashboard')[0]}/nhs-logo.png",
                         ),
                         fcm_options=messaging.WebpushFCMOptions(
                             link=_admin_link(payload),

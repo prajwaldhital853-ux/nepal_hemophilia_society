@@ -21,6 +21,7 @@ from apps.accounts.device_lock import (
 )
 from apps.accounts.throttles import DeviceLoginThrottle
 from apps.accounts.models import UserRole
+from apps.accounts.password_policy import password_expires_at, password_is_expired, password_reuse_error, record_password_history
 from apps.accounts.permissions import IsPatientRole
 from apps.accounts.serializers import UserSerializer
 from apps.patients.models import Patient
@@ -129,6 +130,7 @@ class PatientChangePasswordThrottle(ScopedRateThrottle):
 class PatientChangePasswordView(APIView):
     permission_classes = [IsAuthenticated, IsPatientRole]
     throttle_classes = [PatientChangePasswordThrottle]
+    allow_must_change_password = True
 
     def post(self, request):
         current_password = str(request.data.get("currentPassword") or "")
@@ -141,15 +143,21 @@ class PatientChangePasswordView(APIView):
             return Response({"error": "New password confirmation does not match."}, status=400)
         if not user.check_password(current_password):
             return Response({"error": "Current password is incorrect."}, status=400)
-        if user.check_password(new_password):
-            return Response({"error": "New password must be different from the temporary password."}, status=400)
+        reuse = password_reuse_error(user, new_password)
+        if reuse:
+            return Response({"error": reuse}, status=400)
         try:
             password_validation.validate_password(new_password, user)
         except Exception as exc:
             messages = getattr(exc, "messages", [str(exc)])
             return Response({"error": " ".join(messages)}, status=400)
+        record_password_history(user)
         user.set_password(new_password)
         user.must_change_password = False
         user.password_changed_at = timezone.now()
         user.save(update_fields=["password", "must_change_password", "password_changed_at"])
-        return Response(issue_patient_tokens(user))
+        response = issue_patient_tokens(user)
+        expires = password_expires_at(user)
+        if expires:
+            response["passwordExpiresAt"] = expires.isoformat()
+        return Response(response)

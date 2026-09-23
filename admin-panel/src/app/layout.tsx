@@ -14,6 +14,10 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Nepal Hemophilia Digital Management System",
   description: "Super Admin panel for Nepal Hemophilia Society",
+  icons: {
+    icon: "/nhs-logo.png",
+    apple: "/nhs-logo.png",
+  },
 };
 
 const themeScript = `(function(){try{var t=localStorage.getItem('nhs-theme');var d=t==='dark';document.documentElement.classList.toggle('dark',d);document.documentElement.style.colorScheme=d?'dark':'light'}catch(e){}})()`;

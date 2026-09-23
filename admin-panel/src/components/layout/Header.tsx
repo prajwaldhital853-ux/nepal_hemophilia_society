@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ChevronDown, Menu, Moon, Search, Sun } from "lucide-react";
 
 import { AppointmentInbox } from "@/components/layout/AppointmentInbox";
@@ -28,7 +29,7 @@ export function Header() {
               : "Hospital Administrator";
 
   return (
-    <header className="panel flex h-[var(--topbar-h)] shrink-0 items-center gap-2 bg-card px-2.5 shadow-none">
+    <header className="panel relative z-30 flex h-[var(--topbar-h)] shrink-0 items-center gap-2 overflow-visible bg-card px-2.5 shadow-none">
       <button
         type="button"
         className="rounded p-1 text-muted hover:bg-elevated lg:hidden"
@@ -46,7 +47,7 @@ export function Header() {
         />
       </label>
 
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="ml-auto flex items-center gap-1.5 overflow-visible">
         <NotificationBell />
         <AppointmentInbox />
 
@@ -66,14 +67,18 @@ export function Header() {
           <ChevronDown className="size-3 text-faint" />
         </button>
 
-        <div className="flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-elevated">
+        <Link
+          href="/dashboard/profile"
+          className="flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-elevated"
+          title="My profile"
+        >
           <OwnAvatar name={displayName} photoUrl={user?.photoUrl} size={28} />
           <span className="hidden text-left sm:block">
             <span className="block text-[12px] font-semibold text-ink">{displayName}</span>
             <span className="block text-[10px] text-muted">{roleLabel}</span>
           </span>
           <ChevronDown className="size-3.5 text-faint" />
-        </div>
+        </Link>
       </div>
     </header>
   );

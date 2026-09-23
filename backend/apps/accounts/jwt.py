@@ -19,6 +19,7 @@ from apps.accounts.device_lock import (
     register_success,
 )
 from apps.accounts.models import UserRole
+from apps.accounts.password_policy import password_is_expired
 from apps.accounts.serializers import UserSerializer
 from apps.accounts.throttles import DeviceLoginThrottle
 from apps.audit.models import AuditLog
@@ -93,7 +94,8 @@ class NhmsTokenObtainPairSerializer(TokenObtainPairSerializer):
         data["refresh"] = tokens["refresh"]
         data["access"] = tokens["access"]
         data["user"] = UserSerializer(self.user, context={"request": request}).data
-        data["mustChangePassword"] = self.user.must_change_password
+        data["mustChangePassword"] = self.user.must_change_password or password_is_expired(self.user)
+        data["passwordExpired"] = password_is_expired(self.user)
         data["accountStatus"] = "Pending" if self.user.must_change_password else "Active"
         return data
 

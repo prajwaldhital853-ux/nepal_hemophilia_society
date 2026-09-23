@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { apiFetch, clearAccessToken, getAccessToken, refreshAccessToken } from "@/lib/api";
+import { adminIdleExceeded, touchAdminActivity } from "@/lib/idleSession";
 import {
   USER_KEY,
   migrateLegacyAuthStorage,
@@ -27,6 +28,8 @@ export type AuthUser = {
   permissions: string[];
   nav: string[];
   must_change_password?: boolean;
+  passwordExpired?: boolean;
+  passwordExpiresAt?: string;
   photoUrl?: string;
   staffId?: string;
   hospitalStaff?: {
@@ -68,8 +71,13 @@ export function isAdminUser(user: AuthUser | null): user is AuthUser {
   return Boolean(user && user.role !== ("patient" as string));
 }
 
+export function needsPasswordChange(user: AuthUser | null) {
+  return Boolean(user?.must_change_password || user?.passwordExpired);
+}
+
 export function pathAllowed(pathname: string, user: AuthUser) {
   if (!isAdminUser(user)) return false;
+  if (pathname === "/dashboard/profile") return true;
   if (isWebsiteRoute(pathname)) {
     return user.permissions?.includes(Perm.websiteView) ?? false;
   }
@@ -135,14 +143,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user) return;
+    touchAdminActivity();
     const renew = () => {
       if (document.visibilityState !== "visible") return;
+      if (adminIdleExceeded()) return;
+      touchAdminActivity();
       void refreshAccessToken();
     };
+    const onActivity = () => touchAdminActivity();
+    const events = ["mousedown", "keydown", "scroll", "touchstart", "click"] as const;
+    for (const event of events) window.addEventListener(event, onActivity, { passive: true });
     const interval = window.setInterval(renew, 6 * 60 * 60 * 1000);
+    const idleCheck = window.setInterval(() => {
+      if (adminIdleExceeded()) {
+        clearAccessToken();
+        removeAuthValue(USER_KEY);
+        setUser(null);
+        window.location.href = "/login?reason=idle";
+      }
+    }, 60_000);
     document.addEventListener("visibilitychange", renew);
     return () => {
+      for (const event of events) window.removeEventListener(event, onActivity);
       window.clearInterval(interval);
+      window.clearInterval(idleCheck);
       document.removeEventListener("visibilitychange", renew);
     };
   }, [user]);
@@ -189,7 +213,7 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!user) return;
-    if (user.must_change_password) {
+    if (needsPasswordChange(user)) {
       router.replace("/change-password");
       return;
     }
@@ -202,7 +226,7 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
     return <p className="p-6 text-[12px] text-muted">Checking access…</p>;
   }
   if (!getAccessToken() || !user) return null;
-  if (user.must_change_password) {
+  if (needsPasswordChange(user)) {
     return <p className="p-6 text-[12px] text-muted">Redirecting to set a new password…</p>;
   }
   if (!canOpen(pathname)) {

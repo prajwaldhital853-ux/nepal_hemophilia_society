@@ -65,6 +65,18 @@ class User(AbstractUser):
         return self.role == UserRole.PATIENT
 
 
+class PasswordHistory(models.Model):
+    """Stores previous password hashes so users cannot reuse recent passwords."""
+
+    user = models.ForeignKey("User", on_delete=models.CASCADE, related_name="password_history")
+    password = models.CharField(max_length=128)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "password_history"
+        ordering = ["-created_at"]
+
+
 class LoginDeviceLock(models.Model):
     """Failed-password lock scoped to one device. Never keyed by IP."""
 

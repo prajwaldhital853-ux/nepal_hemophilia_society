@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { homeForUser, type AuthUser, useAuth } from "@/lib/auth";
+import { homeForUser, needsPasswordChange, type AuthUser, useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
-  const { setSession } = useAuth();
+  const { user, setSession } = useAuth();
+  const expired = Boolean(user?.passwordExpired && !user?.must_change_password);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -36,9 +37,13 @@ export default function ChangePasswordPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-page p-6">
       <div className="w-full max-w-md rounded border border-line bg-card p-6">
-        <h1 className="text-[18px] font-semibold text-ink">Set a new password</h1>
+        <h1 className="text-[18px] font-semibold text-ink">{expired ? "Password expired" : "Set a new password"}</h1>
         <p className="mt-1 text-[11px] text-muted">
-          Your administrator issued a temporary password. Choose a new one of your own to activate this account.
+          {expired
+            ? "For security, passwords must be changed every 90 days. Enter your current password and choose a new one (not one of your last 5 passwords)."
+            : needsPasswordChange(user)
+              ? "Your administrator issued a temporary password. Choose a new one of your own to activate this account."
+              : "Choose a new password. It cannot match your current password or any of your last 5 passwords."}
         </p>
         <form className="mt-4 space-y-3" onSubmit={onSubmit}>
           <div>

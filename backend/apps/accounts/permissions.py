@@ -36,12 +36,14 @@ __all__ = ["ADMIN_ROLES"]
 
 
 def admin_must_set_password(user, view=None) -> bool:
-    """True when an admin is still on the temporary password and this view is not the change-password exception."""
+    """True when an admin must change password (temporary or expired) and this view is not exempt."""
+    from apps.accounts.password_policy import password_requires_change
+
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if getattr(user, "role", None) not in ADMIN_ROLES:
         return False
-    if not getattr(user, "must_change_password", False):
+    if not password_requires_change(user):
         return False
     return not getattr(view, "allow_must_change_password", False)
 
@@ -81,17 +83,21 @@ class IsPatientRole(BasePermission):
 
 
 class PatientPasswordUsable(BasePermission):
-    """Block patient APIs until the temporary password is replaced."""
+    """Block patient APIs until the temporary or expired password is replaced."""
 
     message = "You must set a new password before using the app."
 
     def has_permission(self, request, view):
+        from apps.accounts.password_policy import password_requires_change
+
         user = request.user
         if not user or not user.is_authenticated:
             return False
         if getattr(user, "role", None) != UserRole.PATIENT:
             return True
-        return not getattr(user, "must_change_password", False)
+        if getattr(view, "allow_must_change_password", False):
+            return True
+        return not password_requires_change(user)
 
 
 class HasPermission(BasePermission):

@@ -18,6 +18,8 @@ class UserSerializer(serializers.ModelSerializer):
     kind = serializers.SerializerMethodField()
     photoUrl = serializers.SerializerMethodField()
     staffId = serializers.SerializerMethodField()
+    passwordExpired = serializers.SerializerMethodField()
+    passwordExpiresAt = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -42,6 +44,8 @@ class UserSerializer(serializers.ModelSerializer):
             "scope",
             "viewOnly",
             "photoUrl",
+            "passwordExpired",
+            "passwordExpiresAt",
         )
         read_only_fields = (
             "id",
@@ -58,6 +62,8 @@ class UserSerializer(serializers.ModelSerializer):
             "fullName",
             "viewOnly",
             "photoUrl",
+            "passwordExpired",
+            "passwordExpiresAt",
         )
 
     def get_hospitalStaff(self, obj):
@@ -113,3 +119,14 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_staffId(self, obj):
         return display_id_for(obj)
+
+    def get_passwordExpired(self, obj):
+        from apps.accounts.password_policy import password_is_expired
+
+        return password_is_expired(obj)
+
+    def get_passwordExpiresAt(self, obj):
+        from apps.accounts.password_policy import password_expires_at
+
+        expires = password_expires_at(obj)
+        return expires.isoformat() if expires else None

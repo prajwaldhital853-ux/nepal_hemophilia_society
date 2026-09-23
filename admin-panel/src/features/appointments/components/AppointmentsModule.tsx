@@ -357,11 +357,11 @@ export default function AppointmentsModule() {
 
       {selected ? (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4"
           onClick={() => closeDetail()}
         >
           <section
-            className="panel mt-4 w-full max-w-3xl p-4"
+            className="panel w-full max-w-3xl p-4"
             role="dialog"
             aria-modal="true"
             aria-labelledby="appointment-detail-title"

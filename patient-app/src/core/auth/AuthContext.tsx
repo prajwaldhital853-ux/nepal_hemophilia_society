@@ -110,8 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     await saveSession(data.access, data.refresh);
     setToken(data.access);
-    setMustChangePassword(Boolean(data.mustChangePassword));
-    if (!data.mustChangePassword) {
+    setMustChangePassword(Boolean(data.mustChangePassword || data.passwordExpired));
+    if (!data.mustChangePassword && !data.passwordExpired) {
       await refreshPatient(data.access, true);
     } else {
       setPatient(null);

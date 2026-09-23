@@ -62,7 +62,7 @@ export default function LoginPage() {
       }
       setAuthTokens(data.access, data.refresh);
       if (data.user) setSession(data.user as AuthUser);
-      if (data.mustChangePassword || data.user?.must_change_password) {
+      if (data.mustChangePassword || data.passwordExpired || data.user?.must_change_password || data.user?.passwordExpired) {
         router.push("/change-password");
         return;
       }
