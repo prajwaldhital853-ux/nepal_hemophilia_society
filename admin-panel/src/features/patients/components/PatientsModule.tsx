@@ -146,7 +146,7 @@ export default function PatientsModule() {
   const scopedSearchHint = user?.role === "hospital_admin" || user?.role === "province_admin";
 
   return (
-    <div className="admin-page">
+    <div className="admin-page admin-page--fill">
       <div className="admin-page-sticky space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>

@@ -124,38 +124,77 @@ body {
     padding-bottom: 1.5rem;
   }
 
-  .admin-page-sticky {
-    position: sticky;
-    top: 0;
-    z-index: 30;
+  .admin-page--fill {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+
+  .admin-page-footer {
+    max-height: min(38vh, 22rem);
+    overflow: auto;
+  }
+
+  .admin-page-sticky,
+  .admin-profile-sticky {
+    flex-shrink: 0;
     background: var(--surface);
     padding-bottom: 0.5rem;
+  }
+
+  .admin-page:not(.admin-page--fill) .admin-page-sticky,
+  .admin-page:not(.admin-page--fill) .admin-profile-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 20;
     margin-bottom: 0.125rem;
     box-shadow: 0 1px 0 var(--line-subtle);
   }
 
-  .admin-profile-sticky {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    background: var(--surface);
-    padding-bottom: 0.375rem;
-    margin-bottom: 0.125rem;
-    box-shadow: 0 1px 0 var(--line-subtle);
+  .admin-page-body {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.5rem;
+    overflow-y: auto;
+  }
+
+  .admin-page-summary {
+    display: flex;
+    min-height: 0;
+    flex-shrink: 0;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: min(48vh, 30rem);
+    overflow-y: auto;
   }
 
   .admin-list-panel {
     display: flex;
+    min-height: 0;
+    flex: 1;
     flex-direction: column;
     overflow: hidden;
   }
 
+  .admin-page:not(.admin-page--fill) .admin-list-panel {
+    flex: none;
+  }
+
   .admin-list-panel .admin-table-scroll {
+    min-height: 0;
+    flex: 1;
     overflow: auto;
     max-height: min(72vh, calc(100dvh - var(--topbar-h) - 12rem));
   }
 
-  .admin-list-panel .data-table thead th {
+  .admin-page--fill .admin-list-panel .admin-table-scroll {
+    max-height: none;
+  }
+
+  .admin-list-panel .admin-table-scroll .data-table thead th {
     position: sticky;
     top: 0;
     z-index: 10;

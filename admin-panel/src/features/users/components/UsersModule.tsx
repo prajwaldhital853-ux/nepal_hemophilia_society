@@ -158,7 +158,7 @@ export default function UsersModule() {
   }, [user?.role]);
 
   return (
-    <div className="admin-page">
+    <div className="admin-page admin-page--fill">
       <div className="admin-page-sticky space-y-2">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
@@ -321,7 +321,7 @@ export default function UsersModule() {
         )}
       </section>
 
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="admin-page-footer grid shrink-0 gap-3 lg:grid-cols-2">
         <article className="panel overflow-x-auto p-3">
           <h2 className="text-[12px] font-semibold text-ink">Login tracking</h2>
           <table className="inner-table mt-2 w-full text-left">

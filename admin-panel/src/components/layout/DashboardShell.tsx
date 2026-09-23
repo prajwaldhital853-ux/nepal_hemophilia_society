@@ -23,13 +23,13 @@ function DashboardFrame({ children }: { children: React.ReactNode }) {
         />
       ) : null}
       <Sidebar />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="isolate flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Header />
         <AdminNotificationAlerts />
         <NotificationPageSync />
         <BackupAutoDownload />
-        <main className="admin-scroll flex min-h-0 flex-1 flex-col overflow-y-auto p-2.5 sm:p-3">
-          <div className="animate-pageIn mx-auto w-full max-w-[1360px]">
+        <main className="admin-scroll relative z-0 flex min-h-0 flex-1 flex-col overflow-y-auto p-2.5 sm:p-3">
+          <div className="mx-auto flex w-full min-w-0 max-w-[1360px] flex-1 flex-col">
             <ViewOnlyBar />
             {children}
           </div>

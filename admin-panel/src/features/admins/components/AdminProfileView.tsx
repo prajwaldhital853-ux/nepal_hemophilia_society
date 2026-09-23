@@ -75,7 +75,7 @@ export default function AdminProfileView({ id }: { id: string }) {
     : (admin.effectivePermissions || []).map((code) => ({ code, label: PERM_LABELS[code] || code }));
 
   return (
-    <div className="admin-page">
+    <div className="admin-page admin-page--fill">
       <div className="admin-profile-sticky space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -155,8 +155,22 @@ export default function AdminProfileView({ id }: { id: string }) {
           This is your own account. Another administrator must update your profile, permissions, or status.
         </p>
       ) : null}
+
+      <div className="tabs-bar">
+        {tabs.map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => setTab(item)}
+            className={`tab-link ${tab === item ? "tab-link-active" : ""}`}
+          >
+            {item}
+          </button>
+        ))}
+      </div>
       </div>
 
+      <div className="admin-page-body">
       <article className="panel flex flex-wrap items-center gap-3 border-l-4 border-l-brand p-3">
         <div>
           <p className="text-[10px] uppercase tracking-wide text-faint">Province</p>
@@ -181,12 +195,12 @@ export default function AdminProfileView({ id }: { id: string }) {
       <div
         className={
           isOverview
-            ? "grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)] lg:grid-rows-[auto_1fr]"
+            ? "grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]"
             : "flex flex-col gap-3"
         }
       >
         {isOverview ? (
-          <aside className="profile-sidebar lg:row-span-2 lg:self-start">
+          <aside className="profile-sidebar lg:self-start">
             <UserAvatar name={admin.fullName} photoUrl={admin.photoUrl} size={80} className="size-20 rounded-md text-[18px]" />
             <h2 className="mt-4 text-[14px] font-semibold">{admin.fullName}</h2>
             <p className="profile-sidebar-meta mt-1 text-[11px]">{roleLabel}</p>
@@ -222,20 +236,7 @@ export default function AdminProfileView({ id }: { id: string }) {
           </aside>
         ) : null}
 
-        <div className={`tabs-bar admin-profile-sticky min-w-0 ${isOverview ? "lg:col-start-2" : ""}`}>
-          {tabs.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setTab(item)}
-              className={`tab-link ${tab === item ? "tab-link-active" : ""}`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-
-        <div className={`min-w-0 ${isOverview ? "lg:col-start-2" : ""}`}>
+        <div className={`min-w-0 ${isOverview ? "" : ""}`}>
           {tab === "Overview" ? (
             <div className="grid gap-3 md:grid-cols-2">
               <article className="panel p-3">
@@ -295,6 +296,7 @@ export default function AdminProfileView({ id }: { id: string }) {
             </article>
           )}
         </div>
+      </div>
       </div>
 
       {editing && canEditThis && admin ? (

@@ -245,7 +245,7 @@ export default function InjectionsModule() {
     : null;
 
   return (
-    <div className="admin-page">
+    <div className="admin-page admin-page--fill">
       <div className="admin-page-sticky space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -306,6 +306,7 @@ export default function InjectionsModule() {
       </div>
       </div>
 
+      <div className="admin-page-summary">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {[
           ["Total logged", formatNumber(liveStats.total)],
@@ -374,7 +375,7 @@ export default function InjectionsModule() {
       </div>
 
       {selected && patient ? (
-        <article className="panel animate-pageIn p-3">
+        <article className="panel p-3">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="flex size-9 items-center justify-center rounded-md bg-brand-soft text-brand">
@@ -520,6 +521,7 @@ export default function InjectionsModule() {
           </div>
         </article>
       ) : null}
+      </div>
 
       <section className="panel admin-list-panel overflow-hidden">
           <div className="filter-bar">

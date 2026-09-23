@@ -100,7 +100,7 @@ export default function AuditModule() {
   const selected = rows.find((row) => row.id === openId) ?? rows[0];
 
   return (
-    <div className="admin-page">
+    <div className="admin-page admin-page--fill">
       <div className="admin-page-sticky space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>

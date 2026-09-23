@@ -32,7 +32,7 @@ export function Header() {
   const roleLabel = t(roleKey(user?.role, user?.hospitalStaff?.staffType));
 
   return (
-    <header className="panel relative z-30 flex h-[var(--topbar-h)] shrink-0 items-center gap-2 overflow-visible bg-card px-2.5 shadow-none">
+    <header className="panel relative z-40 flex h-[var(--topbar-h)] shrink-0 items-center gap-2 overflow-visible bg-card px-2.5 shadow-none">
       <button
         type="button"
         className="rounded p-1 text-muted hover:bg-elevated lg:hidden"

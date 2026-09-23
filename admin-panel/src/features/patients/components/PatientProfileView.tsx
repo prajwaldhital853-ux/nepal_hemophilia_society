@@ -99,7 +99,7 @@ export default function PatientProfileView({ id }: { id: string }) {
   const canLogClinical = Boolean(record.canLogClinical);
 
   return (
-    <div className="admin-page">
+    <div className="admin-page admin-page--fill">
       <div className="admin-profile-sticky space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -179,6 +179,7 @@ export default function PatientProfileView({ id }: { id: string }) {
       </div>
       </div>
 
+      <div className="admin-page-body">
       <article className="panel flex flex-wrap items-center gap-3 border-l-4 border-l-brand p-3">
         <div>
           <p className="text-[10px] uppercase tracking-wide text-faint">Province</p>
@@ -379,6 +380,7 @@ export default function PatientProfileView({ id }: { id: string }) {
           {tab} records for {record.fullName} will appear here.
         </article>
       ) : null}
+      </div>
     </div>
   );
 }
