@@ -49,7 +49,7 @@ export function HomeHeader({
           <Ionicons name="notifications-outline" size={24} color="#111827" />
           {notificationCount > 0 ? (
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{notificationCount}</Text>
+              <Text style={styles.badgeText}>{notificationCount > 99 ? "99+" : notificationCount}</Text>
             </View>
           ) : null}
         </Pressable>
@@ -90,17 +90,17 @@ const styles = StyleSheet.create({
   iconBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
   badge: {
     position: "absolute",
-    top: 2,
-    right: 2,
-    minWidth: 15,
-    height: 15,
+    top: 0,
+    right: 0,
+    minWidth: 16,
+    height: 16,
     borderRadius: 8,
-    backgroundColor: homeColors.primary,
+    backgroundColor: "#DC2626",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 3,
   },
-  badgeText: { fontSize: 8, fontWeight: "700", color: homeColors.white },
+  badgeText: { fontSize: 9, fontWeight: "800", color: homeColors.white },
   avatarWrap: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   avatar: {
     width: 34,

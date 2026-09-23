@@ -99,9 +99,17 @@ class AdminNotificationsView(APIView):
 
     def get(self, request):
         qs = AdminNotification.objects.filter(recipient=request.user)
-        unread = qs.filter(is_read=False).count()
-        data = AdminNotificationSerializer(qs[:80], many=True).data
-        return Response({"notifications": data, "unreadCount": unread, "total": qs.count()})
+        general = qs.exclude(category="appointment")
+        appointments = qs.filter(category="appointment")
+        return Response(
+            {
+                "notifications": AdminNotificationSerializer(general[:80], many=True).data,
+                "unreadCount": general.filter(is_read=False).count(),
+                "appointmentNotifications": AdminNotificationSerializer(appointments[:40], many=True).data,
+                "appointmentUnreadCount": appointments.filter(is_read=False).count(),
+                "total": qs.count(),
+            }
+        )
 
 
 class AdminNotificationReadView(APIView):

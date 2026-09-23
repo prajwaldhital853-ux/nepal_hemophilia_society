@@ -7,12 +7,12 @@ from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsAdminRole, IsPatientRole, PatientPasswordUsable
 from apps.accounts.rbac import PERM_APPOINTMENTS_DELETE, PERM_APPOINTMENTS_UPDATE, PERM_APPOINTMENTS_VIEW, has_perm
-from apps.appointments.models import Appointment, AppointmentStatus, VisitType
+from apps.appointments.models import Appointment, AppointmentSlot, AppointmentStatus, VisitType
 from apps.appointments.scope import appointments_for_admin
 from apps.appointments.serializers import AppointmentSerializer
 from apps.hospitals.models import Hospital
 from apps.notifications.models import NotificationCategory
-from apps.notifications.services import notify_admins, notify_patient
+from apps.notifications.services import _actor_label, notify_admins, notify_patient
 
 
 OPEN_FOR_PATIENT_CANCEL = {
@@ -146,6 +146,109 @@ class PatientAppointmentDetailView(APIView):
         return Response({"appointment": AppointmentSerializer(appointment).data})
 
 
+def _slot_payload(slot):
+    return {
+        "id": slot.id,
+        "hospitalId": slot.hospital_id,
+        "hospitalName": slot.hospital.name,
+        "slotAt": slot.slot_at.isoformat(),
+        "capacity": slot.capacity,
+    }
+
+
+def _slots_scope(user):
+    from apps.accounts.rbac import hospital_id_for, is_national_scope, province_id_for
+
+    qs = AppointmentSlot.objects.select_related("hospital").filter(slot_at__gte=timezone.now())
+    if is_national_scope(user):
+        return qs
+    hospital_id = hospital_id_for(user)
+    if hospital_id and getattr(user, "role", "") == "hospital_admin":
+        return qs.filter(hospital_id=hospital_id)
+    province_id = province_id_for(user)
+    if province_id:
+        return qs.filter(hospital__province_id=province_id)
+    return qs.none()
+
+
+class PatientAppointmentSlotsView(APIView):
+    """Upcoming bookable dates and times published by a centre."""
+
+    permission_classes = [IsAuthenticated, IsPatientRole, PatientPasswordUsable]
+
+    def get(self, request):
+        hospital_id = request.query_params.get("hospitalId")
+        qs = AppointmentSlot.objects.select_related("hospital").filter(slot_at__gte=timezone.now())
+        if hospital_id:
+            qs = qs.filter(hospital_id=hospital_id)
+        return Response({"slots": [_slot_payload(slot) for slot in qs[:120]]})
+
+
+class AdminAppointmentSlotsView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def get(self, request):
+        if not has_perm(request.user, PERM_APPOINTMENTS_VIEW):
+            raise PermissionDenied("You cannot view appointment slots.")
+        return Response({"slots": [_slot_payload(slot) for slot in _slots_scope(request.user)[:200]]})
+
+    def post(self, request):
+        if not has_perm(request.user, PERM_APPOINTMENTS_UPDATE):
+            raise PermissionDenied("You cannot add appointment slots.")
+        hospital_id = request.data.get("hospitalId")
+        hospital = Hospital.objects.filter(pk=hospital_id, is_active=True).select_related("province").first()
+        if not hospital:
+            raise ValidationError({"hospitalId": "Choose a treatment centre."})
+        from apps.accounts.rbac import hospital_id_for, is_national_scope, province_id_for
+
+        if not is_national_scope(request.user):
+            own_hospital = hospital_id_for(request.user)
+            if getattr(request.user, "role", "") == "hospital_admin":
+                if own_hospital != hospital.id:
+                    raise PermissionDenied("You can only add slots for your own centre.")
+            elif province_id_for(request.user) != hospital.province_id:
+                raise PermissionDenied("This centre is outside your province.")
+        raw_times = request.data.get("times") or []
+        if isinstance(raw_times, str):
+            raw_times = [raw_times]
+        created = []
+        errors = []
+        for raw in raw_times[:30]:
+            try:
+                slot_at = timezone.datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+                if timezone.is_naive(slot_at):
+                    slot_at = timezone.make_aware(slot_at, timezone.get_current_timezone())
+            except (TypeError, ValueError):
+                errors.append(f"Invalid time: {raw}")
+                continue
+            if slot_at <= timezone.now():
+                errors.append("Slots must be in the future.")
+                continue
+            slot, was_created = AppointmentSlot.objects.get_or_create(
+                hospital=hospital,
+                slot_at=slot_at,
+                defaults={"created_by": request.user, "capacity": int(request.data.get("capacity") or 1)},
+            )
+            if was_created:
+                created.append(slot)
+        if not created and errors:
+            raise ValidationError({"times": " ".join(errors[:3])})
+        return Response({"slots": [_slot_payload(slot) for slot in created]}, status=201)
+
+
+class AdminAppointmentSlotDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def delete(self, request, pk):
+        if not has_perm(request.user, PERM_APPOINTMENTS_UPDATE):
+            raise PermissionDenied("You cannot remove appointment slots.")
+        slot = _slots_scope(request.user).filter(pk=pk).first()
+        if not slot:
+            raise NotFound("Slot not found.")
+        slot.delete()
+        return Response(status=204)
+
+
 class AdminAppointmentsView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
@@ -207,11 +310,49 @@ class AdminAppointmentDetailView(APIView):
         appointment.handled_by = request.user
         appointment.save()
         _notify_decision(appointment, request.user)
+        notify_admins(
+            hospital=appointment.hospital,
+            category=NotificationCategory.APPOINTMENT,
+            title=f"Appointment {appointment.get_status_display().lower()}",
+            message=(
+                f"{_actor_label(request.user)} set {appointment.patient.full_name} "
+                f"({appointment.patient.unique_patient_id}) to {appointment.get_status_display().lower()} "
+                f"at {appointment.hospital.name}."
+            ),
+            actor=request.user,
+            related_type="appointment",
+            related_id=appointment.id,
+        )
         return Response({"appointment": AppointmentSerializer(appointment).data})
 
     def delete(self, request, pk):
         if not has_perm(request.user, PERM_APPOINTMENTS_DELETE):
             raise PermissionDenied("You cannot delete appointments.")
         appointment = self._get(request, pk)
+        notify_admins(
+            hospital=appointment.hospital,
+            category=NotificationCategory.APPOINTMENT,
+            title="Appointment deleted",
+            message=(
+                f"{_actor_label(request.user)} deleted the {appointment.get_visit_type_display()} "
+                f"for {appointment.patient.full_name} ({appointment.patient.unique_patient_id}) "
+                f"at {appointment.hospital.name}."
+            ),
+            actor=request.user,
+            related_type="appointment",
+            related_id=appointment.id,
+        )
+        notify_patient(
+            patient=appointment.patient,
+            category=NotificationCategory.APPOINTMENT,
+            title="Appointment removed",
+            message=(
+                f"Your {appointment.get_visit_type_display()} at {appointment.hospital.name} was removed "
+                f"by {_actor_label(request.user)}."
+            ),
+            user=request.user,
+            related_type="appointment",
+            related_id=appointment.id,
+        )
         appointment.delete()
         return Response(status=204)

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CalendarPlus, Search, Trash2, X } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
 
@@ -21,7 +22,25 @@ type Appointment = {
   patientNote?: string;
 };
 
-const STATUSES = ["", "requested", "confirmed", "rescheduled", "declined", "completed", "cancelled"];
+type Slot = {
+  id: number;
+  hospitalId: number;
+  hospitalName: string;
+  slotAt: string;
+  capacity: number;
+};
+
+type Center = { id: number; name: string; province: string };
+
+const STATUS_OPTIONS: Array<[string, string]> = [
+  ["", "All statuses"],
+  ["requested", "Requested"],
+  ["confirmed", "Confirmed"],
+  ["rescheduled", "Rescheduled"],
+  ["declined", "Declined"],
+  ["completed", "Completed"],
+  ["cancelled", "Cancelled"],
+];
 
 function when(iso?: string | null) {
   if (!iso) return "—";
@@ -38,10 +57,17 @@ function toInput(iso?: string | null) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function statusClass(status: string) {
+  if (status === "confirmed" || status === "completed") return "bg-status-green-soft text-status-green";
+  if (status === "declined" || status === "cancelled") return "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400";
+  return "bg-brand-soft text-brand";
+}
+
 export default function AppointmentsModule() {
   const [rows, setRows] = useState<Appointment[]>([]);
-  const [status, setStatus] = useState("requested");
+  const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
+  const [debounced, setDebounced] = useState("");
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [canUpdate, setCanUpdate] = useState(false);
   const [canDelete, setCanDelete] = useState(false);
@@ -50,20 +76,32 @@ export default function AppointmentsModule() {
   const [adminNote, setAdminNote] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showSlots, setShowSlots] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(search), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   const load = useCallback(async () => {
     const query = new URLSearchParams();
     if (status) query.set("status", status);
-    if (search.trim()) query.set("search", search.trim());
-    const data = (await apiFetch(`/appointments/?${query}`)) as {
-      appointments?: Appointment[];
-      canUpdate?: boolean;
-      canDelete?: boolean;
-    };
-    setRows(Array.isArray(data.appointments) ? data.appointments : []);
-    setCanUpdate(Boolean(data.canUpdate));
-    setCanDelete(Boolean(data.canDelete));
-  }, [search, status]);
+    if (debounced.trim()) query.set("search", debounced.trim());
+    setLoading(true);
+    try {
+      const data = (await apiFetch(`/appointments/?${query}`)) as {
+        appointments?: Appointment[];
+        canUpdate?: boolean;
+        canDelete?: boolean;
+      };
+      setRows(Array.isArray(data.appointments) ? data.appointments : []);
+      setCanUpdate(Boolean(data.canUpdate));
+      setCanDelete(Boolean(data.canDelete));
+    } finally {
+      setLoading(false);
+    }
+  }, [debounced, status]);
 
   useEffect(() => {
     void load().catch((err: Error) => setError(err.message));
@@ -75,6 +113,7 @@ export default function AppointmentsModule() {
     setScheduledAt(toInput(row.scheduledAt || row.preferredAt));
     setAdminNote(row.adminNote || "");
     setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function save(nextStatus: string) {
@@ -114,96 +153,353 @@ export default function AppointmentsModule() {
     }
   }
 
-  const waiting = rows.filter((row) => row.status === "requested").length;
+  const waiting = useMemo(() => rows.filter((row) => row.status === "requested").length, [rows]);
 
   return (
-    <div className="space-y-3">
-      <section className="panel overflow-hidden">
-        <div className="flex flex-wrap items-center gap-2 px-3 py-3">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search name or HEM ID"
-            className="h-9 min-w-48 flex-1 rounded-lg border border-black/10 px-3 text-[13px]"
-          />
-          <span className="rounded-full bg-orange-50 px-3 py-1 text-[12px] font-semibold text-orange-700">{waiting} waiting in this view</span>
+    <div className="flex flex-col gap-2 pb-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h1 className="text-[15px] font-semibold text-ink">Appointments</h1>
+          <p className="text-[11px] text-muted">Home &gt; Appointments &gt; Requests from patients</p>
         </div>
-        <div className="flex gap-2 overflow-x-auto px-3 pb-3">
-          {STATUSES.map((item) => (
-            <button
-              key={item || "all"}
-              type="button"
-              onClick={() => setStatus(item)}
-              className={`rounded-full px-3 py-1 text-[12px] font-semibold ${status === item ? "bg-[#001D3D] text-white" : "bg-slate-100 text-slate-700"}`}
-            >
-              {item || "All"}
+        {canUpdate ? (
+          <button
+            type="button"
+            className="flex items-center gap-1.5 rounded bg-brand px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-blueDark"
+            onClick={() => setShowSlots((value) => !value)}
+          >
+            <CalendarPlus className="size-3.5" />
+            {showSlots ? "Hide available times" : "Set available times"}
+          </button>
+        ) : null}
+      </div>
+
+      {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
+
+      {showSlots ? <SlotManager onError={setError} /> : null}
+
+      {selected ? (
+        <section className="panel p-4">
+          <div className="flex items-start justify-between gap-3 border-b border-line-subtle pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-[15px] font-semibold text-ink">{selected.patientName}</h2>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusClass(selected.status)}`}>
+                  {selected.statusLabel}
+                </span>
+              </div>
+              <p className="mt-0.5 text-[11px] text-muted">
+                {selected.patientId} · {selected.visitTypeLabel} · {selected.hospitalName}, {selected.province}
+              </p>
+            </div>
+            <button type="button" className="rounded p-1 text-muted hover:bg-elevated" aria-label="Close" onClick={() => setSelected(null)}>
+              <X className="size-4" />
             </button>
-          ))}
+          </div>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted">Request</p>
+              <p className="panel-inset px-3 py-2 text-[12px] text-ink">{selected.reason || "No reason given."}</p>
+              <p className="text-[11px] text-muted">
+                Preferred time: <span className="font-medium text-ink">{when(selected.preferredAt)}</span>
+              </p>
+              {selected.patientNote ? <p className="text-[11px] text-muted">Patient note: {selected.patientNote}</p> : null}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted">Response</p>
+              <label className="block text-[11px] font-medium text-ink">
+                Doctor / clinician
+                <input
+                  value={doctorName}
+                  onChange={(event) => setDoctorName(event.target.value)}
+                  className="panel-inset mt-1 h-8 w-full px-2.5 text-[12px] text-ink outline-none"
+                />
+              </label>
+              <label className="block text-[11px] font-medium text-ink">
+                Confirmed date and time
+                <input
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={(event) => setScheduledAt(event.target.value)}
+                  className="panel-inset mt-1 h-8 w-full px-2.5 text-[12px] text-ink outline-none"
+                />
+              </label>
+              <label className="block text-[11px] font-medium text-ink">
+                Message to the patient
+                <textarea
+                  value={adminNote}
+                  onChange={(event) => setAdminNote(event.target.value)}
+                  className="panel-inset mt-1 min-h-16 w-full px-2.5 py-2 text-[12px] text-ink outline-none"
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line-subtle pt-3">
+            {canUpdate ? (
+              <>
+                <button type="button" disabled={saving} onClick={() => void save("confirmed")} className="rounded bg-brand px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-blueDark disabled:opacity-60">
+                  Confirm
+                </button>
+                <button type="button" disabled={saving} onClick={() => void save("rescheduled")} className="panel px-3 py-1.5 text-[11px] font-semibold text-ink shadow-none hover:bg-elevated disabled:opacity-60">
+                  Reschedule
+                </button>
+                <button type="button" disabled={saving} onClick={() => void save("completed")} className="panel px-3 py-1.5 text-[11px] font-semibold text-ink shadow-none hover:bg-elevated disabled:opacity-60">
+                  Mark visited
+                </button>
+                <button type="button" disabled={saving} onClick={() => void save("declined")} className="panel px-3 py-1.5 text-[11px] font-semibold text-red-600 shadow-none hover:bg-red-50 disabled:opacity-60">
+                  Decline
+                </button>
+              </>
+            ) : (
+              <p className="text-[11px] text-muted">View only — update permission is required to take action.</p>
+            )}
+            {canDelete ? (
+              <button type="button" disabled={saving} onClick={() => void remove()} className="ml-auto flex items-center gap-1 text-[11px] font-semibold text-red-600 hover:underline disabled:opacity-60">
+                <Trash2 className="size-3.5" />
+                Delete
+              </button>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="panel overflow-hidden">
+        <div className="filter-bar">
+          <label className="panel-inset flex h-8 min-w-[200px] flex-1 items-center gap-2 px-2.5 shadow-none">
+            <Search className="size-3.5 text-faint" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
+              placeholder="Search by name or Unique Patient ID (HEM-…)"
+            />
+          </label>
+          <select
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+            className="panel h-8 px-2.5 text-[11px] text-muted shadow-none outline-none"
+          >
+            {STATUS_OPTIONS.map(([value, label]) => (
+              <option key={value || "all"} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-muted">
+            Total: <span className="text-[13px] font-semibold text-ink">{rows.length}</span>
+            {waiting > 0 ? (
+              <>
+                {" "}· Awaiting reply: <span className="text-[13px] font-semibold text-ink">{waiting}</span>
+              </>
+            ) : null}
+          </p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="data-table w-full min-w-[860px] text-left text-sm">
+            <thead className="bg-elevated text-[11px] uppercase tracking-wide text-muted">
+              <tr>
+                {["Patient", "Visit type", "Centre", "Preferred", "Scheduled", "Doctor", "Status"].map((h) => (
+                  <th key={h} className="px-3 py-3 font-medium">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-3 py-8 text-center text-[11px] text-muted">
+                    Loading…
+                  </td>
+                </tr>
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-3 py-8 text-center text-[11px] text-muted">
+                    No appointments match this filter.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className={`cursor-pointer hover:bg-elevated/70 dark:hover:bg-white/[0.03] ${selected?.id === row.id ? "bg-brand-soft/50" : ""}`}
+                    onClick={() => open(row)}
+                  >
+                    <td className="px-3 py-3">
+                      <p className="font-semibold text-ink">{row.patientName}</p>
+                      <p className="text-[11px] text-brand">{row.patientId}</p>
+                    </td>
+                    <td className="px-3 py-3 text-ink">{row.visitTypeLabel}</td>
+                    <td className="px-3 py-3 text-muted">{row.hospitalName}</td>
+                    <td className="px-3 py-3 text-muted">{when(row.preferredAt)}</td>
+                    <td className="px-3 py-3 text-muted">{when(row.scheduledAt)}</td>
+                    <td className="px-3 py-3 text-muted">{row.doctorName || "—"}</td>
+                    <td className="px-3 py-3">
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusClass(row.status)}`}>
+                        {row.statusLabel}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </section>
+    </div>
+  );
+}
 
-      {error ? <p className="text-[13px] text-red-700">{error}</p> : null}
+function SlotManager({ onError }: { onError: (message: string) => void }) {
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [centers, setCenters] = useState<Center[]>([]);
+  const [hospitalId, setHospitalId] = useState<number | null>(null);
+  const [date, setDate] = useState("");
+  const [times, setTimes] = useState("10:00, 11:00, 14:00");
+  const [saving, setSaving] = useState(false);
 
-      <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="space-y-2">
-          {rows.length === 0 ? <p className="panel px-4 py-8 text-center text-[13px] text-muted">No appointments in this view.</p> : null}
-          {rows.map((row) => (
-            <button key={row.id} type="button" onClick={() => open(row)} className="panel block w-full px-4 py-3 text-left hover:bg-elevated">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[14px] font-bold text-ink">{row.patientName}</p>
-                  <p className="text-[12px] text-muted">{row.patientId} · {row.visitTypeLabel}</p>
-                </div>
-                <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold uppercase text-slate-700">{row.statusLabel}</span>
+  const load = useCallback(async () => {
+    try {
+      const [slotData, centerData] = await Promise.all([
+        apiFetch("/appointments/slots/") as Promise<{ slots?: Slot[] }>,
+        apiFetch("/hospitals/") as Promise<{ hospitals?: Center[] }>,
+      ]);
+      setSlots(Array.isArray(slotData.slots) ? slotData.slots : []);
+      const rows = Array.isArray(centerData.hospitals) ? centerData.hospitals : [];
+      setCenters(rows);
+      setHospitalId((current) => current ?? rows[0]?.id ?? null);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Could not load available times");
+    }
+  }, [onError]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function add() {
+    if (!hospitalId || !date) {
+      onError("Pick a centre and a date first.");
+      return;
+    }
+    const parsed = times
+      .split(/[,;\s]+/)
+      .map((item) => item.trim())
+      .filter((item) => /^\d{1,2}:\d{2}$/.test(item))
+      .map((item) => `${date}T${item.padStart(5, "0")}`);
+    if (parsed.length === 0) {
+      onError("Enter at least one time, for example 10:00.");
+      return;
+    }
+    setSaving(true);
+    onError("");
+    try {
+      await apiFetch("/appointments/slots/", {
+        method: "POST",
+        body: JSON.stringify({ hospitalId, times: parsed }),
+      });
+      await load();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Could not save the times");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeSlot(id: number) {
+    try {
+      await apiFetch(`/appointments/slots/${id}/`, { method: "DELETE" });
+      setSlots((rows) => rows.filter((row) => row.id !== id));
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Could not remove the slot");
+    }
+  }
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, Slot[]>();
+    for (const slot of slots) {
+      const key = `${slot.hospitalName} — ${new Date(slot.slotAt).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`;
+      map.set(key, [...(map.get(key) || []), slot]);
+    }
+    return Array.from(map.entries());
+  }, [slots]);
+
+  return (
+    <section className="panel p-4">
+      <h2 className="text-[13px] font-semibold text-ink">Available dates and times</h2>
+      <p className="mt-0.5 text-[11px] text-muted">
+        Patients can only pick from the times you publish here when they book from the app.
+      </p>
+
+      <div className="mt-3 flex flex-wrap items-end gap-2">
+        <label className="block text-[11px] font-medium text-ink">
+          Centre
+          <select
+            value={hospitalId ?? ""}
+            onChange={(event) => setHospitalId(Number(event.target.value) || null)}
+            className="panel-inset mt-1 block h-8 min-w-[180px] px-2.5 text-[12px] text-ink outline-none"
+          >
+            {centers.map((center) => (
+              <option key={center.id} value={center.id}>
+                {center.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-[11px] font-medium text-ink">
+          Date
+          <input
+            type="date"
+            value={date}
+            min={new Date().toISOString().slice(0, 10)}
+            onChange={(event) => setDate(event.target.value)}
+            className="panel-inset mt-1 block h-8 px-2.5 text-[12px] text-ink outline-none"
+          />
+        </label>
+        <label className="block flex-1 text-[11px] font-medium text-ink">
+          Times (comma separated, 24-hour)
+          <input
+            value={times}
+            onChange={(event) => setTimes(event.target.value)}
+            placeholder="10:00, 11:00, 14:00"
+            className="panel-inset mt-1 block h-8 w-full px-2.5 text-[12px] text-ink outline-none"
+          />
+        </label>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => void add()}
+          className="h-8 rounded bg-brand px-3 text-[11px] font-semibold text-white hover:bg-brand-blueDark disabled:opacity-60"
+        >
+          {saving ? "Saving…" : "Publish times"}
+        </button>
+      </div>
+
+      {grouped.length === 0 ? (
+        <p className="mt-3 text-[11px] text-muted">No upcoming times published yet.</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {grouped.map(([label, groupSlots]) => (
+            <div key={label} className="panel-inset px-3 py-2">
+              <p className="text-[11px] font-semibold text-ink">{label}</p>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {groupSlots.map((slot) => (
+                  <span key={slot.id} className="panel flex items-center gap-1 px-2 py-0.5 text-[11px] text-ink shadow-none">
+                    {new Date(slot.slotAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                    <button type="button" aria-label="Remove time" className="text-muted hover:text-red-600" onClick={() => void removeSlot(slot.id)}>
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                ))}
               </div>
-              <p className="mt-2 text-[12px] text-ink">{row.hospitalName} · {row.province}</p>
-              <p className="text-[12px] text-muted">Requested {when(row.preferredAt)}{row.scheduledAt ? ` · Scheduled ${when(row.scheduledAt)}` : ""}</p>
-              <p className="mt-1 text-[12px] text-ink">{row.reason}</p>
-            </button>
+            </div>
           ))}
         </div>
-
-        <aside className="panel h-fit p-4">
-          {!selected ? <p className="text-[13px] text-muted">Select a request to assign a doctor, confirm the time, or decline it.</p> : null}
-          {selected ? (
-            <div className="space-y-3">
-              <div>
-                <p className="text-[11px] font-bold uppercase text-red-700">{selected.statusLabel}</p>
-                <h2 className="text-lg font-bold text-ink">{selected.patientName}</h2>
-                <p className="text-[12px] text-muted">{selected.patientId} · {selected.hospitalName}</p>
-              </div>
-              <p className="rounded-lg bg-slate-50 p-3 text-[13px] text-ink">{selected.reason}</p>
-              <label className="block text-[12px] font-semibold text-ink">
-                Doctor / clinician
-                <input value={doctorName} onChange={(event) => setDoctorName(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-black/10 px-3" />
-              </label>
-              <label className="block text-[12px] font-semibold text-ink">
-                Confirmed time
-                <input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-black/10 px-3" />
-              </label>
-              <label className="block text-[12px] font-semibold text-ink">
-                Message to the patient
-                <textarea value={adminNote} onChange={(event) => setAdminNote(event.target.value)} className="mt-1 min-h-20 w-full rounded-lg border border-black/10 px-3 py-2" />
-              </label>
-              {canUpdate ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" disabled={saving} onClick={() => void save("confirmed")} className="rounded-lg bg-[#C1121F] px-3 py-2 text-[12px] font-bold text-white">Confirm</button>
-                  <button type="button" disabled={saving} onClick={() => void save("rescheduled")} className="rounded-lg bg-[#001D3D] px-3 py-2 text-[12px] font-bold text-white">Reschedule</button>
-                  <button type="button" disabled={saving} onClick={() => void save("declined")} className="rounded-lg border px-3 py-2 text-[12px] font-bold">Decline</button>
-                  <button type="button" disabled={saving} onClick={() => void save("completed")} className="rounded-lg border px-3 py-2 text-[12px] font-bold">Mark visited</button>
-                </div>
-              ) : (
-                <p className="text-[12px] text-muted">You can view this request. Update permission is required to take action.</p>
-              )}
-              {canDelete ? (
-                <button type="button" disabled={saving} onClick={() => void remove()} className="text-[12px] font-semibold text-red-700">
-                  Delete appointment
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-        </aside>
-      </div>
-    </div>
+      )}
+    </section>
   );
 }

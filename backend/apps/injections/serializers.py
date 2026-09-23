@@ -242,8 +242,7 @@ class InjectionUpdateSerializer(serializers.Serializer):
             instance.save()
             from apps.notifications.services import notify_injection_action
 
-            if old_status != instance.status:
-                notify_injection_action(instance, user=request.user)
+            notify_injection_action(instance, user=request.user, updated=True)
             if old_status != InjectionStatus.COMPLETED and instance.status == InjectionStatus.COMPLETED:
                 if not instance.visit_log.exists():
                     create_hospital_visit(
@@ -322,4 +321,7 @@ class InjectionCorrectionSerializer(serializers.Serializer):
                 corrects_record=original,
             )
             consume_for_injection(record, user=request.user)
+            from apps.notifications.services import notify_injection_action
+
+            notify_injection_action(record, user=request.user, updated=True)
         return record

@@ -47,6 +47,17 @@ def _audit(request, action, module, object_id="", detail=""):
         ip=client_ip(request),
         detail=detail,
     )
+    from apps.notifications.models import NotificationCategory
+    from apps.notifications.services import notify_admins
+
+    notify_admins(
+        category=NotificationCategory.SYSTEM,
+        title=action,
+        message=f"{detail or action}.",
+        actor=request.user,
+        related_type="website",
+        related_id=int(object_id) if str(object_id).isdigit() else None,
+    )
 
 
 def _require_website(user, perm, message):

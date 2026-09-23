@@ -84,6 +84,26 @@ def _firebase_app():
     return firebase_admin.initialize_app(cred)
 
 
+def _admin_link(data: dict) -> str:
+    base = os.getenv("ADMIN_PANEL_URL", "https://nepal-hemophilia-society.onrender.com").rstrip("/")
+    topic = data.get("relatedType") or data.get("category") or ""
+    if topic == "appointment":
+        return f"{base}/dashboard/appointments"
+    if topic in ("injection", "schedule", "treatment", "bleeding", "bleeding_episode"):
+        return f"{base}/dashboard/injections"
+    if topic == "stock":
+        return f"{base}/dashboard/stock"
+    if topic in ("patient", "profile", "document"):
+        return f"{base}/dashboard/patients"
+    if topic == "admin":
+        return f"{base}/dashboard/admins"
+    if topic in ("website", "system"):
+        return f"{base}/dashboard/website"
+    if topic == "backup":
+        return f"{base}/dashboard/settings"
+    return f"{base}/dashboard"
+
+
 def _send_fcm(tokens: list[str], title: str, body: str, data: dict):
     app = _firebase_app()
     if app is None:
@@ -91,12 +111,24 @@ def _send_fcm(tokens: list[str], title: str, body: str, data: dict):
     from firebase_admin import messaging
 
     payload = {k: str(v) for k, v in data.items()}
+    payload.setdefault("title", title[:120])
+    payload.setdefault("body", body[:240])
     for token in tokens:
         try:
             messaging.send(
                 messaging.Message(
                     notification=messaging.Notification(title=title[:120], body=body[:240]),
                     data=payload,
+                    webpush=messaging.WebpushConfig(
+                        notification=messaging.WebpushNotification(
+                            title=title[:120],
+                            body=body[:240],
+                            icon="/favicon.ico",
+                        ),
+                        fcm_options=messaging.WebpushFCMOptions(
+                            link=_admin_link(payload),
+                        ),
+                    ),
                     token=token,
                 ),
                 app=app,

@@ -7,6 +7,7 @@ export function hrefForNotification(note: { category: string; relatedType?: stri
   if (topic === "stock") return "/dashboard/stock";
   if (topic === "patient" || topic === "profile" || topic === "document") return "/dashboard/patients";
   if (topic === "admin") return "/dashboard/admins";
+  if (topic === "website" || topic === "system") return "/dashboard/website";
   if (topic === "backup") return "/dashboard/settings";
   return "/dashboard";
 }

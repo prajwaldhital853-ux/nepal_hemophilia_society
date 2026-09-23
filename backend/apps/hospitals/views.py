@@ -251,6 +251,18 @@ class HospitalListView(viewsets.ViewSet):
             if not district:
                 return Response({"error": "Unknown district for this province."}, status=400)
         hospital = Hospital.objects.create(name=name, province=province, district=district, is_active=True)
+        from apps.notifications.models import NotificationCategory
+        from apps.notifications.services import notify_admins
+
+        notify_admins(
+            hospital=hospital,
+            category=NotificationCategory.ADMIN,
+            title="Treatment centre added",
+            message=f"{request.user.get_full_name() or request.user.get_username()} added {hospital.name}.",
+            actor=request.user,
+            related_type="admin",
+            related_id=hospital.id,
+        )
         AuditLog.objects.create(
             actor=request.user.get_username(),
             action="Created hospital",
@@ -279,4 +291,16 @@ class HospitalListView(viewsets.ViewSet):
         if active is not None:
             hospital.is_active = bool(active)
         hospital.save()
+        from apps.notifications.models import NotificationCategory
+        from apps.notifications.services import notify_admins
+
+        notify_admins(
+            hospital=hospital,
+            category=NotificationCategory.ADMIN,
+            title="Treatment centre updated",
+            message=f"{request.user.get_full_name() or request.user.get_username()} updated {hospital.name}.",
+            actor=request.user,
+            related_type="admin",
+            related_id=hospital.id,
+        )
         return Response({"hospital": self._serialize(hospital)})

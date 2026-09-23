@@ -209,7 +209,7 @@ function NavItem({
           {badge ? (
             <View style={[styles.navBadge, lightBadge && styles.navBadgeLight]}>
               <Text style={[styles.navBadgeText, lightBadge && styles.navBadgeTextLight]}>
-                {badge}
+                {badge > 99 ? "99+" : badge}
               </Text>
             </View>
           ) : null}

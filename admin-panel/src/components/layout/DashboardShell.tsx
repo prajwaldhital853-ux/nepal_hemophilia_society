@@ -1,30 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
-import { usePathname } from "next/navigation";
-
+import { AdminNotificationAlerts } from "@/components/layout/AdminNotificationAlerts";
 import { Header } from "@/components/layout/Header";
-import { PAGE_NOTIFICATION_TOPICS } from "@/components/layout/notificationHref";
-import { apiFetch } from "@/lib/api";
 import { MobileNavProvider, useMobileNav } from "@/components/layout/MobileNavContext";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { ViewOnlyBar } from "@/components/rbac/ReadOnlyBanner";
 import { RouteGuard } from "@/lib/auth";
-
-function ClearOpenedPageAlerts() {
-  const pathname = usePathname();
-  useEffect(() => {
-    const match = PAGE_NOTIFICATION_TOPICS.find(([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`));
-    if (!match) return;
-    void apiFetch("/notifications/admin/seen/", {
-      method: "POST",
-      body: JSON.stringify({ topics: match[1] }),
-    })
-      .then(() => window.dispatchEvent(new Event("nhms-notifications-refresh")))
-      .catch(() => undefined);
-  }, [pathname]);
-  return null;
-}
 
 function DashboardFrame({ children }: { children: React.ReactNode }) {
   const { open, closeNav } = useMobileNav();
@@ -42,7 +23,7 @@ function DashboardFrame({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Header />
-        <ClearOpenedPageAlerts />
+        <AdminNotificationAlerts />
         <main className="admin-scroll flex min-h-0 flex-1 flex-col overflow-y-auto p-2.5 sm:p-3">
           <div className="animate-pageIn mx-auto w-full max-w-[1360px]">
             <ViewOnlyBar />

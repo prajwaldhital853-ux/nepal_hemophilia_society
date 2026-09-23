@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail } from "lucide-react";
+import { Check, Mail } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -21,21 +21,31 @@ export function AppointmentInbox() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<AdminNote[]>([]);
+  const [unread, setUnread] = useState(0);
 
   const load = useCallback(async () => {
     if (!user) return;
     try {
-      const data = (await apiFetch("/notifications/admin/")) as { notifications?: AdminNote[] };
-      const rows = Array.isArray(data.notifications) ? data.notifications : [];
-      setItems(rows.filter((row) => !row.isRead && row.category === "appointment"));
+      const data = (await apiFetch("/notifications/admin/")) as {
+        appointmentNotifications?: AdminNote[];
+        notifications?: AdminNote[];
+        appointmentUnreadCount?: number;
+      };
+      const rows = Array.isArray(data.appointmentNotifications)
+        ? data.appointmentNotifications
+        : (data.notifications || []).filter((row) => row.category === "appointment");
+      const visible = rows.filter((row) => !row.isRead);
+      setItems(visible);
+      setUnread(Number(data.appointmentUnreadCount ?? visible.length));
     } catch {
       setItems([]);
+      setUnread(0);
     }
   }, [user]);
 
   useEffect(() => {
     void load();
-    const timer = setInterval(() => void load(), 25000);
+    const timer = setInterval(() => void load(), 10000);
     const onRefresh = () => void load();
     window.addEventListener("nhms-notifications-refresh", onRefresh);
     return () => {
@@ -44,9 +54,16 @@ export function AppointmentInbox() {
     };
   }, [load]);
 
+  async function markOne(note: AdminNote) {
+    await apiFetch(`/notifications/admin/${note.id}/read/`, { method: "POST" });
+    setItems((rows) => rows.filter((row) => row.id !== note.id));
+    setUnread((count) => Math.max(0, count - 1));
+  }
+
   async function openOne(note: AdminNote) {
     await apiFetch(`/notifications/admin/${note.id}/read/`, { method: "POST" });
     setItems((rows) => rows.filter((row) => row.id !== note.id));
+    setUnread((count) => Math.max(0, count - 1));
     setOpen(false);
     router.push("/dashboard/appointments");
   }
@@ -57,12 +74,15 @@ export function AppointmentInbox() {
         type="button"
         className="panel relative p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink"
         aria-label="Appointment messages"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          setOpen((value) => !value);
+          void load();
+        }}
       >
         <Mail className="size-4" />
-        {items.length > 0 ? (
-          <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[#001D3D] px-1 text-center text-[10px] font-bold leading-4 text-white">
-            {items.length > 9 ? "9+" : items.length}
+        {unread > 0 ? (
+          <span className="absolute -right-1.5 -top-1.5 min-w-[18px] rounded-full bg-red-600 px-1 text-center text-[11px] font-bold leading-[18px] text-white">
+            {unread > 99 ? "99+" : unread}
           </span>
         ) : null}
       </button>
@@ -76,10 +96,21 @@ export function AppointmentInbox() {
               <p className="px-3 py-6 text-center text-[12px] text-muted">No new appointment messages.</p>
             ) : (
               items.map((note) => (
-                <button key={note.id} type="button" className="block w-full border-b border-black/5 px-3 py-2 text-left hover:bg-elevated" onClick={() => void openOne(note)}>
-                  <p className="text-[12px] font-semibold text-ink">{note.title}</p>
-                  <p className="mt-0.5 text-[11px] leading-4 text-muted">{note.message}</p>
-                </button>
+                <div key={note.id} className="flex items-start gap-1 border-b border-black/5 bg-red-50/60">
+                  <button type="button" className="min-w-0 flex-1 px-3 py-2 text-left hover:bg-elevated" onClick={() => void openOne(note)}>
+                    <p className="text-[12px] font-semibold text-ink">{note.title}</p>
+                    <p className="mt-0.5 text-[11px] leading-4 text-muted">{note.message}</p>
+                  </button>
+                  <button
+                    type="button"
+                    className="mr-2 mt-2 rounded-full p-1 text-red-700 hover:bg-red-100"
+                    aria-label="Mark as read"
+                    title="Mark as read"
+                    onClick={() => void markOne(note)}
+                  >
+                    <Check className="size-4" />
+                  </button>
+                </div>
               ))
             )}
           </div>

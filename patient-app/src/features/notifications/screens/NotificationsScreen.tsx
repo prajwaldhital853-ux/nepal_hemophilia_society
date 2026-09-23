@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -71,22 +72,33 @@ export default function NotificationsScreen({ navigation }: Props) {
         ) : (
           <View style={styles.list}>
             {notifications.map((item) => (
-              <Pressable
-                key={item.id}
-                style={[styles.card, !item.isRead ? styles.cardUnread : null]}
-                onPress={() => {
-                  if (!item.isRead) void markRead(item.id);
-                  const destination = destinationForNotification(item);
-                  if (destination) navigation.navigate(destination.screen as never, destination.params as never);
-                }}
-              >
-                <View style={styles.cardHead}>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                  {!item.isRead ? <View style={styles.unreadDot} /> : null}
-                </View>
-                <Text style={styles.cardMessage}>{item.message}</Text>
-                <Text style={styles.cardMeta}>{formatWhen(item.createdAt)} · {item.category}</Text>
-              </Pressable>
+              <View key={item.id} style={[styles.card, !item.isRead ? styles.cardUnread : null]}>
+                <Pressable
+                  style={styles.cardBody}
+                  onPress={() => {
+                    const destination = destinationForNotification(item);
+                    if (destination) navigation.navigate(destination.screen as never, destination.params as never);
+                  }}
+                >
+                  <View style={styles.cardHead}>
+                    <Text style={styles.cardTitle}>{item.title}</Text>
+                    {!item.isRead ? <View style={styles.unreadDot} /> : null}
+                  </View>
+                  <Text style={styles.cardMessage}>{item.message}</Text>
+                  <Text style={styles.cardMeta}>{formatWhen(item.createdAt)} · {item.category}</Text>
+                </Pressable>
+                {!item.isRead ? (
+                  <Pressable
+                    style={styles.readBtn}
+                    accessibilityLabel="Mark as read"
+                    onPress={() => void markRead(item.id)}
+                  >
+                    <Ionicons name="checkmark-circle-outline" size={22} color={notificationsColors.primary} />
+                  </Pressable>
+                ) : (
+                  <Ionicons name="checkmark-circle" size={20} color="#9CA3AF" style={styles.readBtn} />
+                )}
+              </View>
             ))}
           </View>
         )}
@@ -132,10 +144,13 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: notificationsColors.white,
     borderRadius: 12,
-    padding: 14,
     borderWidth: 1,
     borderColor: "#E5E7EB",
+    flexDirection: "row",
+    alignItems: "center",
   },
+  cardBody: { flex: 1, padding: 14 },
+  readBtn: { paddingRight: 12, paddingLeft: 4 },
   cardUnread: { borderColor: notificationsColors.primary, backgroundColor: "#FFFBFB" },
   cardHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   cardTitle: { flex: 1, fontSize: 14, fontWeight: "800", color: notificationsColors.navy },

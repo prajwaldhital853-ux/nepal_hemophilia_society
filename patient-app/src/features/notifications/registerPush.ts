@@ -1,19 +1,11 @@
 import Constants from "expo-constants";
 import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
 import { patientApi } from "@/core/api";
+import { isExpoGo } from "@/features/notifications/expoGo";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+export { isExpoGo };
 
 async function saveToken(authToken: string, pushToken: string) {
   await patientApi("/notifications/push-token/", {
@@ -23,41 +15,62 @@ async function saveToken(authToken: string, pushToken: string) {
   });
 }
 
-/** Register Expo (works in Expo Go) and native FCM tokens (after Firebase is configured). */
+/**
+ * Register device push tokens for standalone / dev-client builds only.
+ * Skipped in Expo Go — push is unreliable there and crashes Android on startup.
+ * In-app notification bell still works via API polling.
+ */
 export async function registerPatientPush(authToken: string) {
-  if (!Device.isDevice) return;
-  const existing = await Notifications.getPermissionsAsync();
-  let status = existing.status;
-  if (status !== "granted") {
-    status = (await Notifications.requestPermissionsAsync()).status;
-  }
-  if (status !== "granted") return;
+  if (isExpoGo() || !Device.isDevice) return;
 
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "NHMS alerts",
-      importance: Notifications.AndroidImportance.HIGH,
+  try {
+    const Notifications = await import("expo-notifications");
+
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
     });
-  }
 
-  const projectId =
-    Constants.expoConfig?.extra?.eas?.projectId ??
-    (Constants as { easConfig?: { projectId?: string } }).easConfig?.projectId;
+    const existing = await Notifications.getPermissionsAsync();
+    let status = existing.status;
+    if (status !== "granted") {
+      status = (await Notifications.requestPermissionsAsync()).status;
+    }
+    if (status !== "granted") return;
 
-  try {
-    const expoToken = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
-    if (expoToken.data) await saveToken(authToken, expoToken.data);
-  } catch {
-    // Expo push needs the EAS project. In-app alerts still work.
-  }
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "NHMS alerts",
+        importance: Notifications.AndroidImportance.HIGH,
+      });
+    }
 
-  try {
-    const device = await Notifications.getDevicePushTokenAsync();
-    const native = typeof device.data === "string" ? device.data : "";
-    if (native && !native.startsWith("ExponentPushToken")) {
-      await saveToken(authToken, native);
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      (Constants as { easConfig?: { projectId?: string } }).easConfig?.projectId;
+
+    try {
+      const expoToken = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+      if (expoToken.data) await saveToken(authToken, expoToken.data);
+    } catch {
+      // EAS project or FCM may not be configured yet.
+    }
+
+    try {
+      const device = await Notifications.getDevicePushTokenAsync();
+      const native = typeof device.data === "string" ? device.data : "";
+      if (native && !native.startsWith("ExponentPushToken")) {
+        await saveToken(authToken, native);
+      }
+    } catch {
+      // Native FCM token appears after google-services.json is added.
     }
   } catch {
-    // Native FCM token appears after google-services.json is added to a release/dev build.
+    // Push module unavailable — in-app alerts still work.
   }
 }

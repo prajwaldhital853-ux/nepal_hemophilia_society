@@ -467,6 +467,9 @@ def update_staff_account(actor, user, data: dict):
         user.save(update_fields=["password", "must_change_password", "password_changed_at"])
 
     save_admin_photo(user, data.get("photo"))
+    from apps.notifications.services import notify_staff_updated
+
+    notify_staff_updated(user, actor=actor)
     return user, issued
 
 
@@ -479,6 +482,9 @@ def delete_staff_account(actor, user):
     admin_id = display_id_for(user)
     name = user.get_full_name() or user.username
     kind = account_kind(user) or user.role
+    from apps.notifications.services import notify_staff_deleted
+
+    notify_staff_deleted(user, actor=actor)
     user.delete()
     return admin_id, name, kind
 

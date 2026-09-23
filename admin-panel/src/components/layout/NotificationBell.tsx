@@ -2,9 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell } from "lucide-react";
+import { Bell, Check } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
+import { registerAdminWebPush } from "@/lib/adminPush";
+import {
+  canUseBrowserNotifications,
+  notificationPermission,
+  requestBrowserNotificationPermission,
+} from "@/lib/browserNotifications";
 import { useAuth } from "@/lib/auth";
 import { hrefForNotification } from "@/components/layout/notificationHref";
 
@@ -30,15 +36,16 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<AdminNote[]>([]);
   const [unread, setUnread] = useState(0);
+  const [browserAlerts, setBrowserAlerts] = useState<NotificationPermission | "unsupported">("default");
 
   const load = useCallback(async () => {
     if (!user) return;
     try {
       const data = (await apiFetch("/notifications/admin/")) as { notifications?: AdminNote[]; unreadCount?: number };
       const rows = Array.isArray(data.notifications) ? data.notifications : [];
-      const visible = rows.filter((row) => !row.isRead && row.category !== "appointment");
+      const visible = rows.filter((row) => !row.isRead);
       setItems(visible);
-      setUnread(visible.length);
+      setUnread(Number(data.unreadCount ?? visible.length));
     } catch {
       setItems([]);
       setUnread(0);
@@ -47,7 +54,7 @@ export function NotificationBell() {
 
   useEffect(() => {
     void load();
-    const timer = setInterval(() => void load(), 25000);
+    const timer = setInterval(() => void load(), 10000);
     const onRefresh = () => void load();
     window.addEventListener("nhms-notifications-refresh", onRefresh);
     return () => {
@@ -57,13 +64,27 @@ export function NotificationBell() {
   }, [load]);
 
   useEffect(() => {
-    if (user) void registerAdminPush().catch(() => undefined);
+    setBrowserAlerts(notificationPermission());
   }, [user]);
+
+  async function enableBrowserAlerts() {
+    const permission = await requestBrowserNotificationPermission();
+    setBrowserAlerts(permission);
+    if (permission === "granted") {
+      await registerAdminWebPush().catch(() => undefined);
+    }
+  }
 
   async function markAll() {
     await apiFetch("/notifications/admin/read-all/", { method: "POST" });
     setUnread(0);
     setItems((rows) => rows.map((row) => ({ ...row, isRead: true })));
+  }
+
+  async function markOne(note: AdminNote) {
+    await apiFetch(`/notifications/admin/${note.id}/read/`, { method: "POST" });
+    setItems((rows) => rows.filter((row) => row.id !== note.id));
+    setUnread((count) => Math.max(0, count - 1));
   }
 
   async function openOne(note: AdminNote) {
@@ -80,12 +101,15 @@ export function NotificationBell() {
         type="button"
         className="panel relative p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink"
         aria-label="Notifications"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          setOpen((value) => !value);
+          void load();
+        }}
       >
         <Bell className="size-4" />
         {unread > 0 ? (
-          <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-red-600 px-1 text-center text-[10px] font-bold leading-4 text-white">
-            {unread > 9 ? "9+" : unread}
+          <span className="absolute -right-1.5 -top-1.5 min-w-[18px] rounded-full bg-red-600 px-1 text-center text-[11px] font-bold leading-[18px] text-white">
+            {unread > 99 ? "99+" : unread}
           </span>
         ) : null}
       </button>
@@ -102,16 +126,26 @@ export function NotificationBell() {
               <p className="px-3 py-6 text-center text-[12px] text-muted">No notifications yet.</p>
             ) : (
               items.map((note) => (
-                <button
-                  key={note.id}
-                  type="button"
-                  className={`block w-full border-b border-black/5 px-3 py-2 text-left hover:bg-elevated ${note.isRead ? "" : "bg-red-50/60"}`}
-                  onClick={() => void openOne(note)}
-                >
-                  <p className="text-[12px] font-semibold text-ink">{note.title}</p>
-                  <p className="mt-0.5 text-[11px] leading-4 text-muted">{note.message}</p>
-                  <p className="mt-1 text-[10px] text-faint">{formatWhen(note.createdAt)}</p>
-                </button>
+                <div key={note.id} className="flex items-start gap-1 border-b border-black/5 bg-red-50/60">
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 px-3 py-2 text-left hover:bg-elevated"
+                    onClick={() => void openOne(note)}
+                  >
+                    <p className="text-[12px] font-semibold text-ink">{note.title}</p>
+                    <p className="mt-0.5 text-[11px] leading-4 text-muted">{note.message}</p>
+                    <p className="mt-1 text-[10px] text-faint">{formatWhen(note.createdAt)}</p>
+                  </button>
+                  <button
+                    type="button"
+                    className="mr-2 mt-2 rounded-full p-1 text-red-700 hover:bg-red-100"
+                    aria-label="Mark as read"
+                    title="Mark as read"
+                    onClick={() => void markOne(note)}
+                  >
+                    <Check className="size-4" />
+                  </button>
+                </div>
               ))
             )}
           </div>
@@ -121,57 +155,3 @@ export function NotificationBell() {
   );
 }
 
-async function registerAdminPush() {
-  if (typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) return;
-  const vapid = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  if (!vapid || !apiKey || !projectId) return;
-
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") return;
-
-  const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-  const firebase = await loadFirebaseCompat();
-  if (!firebase.apps.length) {
-    firebase.initializeApp({
-      apiKey,
-      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-      projectId,
-      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-    });
-  }
-  const messaging = firebase.messaging();
-  const token = await messaging.getToken({ vapidKey: vapid, serviceWorkerRegistration: registration });
-  if (!token) return;
-  await apiFetch("/notifications/push-token/", {
-    method: "POST",
-    body: JSON.stringify({ token, platform: "web", app: "admin" }),
-  });
-}
-
-function loadFirebaseCompat(): Promise<{
-  apps: unknown[];
-  initializeApp: (config: Record<string, string | undefined>) => void;
-  messaging: () => { getToken: (options: { vapidKey: string; serviceWorkerRegistration: ServiceWorkerRegistration }) => Promise<string> };
-}> {
-  return new Promise((resolve, reject) => {
-    const win = window as Window & { firebase?: ReturnType<typeof loadFirebaseCompat> extends Promise<infer T> ? T : never };
-    if (win.firebase) {
-      resolve(win.firebase);
-      return;
-    }
-    const appScript = document.createElement("script");
-    appScript.src = "https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js";
-    appScript.onload = () => {
-      const msgScript = document.createElement("script");
-      msgScript.src = "https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js";
-      msgScript.onload = () => resolve(win.firebase as NonNullable<typeof win.firebase>);
-      msgScript.onerror = () => reject(new Error("Firebase messaging failed to load"));
-      document.head.appendChild(msgScript);
-    };
-    appScript.onerror = () => reject(new Error("Firebase app failed to load"));
-    document.head.appendChild(appScript);
-  });
-}

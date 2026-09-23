@@ -136,6 +136,9 @@ class PatientDocumentDetailView(APIView):
         elif not is_national_scope(user):
             raise PermissionDenied()
         name = doc.original_name
+        from apps.notifications.services import notify_document_removed
+
+        notify_document_removed(patient, name, user=user, hospital=doc.hospital)
         doc.file.delete(save=False)
         doc.delete()
         AuditLog.objects.create(

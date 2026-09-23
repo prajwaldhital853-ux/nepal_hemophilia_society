@@ -292,6 +292,9 @@ class HospitalStaffCreateSerializer(serializers.Serializer):
             parse_bool(validated_data.get("viewOnly")),
         )
         self.issued_temporary_password = temp_password
+        from apps.notifications.services import notify_staff_created
+
+        notify_staff_created(user, actor=self.context["request"].user)
         return profile
 
 
@@ -368,6 +371,10 @@ class HospitalStaffUpdateSerializer(HospitalStaffSerializer):
                 self.initial_data.get("permissions"),
                 parse_bool(self.initial_data.get("viewOnly"), default=user.view_only),
             )
+        if request and request.user.is_authenticated:
+            from apps.notifications.services import notify_staff_updated
+
+            notify_staff_updated(user, actor=request.user)
         return instance
 
     def to_internal_value(self, data):

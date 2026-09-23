@@ -304,6 +304,23 @@ class StockAdjustSerializer(serializers.Serializer):
                 reason=validated_data.get("reason") or "Stock adjustment",
                 notes=validated_data.get("notes", ""),
             )
+        else:
+            from apps.notifications.models import NotificationCategory
+            from apps.notifications.services import notify_admins
+
+            factor = instance.factor_medicine.name if instance.factor_medicine_id else "Factor"
+            notify_admins(
+                hospital=instance.hospital,
+                category=NotificationCategory.STOCK,
+                title="Stock lot updated",
+                message=(
+                    f"{request.user.get_full_name() or request.user.get_username()} updated "
+                    f"{factor} (batch {instance.batch_number or 'n/a'}) at {instance.hospital.name}."
+                ),
+                actor=request.user,
+                related_type="stock",
+                related_id=instance.id,
+            )
         instance.refresh_from_db()
         return instance
 

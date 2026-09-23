@@ -126,6 +126,9 @@ class ProvinceAdminListCreateView(APIView):
             request.data.get("permissions"),
             parse_bool(request.data.get("viewOnly")),
         )
+        from apps.notifications.services import notify_staff_created
+
+        notify_staff_created(user, actor=request.user)
         AuditLog.objects.create(
             actor=request.user.get_username(),
             action="Created province admin",
@@ -193,4 +196,7 @@ class ProvinceAdminDetailView(APIView):
                 request.data.get("permissions"),
                 parse_bool(request.data.get("viewOnly"), default=user.view_only),
             )
+        from apps.notifications.services import notify_staff_updated
+
+        notify_staff_updated(user, actor=request.user)
         return Response({"admin": serialize_province_admin(profile)})

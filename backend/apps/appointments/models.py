@@ -56,6 +56,31 @@ class Appointment(TimeStampedModel):
         return f"{self.patient.unique_patient_id} — {self.get_visit_type_display()}"
 
 
+class AppointmentSlot(TimeStampedModel):
+    """A bookable date and time published by a treatment centre."""
+
+    hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, related_name="appointment_slots")
+    slot_at = models.DateTimeField(db_index=True)
+    capacity = models.PositiveSmallIntegerField(default=1)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="appointment_slots_created",
+    )
+
+    class Meta:
+        db_table = "appointment_slots"
+        ordering = ["slot_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["hospital", "slot_at"], name="uniq_hospital_slot"),
+        ]
+
+    def __str__(self):
+        return f"{self.hospital.name} — {self.slot_at:%d %b %Y %H:%M}"
+
+
 class AppointmentReminderLog(models.Model):
     appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name="reminder_logs")
     slot = models.CharField(max_length=32)

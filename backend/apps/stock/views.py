@@ -215,6 +215,21 @@ class StockDetailView(APIView):
             ip=client_ip(request),
             detail=f"{stock.factor_medicine.name} batch {stock.batch_number}",
         )
+        from apps.notifications.models import NotificationCategory
+        from apps.notifications.services import notify_admins
+
+        notify_admins(
+            hospital=stock.hospital,
+            category=NotificationCategory.STOCK,
+            title="Stock lot deleted",
+            message=(
+                f"{request.user.get_full_name() or request.user.get_username()} deleted "
+                f"{stock.factor_medicine.name} batch {stock.batch_number or 'n/a'} at {stock.hospital.name}."
+            ),
+            actor=request.user,
+            related_type="stock",
+            related_id=stock.id,
+        )
         stock.delete()
         return Response({"ok": True})
 

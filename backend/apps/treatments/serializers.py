@@ -142,7 +142,7 @@ class TreatmentUpdateSerializer(serializers.Serializer):
                 )
         from apps.notifications.services import notify_treatment_action
 
-        notify_treatment_action(instance, user=self.context["request"].user)
+        notify_treatment_action(instance, user=self.context["request"].user, updated=True)
         return instance
 
 

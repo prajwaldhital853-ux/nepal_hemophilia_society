@@ -236,6 +236,9 @@ class PatientViewSet(viewsets.ModelViewSet):
         self._assert_province_scope(instance)
         patient_id = instance.unique_patient_id
         name = instance.full_name
+        from apps.notifications.services import notify_patient_deleted
+
+        notify_patient_deleted(instance, user=request.user)
         try:
             instance.delete()
         except ProtectedError:

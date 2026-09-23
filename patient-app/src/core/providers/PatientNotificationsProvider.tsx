@@ -10,7 +10,7 @@ import {
 
 import { patientApi } from "@/core/api";
 import { useAuth } from "@/core/auth/AuthContext";
-import { registerPatientPush } from "@/features/notifications/registerPush";
+import { isExpoGo } from "@/features/notifications/expoGo";
 
 export type PatientNotification = {
   id: number;
@@ -65,12 +65,16 @@ export function PatientNotificationsProvider({ children }: { children: ReactNode
   }, [token]);
 
   useEffect(() => {
-    if (token) void registerPatientPush(token).catch(() => undefined);
+    if (token && !isExpoGo()) {
+      void import("@/features/notifications/registerPush")
+        .then((mod) => mod.registerPatientPush(token))
+        .catch(() => undefined);
+    }
     void load().catch(() => undefined);
     if (!token) return;
     const timer = setInterval(() => {
       void load(true).catch(() => undefined);
-    }, 30000);
+    }, 10000);
     return () => clearInterval(timer);
   }, [load, token]);
 
