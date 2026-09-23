@@ -1,51 +1,48 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, Menu, Moon, Search, Sun } from "lucide-react";
+import { ChevronDown, Menu, Moon, Sun } from "lucide-react";
 
 import { AppointmentInbox } from "@/components/layout/AppointmentInbox";
+import { GlobalSearch } from "@/components/layout/GlobalSearch";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { useMobileNav } from "@/components/layout/MobileNavContext";
 import { OwnAvatar } from "@/components/ui/UserAvatar";
 import { useAuth } from "@/lib/auth";
+import { LanguageToggle } from "@/components/layout/LanguageToggle";
+import { useLocale } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
+
+function roleKey(role?: string, staffType?: string) {
+  if (role === "super_admin") return "roles.super_admin";
+  if (role === "admin") return "roles.admin";
+  if (role === "website_manager") return "roles.website_manager";
+  if (role === "province_admin") return "roles.province_admin";
+  if (staffType === "center_admin") return "roles.center_admin";
+  if (role === "hospital_admin") return "roles.hospital_admin";
+  return "roles.hospital_admin";
+}
 
 export function Header() {
   const { theme, ready, toggle } = useTheme();
+  const { t } = useLocale();
   const { user } = useAuth();
   const { toggleNav } = useMobileNav();
   const displayName = user?.fullName || user?.username || "Admin";
-  const roleLabel =
-    user?.role === "super_admin"
-      ? "Super Administrator"
-      : user?.role === "admin"
-        ? "Administrator"
-        : user?.role === "website_manager"
-          ? "Website Manager"
-          : user?.role === "province_admin"
-            ? "Province Administrator"
-            : user?.hospitalStaff?.staffType === "center_admin"
-              ? "Center Administrator"
-              : "Hospital Administrator";
+  const roleLabel = t(roleKey(user?.role, user?.hospitalStaff?.staffType));
 
   return (
     <header className="panel relative z-30 flex h-[var(--topbar-h)] shrink-0 items-center gap-2 overflow-visible bg-card px-2.5 shadow-none">
       <button
         type="button"
         className="rounded p-1 text-muted hover:bg-elevated lg:hidden"
-        aria-label="Open navigation menu"
+        aria-label={t("common.openMenu")}
         onClick={toggleNav}
       >
         <Menu className="size-4" />
       </button>
 
-      <label className="panel-inset hidden h-7 max-w-lg flex-1 items-center gap-2 px-2 shadow-none sm:flex">
-        <Search className="size-3.5 text-faint" />
-        <input
-          className="w-full bg-transparent text-[12px] text-ink outline-none placeholder:text-faint"
-          placeholder="Search patients, hospitals, stock, ID..."
-        />
-      </label>
+      <GlobalSearch />
 
       <div className="ml-auto flex items-center gap-1.5 overflow-visible">
         <NotificationBell />
@@ -61,11 +58,7 @@ export function Header() {
           {!ready ? <Moon className="size-4" /> : theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </button>
 
-        <button type="button" className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-ink hover:bg-elevated">
-          <span className="text-sm leading-none">🇳🇵</span>
-          EN
-          <ChevronDown className="size-3 text-faint" />
-        </button>
+        <LanguageToggle />
 
         <Link
           href="/dashboard/profile"

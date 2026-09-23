@@ -1,0 +1,78 @@
+import type { MessageTree } from "@/core/i18n/types";
+
+export const en: MessageTree = {
+  lang: { en: "English", ne: "Nepali" },
+  nav: {
+    home: "Home",
+    services: "Services",
+    factor: "Factor",
+    notifications: "Notifications",
+    profile: "Profile",
+  },
+  common: {
+    loading: "Loading…",
+    seeMore: "See more",
+    search: "Search",
+    all: "All",
+    save: "Save",
+    cancel: "Cancel",
+    close: "Close",
+  },
+  home: {
+    quickActions: "Quick Actions",
+    diagnosticDocs: "Diagnostic documents",
+    noDocuments: "No documents uploaded by your care team yet.",
+    injectionHistory: "Injection History",
+    treatmentHistory: "Treatment History",
+    bleedingHistory: "Bleeding History",
+    healthInsights: "Health Insights",
+    myDocuments: "My documents",
+    treatmentCentres: "Treatment Centres",
+    emergencyId: "Emergency ID",
+    settings: "Settings",
+    appointments: "Appointments",
+  },
+  injections: {
+    title: "Your injection story",
+    lead: "Logged by your treatment centre. Filter by status and tap a month on the chart.",
+    records: "Records",
+    iuThisYear: "IU this year",
+    showing: "Showing",
+    chartTitle: "Completed injections",
+    empty: "No injection records yet. Records added by your treatment center will appear here.",
+    doctor: "Doctor",
+    inhibitorWarn: "Recorded with inhibitor caution flag",
+  },
+  notifications: {
+    emptyTitle: "No notifications yet",
+    emptyBody:
+      "Alerts from your treatment center — injection schedules, stock updates, bleeding episodes, and other actions taken by your care team — will appear here.",
+    filters: {
+      all: "All",
+      appointments: "Appointments",
+      treatments: "Treatments",
+      events: "Events",
+      updates: "Updates",
+      system: "System",
+    },
+  },
+  services: {
+    searchPlaceholder: "Search services…",
+    empty: "No published services yet. Ask your NHS admin to add them in App Services.",
+    categoryHint: "Showing one category. Tap to show all.",
+  },
+  status: {
+    Active: "Active",
+    Completed: "Completed",
+    Scheduled: "Scheduled",
+    Pending: "Pending",
+    Cancelled: "Cancelled",
+  },
+  quickActions: {
+    history: "Injection history",
+    report: "Treatment report",
+    emergency: "Emergency ID",
+    hospital: "Find centre",
+    helpline: "Helpline",
+  },
+};

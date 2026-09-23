@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Tex
 
 import { patientApi } from "@/core/api";
 import { useAuth } from "@/core/auth/AuthContext";
+import { useLocale } from "@/core/i18n";
 import { InteractiveChart } from "@/features/services/components/charts";
 import { useClearTopics } from "@/features/notifications/useClearTopics";
 import { servicesColors } from "@/features/services/theme/servicesTheme";
@@ -41,6 +42,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 export default function InjectionsScreen() {
   useClearTopics("Injections");
   const { token } = useAuth();
+  const { t, l } = useLocale();
   const [items, setItems] = useState<InjectionItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,9 +110,17 @@ export default function InjectionsScreen() {
   return (
     <View style={styles.container}>
       {error ? <Text style={styles.error}>{error}</Text> : null}
+      <View style={styles.filters}>
+        {["All", "Completed", "Scheduled", "Pending", "Cancelled"].map((item) => (
+          <Pressable key={item} onPress={() => setFilter(item)} style={[styles.chip, filter === item && styles.chipOn]}>
+            <Text style={[styles.chipText, filter === item && styles.chipTextOn]}>{item === "All" ? t("common.all") : l(item)}</Text>
+          </Pressable>
+        ))}
+      </View>
       <FlatList
         data={visible}
         keyExtractor={(item) => String(item.id)}
+        style={styles.list}
         refreshControl={<RefreshControl refreshing={loading && items.length === 0} onRefresh={() => void load()} tintColor={servicesColors.primary} />}
         onEndReached={() => {
           if (nextCursor && !loadingMore) void load(nextCursor);
@@ -118,30 +128,23 @@ export default function InjectionsScreen() {
         onEndReachedThreshold={0.4}
         ListHeaderComponent={
           <View>
-            <Text style={styles.hero}>Your injection story</Text>
-            <Text style={styles.lead}>Logged by your treatment centre. Filter by status and tap a month on the chart.</Text>
+            <Text style={styles.hero}>{t("injections.title")}</Text>
+            <Text style={styles.lead}>{t("injections.lead")}</Text>
             <View style={styles.stats}>
-              <Stat label="Records" value={String(items.length)} />
-              <Stat label="IU this year" value={Math.round(iuTotal).toLocaleString()} />
-              <Stat label="Showing" value={String(visible.length)} />
+              <Stat label={t("injections.records")} value={String(items.length)} />
+              <Stat label={t("injections.iuThisYear")} value={Math.round(iuTotal).toLocaleString()} />
+              <Stat label={t("injections.showing")} value={String(visible.length)} />
             </View>
             <View style={styles.chartCard}>
-              <Text style={styles.chartTitle}>Completed injections · {new Date().getFullYear()}</Text>
+              <Text style={styles.chartTitle}>{t("injections.chartTitle")} · {new Date().getFullYear()}</Text>
               <InteractiveChart labels={monthly.labels} series={[{ values: monthly.values, color: servicesColors.primary, label: "Injections" }]} height={140} />
-            </View>
-            <View style={styles.filters}>
-              {["All", "Completed", "Scheduled", "Pending", "Cancelled"].map((item) => (
-                <Pressable key={item} onPress={() => setFilter(item)} style={[styles.chip, filter === item && styles.chipOn]}>
-                  <Text style={[styles.chipText, filter === item && styles.chipTextOn]}>{item}</Text>
-                </Pressable>
-              ))}
             </View>
           </View>
         }
         ListFooterComponent={loadingMore ? <ActivityIndicator color={servicesColors.primary} /> : null}
         ListEmptyComponent={
           !loading ? (
-            <Text style={styles.empty}>No injection records yet. Records added by your treatment center will appear here.</Text>
+            <Text style={styles.empty}>{t("injections.empty")}</Text>
           ) : null
         }
         renderItem={({ item }) => {
@@ -152,14 +155,14 @@ export default function InjectionsScreen() {
               <View style={styles.cardHead}>
                 <Text style={styles.label}>{item.label}</Text>
                 <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
-                  <Text style={[styles.statusText, { color: badge.color }]}>{badge.label}</Text>
+                  <Text style={[styles.statusText, { color: badge.color }]}>{l(badge.label)}</Text>
                 </View>
               </View>
               <Text style={styles.meta}>
                 {item.hospitalName} · {item.factorType} · {item.dose} {item.unit} · {item.indication}
               </Text>
-              <Text style={styles.doctor}>Doctor: {doctor}</Text>
-              {item.inhibitorWarning ? <Text style={styles.warn}>Recorded with inhibitor caution flag</Text> : null}
+              <Text style={styles.doctor}>{t("injections.doctor")}: {doctor}</Text>
+              {item.inhibitorWarning ? <Text style={styles.warn}>{t("injections.inhibitorWarn")}</Text> : null}
             </View>
           );
         }}
@@ -178,9 +181,10 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: servicesColors.pageBg, paddingHorizontal: 12, paddingTop: 8 },
+  container: { flex: 1, backgroundColor: servicesColors.pageBg },
+  list: { flex: 1, paddingHorizontal: 12 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: servicesColors.pageBg },
-  hero: { fontSize: 20, fontWeight: "800", color: servicesColors.navy },
+  hero: { marginTop: 8, fontSize: 20, fontWeight: "800", color: servicesColors.navy },
   lead: { marginTop: 4, marginBottom: 10, fontSize: 13, color: servicesColors.textMuted, lineHeight: 18 },
   stats: { flexDirection: "row", gap: 8, marginBottom: 10 },
   stat: { flex: 1, backgroundColor: "#fff", borderRadius: 12, padding: 10, borderWidth: 1, borderColor: servicesColors.border },
@@ -188,7 +192,17 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 10, color: servicesColors.textMuted, marginTop: 2, fontWeight: "600" },
   chartCard: { backgroundColor: "#fff", borderRadius: 14, padding: 10, borderWidth: 1, borderColor: servicesColors.border, marginBottom: 10 },
   chartTitle: { fontSize: 12, fontWeight: "700", color: servicesColors.navy, marginBottom: 4 },
-  filters: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 },
+  filters: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+    backgroundColor: servicesColors.pageBg,
+    borderBottomWidth: 1,
+    borderBottomColor: servicesColors.border,
+  },
   chip: { borderWidth: 1, borderColor: servicesColors.border, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: "#fff" },
   chipOn: { backgroundColor: servicesColors.primary, borderColor: servicesColors.primary },
   chipText: { fontSize: 11, fontWeight: "700", color: servicesColors.navy },

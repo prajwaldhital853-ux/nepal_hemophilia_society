@@ -160,7 +160,8 @@ export default function AppointmentsModule() {
   const waiting = useMemo(() => rows.filter((row) => row.status === "requested").length, [rows]);
 
   return (
-    <div className="flex flex-col gap-2 pb-6">
+    <div className="admin-page">
+      <div className="admin-page-sticky space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-[15px] font-semibold text-ink">Appointments</h1>
@@ -179,6 +180,7 @@ export default function AppointmentsModule() {
       </div>
 
       {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
+      </div>
 
       {showSlots ? <SlotManager onError={setError} /> : null}
 
@@ -270,7 +272,7 @@ export default function AppointmentsModule() {
         </section>
       ) : null}
 
-      <section className="panel overflow-hidden">
+      <section className="panel admin-list-panel overflow-hidden">
         <div className="filter-bar">
           <label className="panel-inset flex h-8 min-w-[200px] flex-1 items-center gap-2 px-2.5 shadow-none">
             <Search className="size-3.5 text-faint" />
@@ -302,7 +304,7 @@ export default function AppointmentsModule() {
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="admin-table-scroll overflow-x-auto">
           <table className="data-table w-full min-w-[860px] text-left text-sm">
             <thead className="bg-elevated text-[11px] uppercase tracking-wide text-muted">
               <tr>

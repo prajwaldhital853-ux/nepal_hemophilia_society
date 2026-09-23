@@ -2,6 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { useLocale } from "@/core/i18n";
 import {
   notificationFilters,
   type NotificationFilterId,
@@ -34,6 +35,7 @@ function FilterIcon({
 }
 
 export function NotificationFilters({ active, onChange }: Props) {
+  const { t } = useLocale();
   return (
     <ScrollView
       horizontal
@@ -47,7 +49,7 @@ export function NotificationFilters({ active, onChange }: Props) {
         const inner = (
           <>
             <FilterIcon name={filter.icon} color={color} />
-            <Text style={[styles.label, isActive && styles.labelActive]}>{filter.label}</Text>
+            <Text style={[styles.label, isActive && styles.labelActive]}>{t(`notifications.filters.${filter.id}`)}</Text>
           </>
         );
 

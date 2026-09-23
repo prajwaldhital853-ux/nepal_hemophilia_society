@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { StackScreenProps } from "@react-navigation/stack";
 
 import { useAuth } from "@/core/auth/AuthContext";
+import { useLocale } from "@/core/i18n";
 import type { RootStackParamList } from "@/core/navigation/types";
 import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
 import { HomeHeader } from "@/features/home/components/HomeHeader";
@@ -29,6 +30,7 @@ type Props = StackScreenProps<RootStackParamList, "Services">;
 export default function ServicesScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
+  const { t } = useLocale();
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [categories, setCategories] = useState<ServiceCategoryGroup[]>([]);
@@ -75,6 +77,14 @@ export default function ServicesScreen({ navigation }: Props) {
           onProfilePress={() => navigation.navigate("Profile")}
           onNotificationPress={() => navigation.navigate("Notifications")}
         />
+        <View style={styles.searchWrap}>
+          <ServicesSearchBar value={search} onChangeText={setSearch} />
+        </View>
+        {filterCategory ? (
+          <Text style={styles.filterHint} onPress={() => setFilterCategory(null)}>
+            {t("services.categoryHint")}
+          </Text>
+        ) : null}
       </View>
 
       <ScrollView
@@ -84,19 +94,11 @@ export default function ServicesScreen({ navigation }: Props) {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} tintColor={servicesColors.primary} />}
       >
         <ServicesHeroBanner />
-        <View style={styles.searchWrap}>
-          <ServicesSearchBar value={search} onChangeText={setSearch} />
-        </View>
-        {filterCategory ? (
-          <Text style={styles.filterHint} onPress={() => setFilterCategory(null)}>
-            Showing one category. Tap to show all.
-          </Text>
-        ) : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {loading && categories.length === 0 ? (
           <ActivityIndicator color={servicesColors.primary} style={{ marginTop: 24 }} />
         ) : visible.length === 0 ? (
-          <Text style={styles.empty}>No published services yet. Ask your NHS admin to add them in App Services.</Text>
+          <Text style={styles.empty}>{t("services.empty")}</Text>
         ) : (
           visible.map((category) => (
             <ServiceCategorySection
@@ -139,7 +141,10 @@ const styles = StyleSheet.create({
     paddingBottom: servicesSpacing.bottomScrollPadding,
   },
   searchWrap: {
-    marginTop: 12,
+    marginTop: 4,
+    marginBottom: 8,
+    paddingHorizontal: servicesSpacing.screen,
+    backgroundColor: servicesColors.white,
   },
   error: {
     marginTop: 12,
@@ -154,9 +159,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   filterHint: {
-    marginTop: 10,
+    marginTop: 0,
+    marginBottom: 8,
+    paddingHorizontal: servicesSpacing.screen,
     fontSize: 12,
     fontWeight: "600",
     color: servicesColors.primary,
+    backgroundColor: servicesColors.white,
   },
 });

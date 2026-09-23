@@ -21,6 +21,7 @@ import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { formatNumber } from "@/lib/format";
 import { Perm } from "@/lib/permissions";
 import { usePageRbac } from "@/components/rbac/ReadOnlyBanner";
+import { useLocale } from "@/lib/i18n";
 
 function statusClass(status: string) {
   if (status === "Active") return "bg-status-green-soft text-status-green";
@@ -46,6 +47,7 @@ function profileHref(row: StaffRecord) {
 
 export default function AdminsModule() {
   const router = useRouter();
+  const { t, l } = useLocale();
   const { can, user } = useAuth();
   const { readOnly } = usePageRbac("admins");
   const canManage = (can(Perm.adminsManage) || can(Perm.provinceAdminsManage) || can(Perm.hospitalStaffManage)) && !user?.viewOnly;
@@ -121,10 +123,11 @@ export default function AdminsModule() {
   const visible = rows;
 
   return (
-    <div className="flex flex-col gap-2 pb-6">
+    <div className="admin-page">
+      <div className="admin-page-sticky space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-[15px] font-semibold text-ink">Admin Management</h1>
+          <h1 className="text-[15px] font-semibold text-ink">{t("admins.title")}</h1>
           <p className="text-[11px] text-muted">
             Home &gt; Admin Management — create and control only the roles your account is allowed to manage
           </p>
@@ -152,7 +155,7 @@ export default function AdminsModule() {
             }
           >
             <Download className="size-3.5" />
-            Export
+            {t("common.export")}
           </button>
           {canManage && !readOnly ? (
             <button
@@ -161,7 +164,7 @@ export default function AdminsModule() {
               onClick={() => setShowForm(true)}
             >
               <Plus className="size-3.5" />
-              Add Admin
+              {t("admins.addAdmin")}
             </button>
           ) : null}
         </div>
@@ -179,12 +182,13 @@ export default function AdminsModule() {
               kind === tab.id ? "bg-brand text-white" : "bg-elevated text-muted hover:text-ink"
             }`}
           >
-            {tab.label}
+            {l(tab.label)}
           </button>
         ))}
       </div>
+      </div>
 
-      <section className="panel overflow-hidden">
+      <section className="panel admin-list-panel overflow-hidden">
         <div className="filter-bar">
           <label className="panel-inset flex h-8 min-w-[200px] flex-1 items-center gap-2 px-2.5 shadow-none">
             <Search className="size-3.5 text-faint" />
@@ -192,7 +196,7 @@ export default function AdminsModule() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
-              placeholder="Search by name, email, phone or ID..."
+              placeholder={t("common.searchAdmins")}
             />
           </label>
 
@@ -202,7 +206,7 @@ export default function AdminsModule() {
               onClick={() => setOpenProvince((v) => !v)}
               className="panel flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
             >
-              {province === "All" ? "All Provinces" : `${province} Province`}
+              {province === "All" ? t("common.allProvinces") : `${province} ${t("common.province")}`}
               <ChevronDown className="size-3.5" />
             </button>
             {openProvince ? (
@@ -246,15 +250,15 @@ export default function AdminsModule() {
           ) : null}
 
           <p className="text-[11px] text-muted">
-            Admins: <span className="text-[15px] font-semibold text-ink">{formatNumber(visible.length)}</span>
+            {t("admins.adminsCount")}: <span className="text-[15px] font-semibold text-ink">{formatNumber(visible.length)}</span>
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="admin-table-scroll overflow-x-auto">
           <table className="data-table w-full min-w-[880px] text-left text-sm">
             <thead className="bg-elevated text-[11px] uppercase tracking-wide text-muted">
               <tr>
-                {["Admin ID", "Name", "Email", "Role", "Scope", "Access", "Status", "Actions"].map((h) => (
+                {[t("admins.adminId"), t("common.name"), t("common.email"), t("admins.role"), t("common.scope"), t("common.access"), t("common.status"), t("common.actions")].map((h) => (
                   <th key={h} className="px-3 py-3 font-medium">
                     {h}
                   </th>
@@ -265,7 +269,7 @@ export default function AdminsModule() {
               {loading ? (
                 <tr>
                   <td colSpan={8} className="px-3 py-8 text-center text-[11px] text-muted">
-                    Loading…
+                    {t("common.loading")}
                   </td>
                 </tr>
               ) : visible.length === 0 ? (
@@ -280,12 +284,12 @@ export default function AdminsModule() {
                     <td className="px-3 py-3 font-medium text-brand">{row.id}</td>
                     <td className="px-3 py-3 font-semibold text-ink">{row.fullName}</td>
                     <td className="px-3 py-3 text-muted">{row.email}</td>
-                    <td className="px-3 py-3 text-ink">{KIND_LABELS[row.kind] || row.roleLabel}</td>
+                    <td className="px-3 py-3 text-ink">{l(KIND_LABELS[row.kind] || row.roleLabel)}</td>
                     <td className="px-3 py-3 text-ink">{row.treatmentCenter || row.province || "National"}</td>
-                    <td className="px-3 py-3 text-[11px] text-muted">{row.viewOnly ? "View only" : "Full"}</td>
+                    <td className="px-3 py-3 text-[11px] text-muted">{row.viewOnly ? t("common.viewOnly") : t("common.full")}</td>
                     <td className="px-3 py-3">
                       <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusClass(row.status)}`}>
-                        {row.status}
+                        {l(row.status)}
                       </span>
                     </td>
                     <td className="px-3 py-3">

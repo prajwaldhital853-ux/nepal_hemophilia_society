@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
 
+import { useLocale } from "@/core/i18n";
 import { homeColors, homeRadii } from "@/features/home/theme/homeTheme";
 
 type TabId = "home" | "services" | "factor" | "notifications" | "profile";
@@ -42,6 +43,7 @@ export function HomeBottomNav({
   onTabPress,
 }: HomeBottomNavProps) {
   const insets = useSafeAreaInsets();
+  const { t } = useLocale();
   const isLight = variant === "light";
 
   const inactiveColor = isLight ? homeColors.textMuted : "rgba(255,255,255,0.82)";
@@ -50,7 +52,7 @@ export function HomeBottomNav({
   const bar = (
     <View style={[styles.bar, isLight && styles.barLight]}>
       <NavItem
-        label="Home"
+        label={t("nav.home")}
         active={activeTab === "home"}
         light={isLight}
         inactiveColor={inactiveColor}
@@ -65,7 +67,7 @@ export function HomeBottomNav({
         }
       />
       <NavItem
-        label="Services"
+        label={t("nav.services")}
         active={activeTab === "services"}
         light={isLight}
         inactiveColor={inactiveColor}
@@ -104,16 +106,16 @@ export function HomeBottomNav({
                 activeTab === "factor" && styles.fabLabelFactorActive,
               ]}
             >
-              Factor
+              {t("nav.factor")}
             </Text>
           ) : (
-            <Text style={styles.fabLabel}>Factor</Text>
+            <Text style={styles.fabLabel}>{t("nav.factor")}</Text>
           )}
         </Pressable>
       </View>
 
       <NavItem
-        label="Notifications"
+        label={t("nav.notifications")}
         active={activeTab === "notifications"}
         light={isLight}
         inactiveColor={inactiveColor}
@@ -134,7 +136,7 @@ export function HomeBottomNav({
         lightBadge={isLight}
       />
       <NavItem
-        label="Profile"
+        label={t("nav.profile")}
         active={activeTab === "profile"}
         highlighted={activeTab === "profile" && !isLight}
         light={isLight}

@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StatusBar, StyleSheet, Text, 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { StackScreenProps } from "@react-navigation/stack";
 
+import { useLocale } from "@/core/i18n";
 import type { RootStackParamList } from "@/core/navigation/types";
 import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
 import { HomeHeader } from "@/features/home/components/HomeHeader";
@@ -38,6 +39,7 @@ function formatWhen(iso: string) {
 
 export default function NotificationsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useLocale();
   const [filter, setFilter] = useState<NotificationFilterId>("all");
   const { notifications, unreadCount, loading, markRead } = usePatientNotifications(FILTER_TO_CATEGORY[filter]);
 
@@ -50,6 +52,9 @@ export default function NotificationsScreen({ navigation }: Props) {
           onProfilePress={() => navigation.navigate("Profile")}
           onNotificationPress={() => navigation.navigate("Notifications")}
         />
+        <View style={styles.filtersWrap}>
+          <NotificationFilters active={filter} onChange={setFilter} />
+        </View>
       </View>
 
       <ScrollView
@@ -58,16 +63,12 @@ export default function NotificationsScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <NotificationsHeroBanner />
-        <NotificationFilters active={filter} onChange={setFilter} />
         {loading ? (
           <ActivityIndicator style={styles.loader} color={notificationsColors.primary} />
         ) : notifications.length === 0 ? (
           <View style={styles.emptyWrap}>
-            <Text style={styles.emptyTitle}>No notifications yet</Text>
-            <Text style={styles.emptyBody}>
-              Alerts from your treatment center — injection schedules, stock updates, bleeding episodes, and other
-              actions taken by your care team — will appear here.
-            </Text>
+            <Text style={styles.emptyTitle}>{t("notifications.emptyTitle")}</Text>
+            <Text style={styles.emptyBody}>{t("notifications.emptyBody")}</Text>
           </View>
         ) : (
           <View style={styles.list}>
@@ -121,6 +122,13 @@ export default function NotificationsScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: notificationsColors.pageBg },
+  filtersWrap: {
+    paddingHorizontal: notificationsSpacing.screen,
+    paddingBottom: 4,
+    backgroundColor: notificationsColors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: notificationsSpacing.bottomScrollPadding },
   loader: { marginTop: 24 },

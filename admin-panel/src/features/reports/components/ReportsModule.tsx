@@ -21,7 +21,7 @@ import type { DashboardTrendPoint, ProvinceStat, StockByHospital, StockUsageTren
 import { apiFetch } from "@/lib/api";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { useAuth } from "@/lib/auth";
-import { useChartColors } from "@/lib/chartColors";
+import { CHART_BAR_PROPS, useChartColors } from "@/lib/chartColors";
 
 const PIE = ["#2F6FED", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4"];
 
@@ -222,7 +222,7 @@ export default function ReportsModule() {
           ) : (
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={movementByType}>
+                <BarChart data={movementByType} {...CHART_BAR_PROPS}>
                   <CartesianGrid stroke={c.grid} vertical={false} />
                   <XAxis dataKey="name" stroke={c.tick} fontSize={10} tickLine={false} axisLine={false} />
                   <YAxis stroke={c.tick} fontSize={10} width={32} tickLine={false} axisLine={false} />
@@ -284,7 +284,7 @@ export default function ReportsModule() {
           <h2 className="text-[12px] font-semibold text-ink">Province comparison</h2>
           <div className="mt-2 h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={provinces}>
+              <BarChart data={provinces} {...CHART_BAR_PROPS}>
                 <CartesianGrid stroke={c.grid} vertical={false} />
                 <XAxis dataKey="province" stroke={c.tick} fontSize={10} tickLine={false} axisLine={false} />
                 <YAxis stroke={c.tick} fontSize={10} width={32} tickLine={false} axisLine={false} />

@@ -305,7 +305,8 @@ export default function PatientFormWizard({
   }
 
   return (
-    <div className="flex flex-col gap-3 pb-6">
+    <div className="admin-page">
+      <div className="admin-profile-sticky space-y-2">
       <div>
         <h1 className="text-[16px] font-semibold text-ink">
           {mode === "edit" ? "Edit Patient Profile" : "Add New Patient"}
@@ -350,6 +351,7 @@ export default function PatientFormWizard({
             );
           })}
         </ol>
+      </div>
       </div>
 
       {Object.keys(fieldErrors).length ? (

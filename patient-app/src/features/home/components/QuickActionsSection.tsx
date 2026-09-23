@@ -1,6 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useLocale } from "@/core/i18n";
 import { quickActions } from "@/features/home/data/quickActions";
 import { homeColors, homeRadii, homeSpacing } from "@/features/home/theme/homeTheme";
 
@@ -17,10 +18,19 @@ export function QuickActionsSection({
 }: {
   onActionPress?: (key: string) => void;
 }) {
+  const { t } = useLocale();
+  const actionLabels: Record<string, string> = {
+    history: t("quickActions.history"),
+    report: t("quickActions.report"),
+    emergency: t("quickActions.emergency"),
+    hospital: t("quickActions.hospital"),
+    helpline: t("quickActions.helpline"),
+  };
+
   return (
     <View style={styles.section}>
       <View style={styles.card}>
-        <Text style={styles.title}>Quick Actions</Text>
+        <Text style={styles.title}>{t("home.quickActions")}</Text>
         <View style={styles.row}>
           {quickActions.map((action) => (
             <Pressable key={action.key} style={styles.actionItem} onPress={() => onActionPress?.(action.key)}>
@@ -28,7 +38,7 @@ export function QuickActionsSection({
                 {iconMap[action.icon](action.color)}
               </View>
               <Text style={styles.label} numberOfLines={2}>
-                {action.label}
+                {actionLabels[action.key] ?? action.label}
               </Text>
             </Pressable>
           ))}

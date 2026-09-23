@@ -99,7 +99,8 @@ export default function PatientProfileView({ id }: { id: string }) {
   const canLogClinical = Boolean(record.canLogClinical);
 
   return (
-    <div className="flex flex-col gap-3 pb-6">
+    <div className="admin-page">
+      <div className="admin-profile-sticky space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-[15px] font-semibold text-ink">Patient Profile</h1>
@@ -164,6 +165,20 @@ export default function PatientProfileView({ id }: { id: string }) {
       </div>
       {actionError ? <p className="text-[11px] text-red-600">{actionError}</p> : null}
 
+      <div className="tabs-bar">
+        {tabs.map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => setTab(item)}
+            className={`tab-link ${tab === item ? "tab-link-active" : ""}`}
+          >
+            {item}
+          </button>
+        ))}
+      </div>
+      </div>
+
       <article className="panel flex flex-wrap items-center gap-3 border-l-4 border-l-brand p-3">
         <div>
           <p className="text-[10px] uppercase tracking-wide text-faint">Province</p>
@@ -204,19 +219,6 @@ export default function PatientProfileView({ id }: { id: string }) {
           Clinical logging is available only after the patient is verified as <strong>Active</strong>.
         </p>
       ) : null}
-
-      <div className="tabs-bar">
-        {tabs.map((item) => (
-          <button
-            key={item}
-            type="button"
-            onClick={() => setTab(item)}
-            className={`tab-link ${tab === item ? "tab-link-active" : ""}`}
-          >
-            {item}
-          </button>
-        ))}
-      </div>
 
       {tab === "Overview" ? (
         <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">

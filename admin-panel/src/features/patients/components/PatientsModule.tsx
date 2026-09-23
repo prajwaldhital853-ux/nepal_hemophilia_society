@@ -146,7 +146,8 @@ export default function PatientsModule() {
   const scopedSearchHint = user?.role === "hospital_admin" || user?.role === "province_admin";
 
   return (
-    <div className="flex flex-col gap-2 pb-6">
+    <div className="admin-page">
+      <div className="admin-page-sticky space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-[15px] font-semibold text-ink">All Patients</h1>
@@ -267,7 +268,7 @@ export default function PatientsModule() {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="admin-table-scroll overflow-x-auto">
           <table className="data-table w-full min-w-[880px] text-left text-sm">
             <thead className="bg-elevated text-[11px] uppercase tracking-wide text-muted">
               <tr>

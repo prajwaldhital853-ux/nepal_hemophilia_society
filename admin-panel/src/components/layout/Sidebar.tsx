@@ -10,6 +10,7 @@ import { useMobileNav } from "@/components/layout/MobileNavContext";
 import { NavIcon } from "@/components/layout/NavIcon";
 import { OwnAvatar } from "@/components/ui/UserAvatar";
 import { useAuth } from "@/lib/auth";
+import { useLocale } from "@/lib/i18n";
 import { filterNav, mainNav, websiteNav, type NavItem } from "@/lib/nav";
 
 function isActive(pathname: string, href: string) {
@@ -36,6 +37,7 @@ function NavLink({
   onNavigate?: () => void;
 }) {
   const active = isActive(pathname, item.href);
+  const { l, t } = useLocale();
 
   return (
     <Link
@@ -51,7 +53,7 @@ function NavLink({
     >
       {!nested && active ? <span className="absolute bottom-1 left-0 top-1 w-0.5 rounded-r bg-sky-300" /> : null}
       {"icon" in item ? <NavIcon name={item.icon} className="size-3.5 shrink-0" /> : null}
-      <span className="min-w-0 flex-1 truncate leading-4">{item.label}</span>
+      <span className="min-w-0 flex-1 truncate leading-4">{l(item.label)}</span>
       {"badge" in item && item.badge ? (
         <span className="rounded-full bg-red px-1 py-0.5 text-[8px] font-bold text-white">{item.badge}</span>
       ) : null}
@@ -70,6 +72,7 @@ function NavGroup({
 }) {
   const groupActive = isGroupActive(pathname, item);
   const [open, setOpen] = useState(groupActive);
+  const { l } = useLocale();
 
   const expanded = open || groupActive;
 
@@ -88,7 +91,7 @@ function NavGroup({
       >
         {groupActive ? <span className="absolute bottom-1 left-0 top-1 w-0.5 rounded-r bg-sky-300" /> : null}
         <NavIcon name={item.icon} className="size-3.5 shrink-0" />
-        <span className="min-w-0 flex-1 truncate leading-4">{item.label}</span>
+        <span className="min-w-0 flex-1 truncate leading-4">{l(item.label)}</span>
         <ChevronDown className={`size-3 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
       </button>
       {expanded && item.children ? (
@@ -105,6 +108,7 @@ function NavGroup({
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { l, t, locale } = useLocale();
   const { open, closeNav } = useMobileNav();
   const allowed = user?.nav ?? [];
   const mainItems = filterNav(mainNav, allowed);
@@ -153,7 +157,7 @@ export function Sidebar() {
       </div>
 
       <nav className="admin-scroll min-h-0 flex-1 overflow-y-auto px-2 py-2">
-        <p className="mb-1.5 px-2 text-[9px] font-semibold tracking-[1.2px] text-sidebar-muted">MAIN</p>
+        <p className="mb-1.5 px-2 text-[9px] font-semibold tracking-[1.2px] text-sidebar-muted">{locale === "ne" ? "मुख्य" : "MAIN"}</p>
         <div className="flex flex-col gap-0.5">
           {mainItems.map((item) =>
             item.children?.length ? (
@@ -167,7 +171,7 @@ export function Sidebar() {
         {siteItems.length ? (
           <>
             <p className="mb-1.5 mt-4 px-2 text-[9px] font-semibold tracking-[1.2px] text-sidebar-muted">
-              WEBSITE MANAGEMENT
+              {locale === "ne" ? "वेबसाइट व्यवस्थापन" : "WEBSITE MANAGEMENT"}
             </p>
             <div className="flex flex-col gap-0.5">
               {siteItems.map((item) => (
@@ -186,10 +190,10 @@ export function Sidebar() {
             <p className="truncate text-[10px] text-sidebar-muted">{roleLabel}</p>
             <p className="mt-0.5 flex items-center gap-1 text-[10px] text-status-green">
               <span className="size-1.5 rounded-full bg-status-green" />
-              Online
+              {locale === "ne" ? "अनलाइन" : "Online"}
             </p>
             <button type="button" onClick={logout} className="mt-1 text-[10px] text-sidebar-muted hover:text-white">
-              Sign out
+              {t("nav.logout")}
             </button>
           </div>
         </div>

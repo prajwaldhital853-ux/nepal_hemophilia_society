@@ -341,17 +341,22 @@ class HospitalStaffUpdateSerializer(HospitalStaffSerializer):
                     raise serializers.ValidationError({"treatmentCenter": "You can only add staff to your own center."})
             instance.hospital = hospital
 
+        wants_reset = parse_bool(self.initial_data.get("resetPassword")) or (
+            bool(str(reset_temp or "").strip()) and "resetTemporaryPassword" in self.initial_data
+        )
+        if status == "Active" and wants_reset and str(reset_temp or "").strip():
+            status = "Pending"
+
         if status == "Inactive":
             user.is_active_account = False
             user_update_fields.append("is_active_account")
         elif status in ("Active", "Pending"):
             user.is_active_account = True
             user_update_fields.append("is_active_account")
-            if status == "Active":
+            if status == "Active" and not wants_reset:
                 user.must_change_password = False
                 user_update_fields.append("must_change_password")
 
-        wants_reset = parse_bool(self.initial_data.get("resetPassword"))
         if wants_reset and reset_temp and str(reset_temp).strip():
             try:
                 password_validation.validate_password(str(reset_temp))

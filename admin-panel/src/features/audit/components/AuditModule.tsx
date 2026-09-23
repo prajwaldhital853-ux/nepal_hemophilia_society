@@ -100,7 +100,8 @@ export default function AuditModule() {
   const selected = rows.find((row) => row.id === openId) ?? rows[0];
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="admin-page">
+      <div className="admin-page-sticky space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-[15px] font-semibold text-ink">Audit Logs</h1>
@@ -131,9 +132,10 @@ export default function AuditModule() {
           <p className="text-[15px] font-semibold text-ink">{uniqueActors}</p>
         </article>
       </div>
+      </div>
 
       <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <section className="panel overflow-hidden">
+        <section className="panel admin-list-panel overflow-hidden">
           <div className="filter-bar">
             <label className="panel-inset flex h-8 min-w-[180px] flex-1 items-center gap-2 px-2.5 shadow-none">
               <Search className="size-3.5 text-faint" />
@@ -190,6 +192,7 @@ export default function AuditModule() {
               Export trail
             </button>
           </div>
+          <div className="admin-table-scroll">
           <ul className="divide-y divide-line-subtle">
             {rows.map((row) => (
               <li key={row.id}>
@@ -232,6 +235,7 @@ export default function AuditModule() {
               </button>
             </div>
           ) : null}
+          </div>
         </section>
 
         {selected ? (

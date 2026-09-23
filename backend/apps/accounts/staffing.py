@@ -209,6 +209,15 @@ def parse_bool(value, default=False) -> bool:
     return str(value).strip().lower() in ("1", "true", "yes", "on")
 
 
+def is_password_reset_request(data: dict) -> bool:
+    temp = str(data.get("resetTemporaryPassword") or data.get("temporaryPassword") or "").strip()
+    if not temp:
+        return False
+    if parse_bool(data.get("resetPassword")):
+        return True
+    return "resetTemporaryPassword" in data
+
+
 def coerce_date(value):
     if not value:
         return None
@@ -254,7 +263,7 @@ def apply_assigned_access(actor, user, kind: str, permissions, view_only: bool):
     user.save(update_fields=["extra_permissions", "view_only"])
 
 
-def apply_profile_fields(user, data: dict):
+def apply_profile_fields(user, data: dict, *, pending_password_reset: bool = False):
     update_fields: list[str] = []
     if "fullName" in data and data.get("fullName"):
         first, last = split_name(str(data["fullName"]))
@@ -299,7 +308,7 @@ def apply_profile_fields(user, data: dict):
     elif data.get("status") in ("Active", "Pending"):
         user.is_active_account = True
         update_fields.append("is_active_account")
-        if data.get("status") == "Active":
+        if data.get("status") == "Active" and not pending_password_reset:
             user.must_change_password = False
             update_fields.append("must_change_password")
     if update_fields:
@@ -446,7 +455,8 @@ def update_staff_account(actor, user, data: dict):
         raise PermissionDenied("Only Super Admin can change a Super Admin.")
 
     user = User.objects.get(pk=user.pk)
-    apply_profile_fields(user, data)
+    pending_reset = is_password_reset_request(data)
+    apply_profile_fields(user, data, pending_password_reset=pending_reset)
 
     kind = account_kind(user)
     if kind in (KIND_CENTER, KIND_TREATMENT) and data.get("treatmentCenter"):
@@ -468,22 +478,16 @@ def update_staff_account(actor, user, data: dict):
             parse_bool(data.get("viewOnly"), default=user.view_only) if "viewOnly" in data else user.view_only,
         )
 
-    reset_temp = data.get("resetTemporaryPassword") or data.get("temporaryPassword")
-    issued = None
-    if reset_temp and str(reset_temp).strip() and data.get("resetPassword"):
-        issued = validate_password(reset_temp, field="resetTemporaryPassword")
-        user.set_password(issued)
-        user.must_change_password = True
-        user.password_changed_at = None
-        user.save(update_fields=["password", "must_change_password", "password_changed_at"])
-    elif reset_temp and str(reset_temp).strip() and "resetTemporaryPassword" in data:
-        issued = validate_password(reset_temp, field="resetTemporaryPassword")
-        user.set_password(issued)
-        user.must_change_password = True
-        user.password_changed_at = None
-        user.save(update_fields=["password", "must_change_password", "password_changed_at"])
-
     save_admin_photo(user, data.get("photo"))
+
+    issued = None
+    if pending_reset:
+        reset_temp = data.get("resetTemporaryPassword") or data.get("temporaryPassword")
+        issued = validate_password(reset_temp, field="resetTemporaryPassword")
+        user.set_password(issued)
+        user.must_change_password = True
+        user.password_changed_at = None
+        user.save(update_fields=["password", "must_change_password", "password_changed_at"])
     from apps.notifications.services import notify_staff_updated
 
     notify_staff_updated(user, actor=actor)

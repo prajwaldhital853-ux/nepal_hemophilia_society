@@ -277,7 +277,8 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
     : profile.province || "—";
 
   return (
-    <div className="flex flex-col gap-3 pb-6">
+    <div className="admin-page">
+      <div className="admin-profile-sticky space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-[16px] font-semibold text-ink">{labels.singular} Profile</h1>
@@ -356,6 +357,7 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
           This is your own account. Another administrator must update your profile, permissions, or status.
         </p>
       ) : null}
+      </div>
 
       <article className="panel flex flex-wrap items-center gap-3 border-l-4 border-l-brand p-3">
         <div>
@@ -383,7 +385,7 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
       >
         {isOverview ? <ProfileSidebar profile={profile} labels={labels} /> : null}
 
-        <div className={`tabs-bar min-w-0 ${isOverview ? "lg:col-start-2" : ""}`}>
+        <div className={`tabs-bar admin-profile-sticky min-w-0 ${isOverview ? "lg:col-start-2" : ""}`}>
           {tabs.map((item) => (
             <button
               key={item}

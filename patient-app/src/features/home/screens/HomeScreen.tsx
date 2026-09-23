@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { StackScreenProps } from "@react-navigation/stack";
 
 import { useAuth } from "@/core/auth/AuthContext";
+import { useLocale } from "@/core/i18n";
 
 import type { RootStackParamList } from "@/core/navigation/types";
 import { BleedingProfileCard } from "@/features/home/components/BleedingProfileCard";
@@ -25,6 +26,7 @@ type Props = StackScreenProps<RootStackParamList, "Home">;
 export default function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { refreshPatient, patient } = useAuth();
+  const { t } = useLocale();
   const { unreadCount } = usePatientNotifications();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -69,15 +71,15 @@ export default function HomeScreen({ navigation }: Props) {
         <OverviewSection />
         <View style={styles.docsCard}>
           <View style={styles.docsHead}>
-            <Text style={styles.docsTitle}>Diagnostic documents</Text>
+            <Text style={styles.docsTitle}>{t("home.diagnosticDocs")}</Text>
             {(patient?.documents?.length ?? 0) > 0 ? (
               <Pressable onPress={() => navigation.navigate("Documents")}>
-                <Text style={styles.seeMore}>See more</Text>
+                <Text style={styles.seeMore}>{t("common.seeMore")}</Text>
               </Pressable>
             ) : null}
           </View>
           {(patient?.documents?.length ?? 0) === 0 ? (
-            <Text style={styles.docsEmpty}>No documents uploaded by your care team yet.</Text>
+            <Text style={styles.docsEmpty}>{t("home.noDocuments")}</Text>
           ) : (
             patient?.documents.slice(0, 4).map((doc) => (
               <Text key={doc.url || doc.name} style={styles.docsItem}>

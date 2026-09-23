@@ -1,0 +1,78 @@
+import type { MessageTree } from "@/core/i18n/types";
+
+export const ne: MessageTree = {
+  lang: { en: "अंग्रेजी", ne: "नेपाली" },
+  nav: {
+    home: "गृह",
+    services: "सेवाहरू",
+    factor: "फ्याक्टर",
+    notifications: "सूचनाहरू",
+    profile: "प्रोफाइल",
+  },
+  common: {
+    loading: "लोड हुँदैछ…",
+    seeMore: "थप हेर्नुहोस्",
+    search: "खोज्नुहोस्",
+    all: "सबै",
+    save: "सेभ गर्नुहोस्",
+    cancel: "रद्द गर्नुहोस्",
+    close: "बन्द गर्नुहोस्",
+  },
+  home: {
+    quickActions: "छिटो कार्यहरू",
+    diagnosticDocs: "निदान कागजातहरू",
+    noDocuments: "तपाईंको उपचार टोलीले अहिलेसम्म कुनै कागजात अपलोड गरेको छैन।",
+    injectionHistory: "इन्जेक्सन इतिहास",
+    treatmentHistory: "उपचार इतिहास",
+    bleedingHistory: "रक्तस्राव इतिहास",
+    healthInsights: "स्वास्थ्य जानकारी",
+    myDocuments: "मेरा कागजातहरू",
+    treatmentCentres: "उपचार केन्द्रहरू",
+    emergencyId: "आपतकालीन परिचयपत्र",
+    settings: "सेटिङ",
+    appointments: "भेटघाट",
+  },
+  injections: {
+    title: "तपाईंको इन्जेक्सन विवरण",
+    lead: "उपचार केन्द्रले दर्ता गरेको। अवस्था अनुसार फिल्टर गर्नुहोस् र चартमा महिना छान्नुहोस्।",
+    records: "दर्ता",
+    iuThisYear: "यस वर्ष आईयू",
+    showing: "देखाइएको",
+    chartTitle: "सम्पन्न इन्जेक्सनहरू",
+    empty: "अहिलेसम्म कुनै इन्जेक्सन दर्ता छैन। उपचार केन्द्रले थपेपछि यहाँ देखिनेछ।",
+    doctor: "चिकित्सक",
+    inhibitorWarn: "इन्हिबिटर सतर्कता चिन्ह सहित दर्ता",
+  },
+  notifications: {
+    emptyTitle: "अहिलेसम्म कुनै सूचना छैन",
+    emptyBody:
+      "उपचार केन्द्रबाट आउने सूचनाहरू — इन्जेक्सन तालिका, स्टक अपडेट, रक्तस्राव, र अन्य कार्यहरू — यहाँ देखिनेछन्।",
+    filters: {
+      all: "सबै",
+      appointments: "भेटघाट",
+      treatments: "उपचार",
+      events: "कार्यक्रम",
+      updates: "अपडेट",
+      system: "प्रणाली",
+    },
+  },
+  services: {
+    searchPlaceholder: "सेवा खोज्नुहोस्…",
+    empty: "अहिलेसम्म कुनै सेवा प्रकाशित छैन। एनएचएस प्रशासकलाई एप सेवामा थप्न भन्नुहोस्।",
+    categoryHint: "एक वर्ग देखाइँदै। सबै देखाउन ट्याप गर्नुहोस्।",
+  },
+  status: {
+    Active: "सक्रिय",
+    Completed: "सम्पन्न",
+    Scheduled: "तालिकाबद्ध",
+    Pending: "पर्खाइमा",
+    Cancelled: "रद्द",
+  },
+  quickActions: {
+    history: "इन्जेक्सन इतिहास",
+    report: "उपचार प्रतिवेदन",
+    emergency: "आपतकालीन परिचयपत्र",
+    hospital: "केन्द्र खोज्नुहोस्",
+    helpline: "हेल्पलाइन",
+  },
+};

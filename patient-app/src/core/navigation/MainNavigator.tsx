@@ -1,5 +1,7 @@
 import { createStackNavigator } from "@react-navigation/stack";
 
+import { useLocale } from "@/core/i18n";
+
 import {
   BleedingScreen,
   CentersScreen,
@@ -37,6 +39,8 @@ const headerOptions = {
 };
 
 export function MainNavigator() {
+  const { t } = useLocale();
+
   return (
     <Stack.Navigator screenOptions={headerOptions}>
       <Stack.Screen name="Home" component={HomeScreen} options={mainTabOptions} />
@@ -44,15 +48,15 @@ export function MainNavigator() {
       <Stack.Screen name="Factor" component={FactorScreen} options={mainTabOptions} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={mainTabOptions} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={mainTabOptions} />
-      <Stack.Screen name="Appointments" component={AppointmentsScreen} options={{ title: "Appointments" }} />
-      <Stack.Screen name="Injections" component={InjectionsScreen} options={{ title: "Injection History" }} />
-      <Stack.Screen name="Treatments" component={TreatmentsScreen} options={{ title: "Treatment History" }} />
-      <Stack.Screen name="Bleeding" component={BleedingScreen} options={{ title: "Bleeding History" }} />
-      <Stack.Screen name="Insights" component={InsightsScreen} options={{ title: "Health Insights" }} />
-      <Stack.Screen name="Documents" component={DocumentsScreen} options={{ title: "My documents" }} />
-      <Stack.Screen name="Centers" component={CentersScreen} options={{ title: "Treatment Centres" }} />
-      <Stack.Screen name="EmergencyId" component={EmergencyIdScreen} options={{ title: "Emergency ID" }} />
-      <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: "Settings" }} />
+      <Stack.Screen name="Appointments" component={AppointmentsScreen} options={{ title: t("home.appointments") }} />
+      <Stack.Screen name="Injections" component={InjectionsScreen} options={{ title: t("home.injectionHistory") }} />
+      <Stack.Screen name="Treatments" component={TreatmentsScreen} options={{ title: t("home.treatmentHistory") }} />
+      <Stack.Screen name="Bleeding" component={BleedingScreen} options={{ title: t("home.bleedingHistory") }} />
+      <Stack.Screen name="Insights" component={InsightsScreen} options={{ title: t("home.healthInsights") }} />
+      <Stack.Screen name="Documents" component={DocumentsScreen} options={{ title: t("home.myDocuments") }} />
+      <Stack.Screen name="Centers" component={CentersScreen} options={{ title: t("home.treatmentCentres") }} />
+      <Stack.Screen name="EmergencyId" component={EmergencyIdScreen} options={{ title: t("home.emergencyId") }} />
+      <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: t("home.settings") }} />
       <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen} options={{ title: "Service" }} />
       <Stack.Screen name="ServiceContentList" component={ServiceContentListScreen} options={{ title: "Updates" }} />
       <Stack.Screen name="ServiceContentDetail" component={ServiceContentDetailScreen} options={{ title: "Details" }} />

@@ -158,7 +158,8 @@ export default function UsersModule() {
   }, [user?.role]);
 
   return (
-    <div className="flex flex-col gap-3 pb-6">
+    <div className="admin-page">
+      <div className="admin-page-sticky space-y-2">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h1 className="text-[15px] font-semibold text-ink">Users Management</h1>
@@ -221,8 +222,9 @@ export default function UsersModule() {
       </div>
 
       {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
+      </div>
 
-      <section className="panel overflow-hidden">
+      <section className="panel admin-list-panel overflow-hidden">
         <div className="filter-bar">
           <label className="panel-inset flex h-8 min-w-[180px] flex-1 items-center gap-2 px-2.5 shadow-none">
             <Search className="size-3.5 text-faint" />
@@ -260,7 +262,7 @@ export default function UsersModule() {
             <p className="text-[13px] font-semibold text-ink">No accounts in this filter</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="admin-table-scroll overflow-x-auto">
             <table className="data-table w-full min-w-[960px] text-left text-sm">
               <thead className="bg-elevated text-[11px] uppercase text-muted">
                 <tr>

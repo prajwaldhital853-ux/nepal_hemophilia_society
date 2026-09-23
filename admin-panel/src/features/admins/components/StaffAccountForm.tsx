@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, KeyRound, MapPin, Shield, UserRound } from "lucide-react";
 
 import PermissionMatrix from "@/features/admins/components/PermissionMatrix";
@@ -201,6 +201,7 @@ export default function StaffAccountForm({
   const [saving, setSaving] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState(initial?.photoUrl || "");
+  const seededStaffId = useRef<string | null>(null);
   const [credentials, setCredentials] = useState<{
     adminId: string;
     username: string;
@@ -334,6 +335,8 @@ export default function StaffAccountForm({
 
   useEffect(() => {
     if (!initial || mode !== "edit") return;
+    if (seededStaffId.current === initial.id) return;
+    seededStaffId.current = initial.id;
     setForm(formFromStaff(initial));
     setPhotoPreview(initial.photoUrl || "");
   }, [initial, mode]);
@@ -412,6 +415,7 @@ export default function StaffAccountForm({
       if (mode === "edit" && form.temporaryPassword.trim()) {
         payload.resetTemporaryPassword = form.temporaryPassword;
         payload.resetPassword = true;
+        payload.status = "Pending";
       }
       const data =
         mode === "edit" && initial
@@ -767,7 +771,18 @@ export default function StaffAccountForm({
                 error={fieldErrors.temporaryPassword}
               >
                 <div className="mt-1 flex gap-2">
-                  <input className={fieldClass + " mt-0"} value={form.temporaryPassword} onChange={(e) => patch({ temporaryPassword: e.target.value })} />
+                  <input
+                    className={fieldClass + " mt-0"}
+                    value={form.temporaryPassword}
+                    onChange={(e) => {
+                      const temporaryPassword = e.target.value;
+                      patch(
+                        mode === "edit" && temporaryPassword.trim()
+                          ? { temporaryPassword, status: "Pending" }
+                          : { temporaryPassword },
+                      );
+                    }}
+                  />
                   <button type="button" className="rounded border border-line px-2 text-[10px]" onClick={() => patch({ temporaryPassword: generateTempPassword() })}>
                     Generate
                   </button>

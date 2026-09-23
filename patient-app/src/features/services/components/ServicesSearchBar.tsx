@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, TextInput, View } from "react-native";
 
+import { useLocale } from "@/core/i18n";
 import { servicesColors, servicesRadii } from "@/features/services/theme/servicesTheme";
 
 type Props = {
@@ -9,11 +10,12 @@ type Props = {
 };
 
 export function ServicesSearchBar({ value, onChangeText }: Props) {
+  const { t } = useLocale();
   return (
     <View style={styles.wrap}>
       <Ionicons name="search-outline" size={18} color={servicesColors.textMuted} />
       <TextInput
-        placeholder="Search services, tools or support..."
+        placeholder={t("services.searchPlaceholder")}
         placeholderTextColor={servicesColors.textMuted}
         style={styles.input}
         value={value}

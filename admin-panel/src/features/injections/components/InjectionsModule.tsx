@@ -39,12 +39,32 @@ import {
 import LogInjectionDialog from "@/features/injections/components/LogInjectionDialog";
 import { formatNumber } from "@/lib/format";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
-import { useChartColors } from "@/lib/chartColors";
+import { CHART_BAR_PROPS, useChartColors } from "@/lib/chartColors";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
 
 const types: Array<string | "All"> = ["All", "Prophylaxis", "On-demand", "Emergency", "ITI", "Surgery", "Trauma", "Other"];
 const statuses: Array<InjectionStatus | "All"> = ["All", "Completed", "Scheduled", "Pending", "Cancelled"];
+
+function currentMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthBounds(monthKey: string) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  const mm = String(month).padStart(2, "0");
+  return {
+    from: `${year}-${mm}-01`,
+    to: `${year}-${mm}-${String(lastDay).padStart(2, "0")}`,
+  };
+}
+
+function monthLabel(from: string) {
+  const basis = from ? new Date(`${from}T12:00:00`) : new Date();
+  return basis.toLocaleString("en-US", { month: "long", year: "numeric" });
+}
 
 function typeClass(type: string) {
   if (type === "Emergency") return "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400";
@@ -71,8 +91,10 @@ export default function InjectionsModule() {
   const [relatedInjections, setRelatedInjections] = useState<ApiInjection[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [relatedError, setRelatedError] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(() => monthBounds(currentMonthKey()).from);
+  const [to, setTo] = useState(() => monthBounds(currentMonthKey()).to);
+  const [openMonth, setOpenMonth] = useState(false);
+  const [rowMenu, setRowMenu] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -115,6 +137,17 @@ export default function InjectionsModule() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (rowMenu === null && !openMonth) return;
+    function onPointerDown(event: MouseEvent) {
+      const target = event.target as Element;
+      if (rowMenu !== null && !target.closest("[data-row-menu]")) setRowMenu(null);
+      if (openMonth && !target.closest("[data-month-picker]")) setOpenMonth(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [rowMenu, openMonth]);
 
   const loadRelated = useCallback(async (patientId: string) => {
     setRelatedLoading(true);
@@ -212,17 +245,51 @@ export default function InjectionsModule() {
     : null;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="admin-page">
+      <div className="admin-page-sticky space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-[15px] font-semibold text-ink">Treatment & Injection</h1>
           <p className="text-[11px] text-muted">Home &gt; Treatment & Injection</p>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-muted">
-            <CalendarRange className="size-3.5" />
-            {new Date().toLocaleString("en-US", { month: "long", year: "numeric" })}
-          </button>
+          <div className="relative" data-month-picker>
+            <button
+              type="button"
+              className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-muted shadow-none"
+              onClick={() => setOpenMonth((value) => !value)}
+            >
+              <CalendarRange className="size-3.5" />
+              {from ? monthLabel(from) : "All time"}
+            </button>
+            {openMonth ? (
+              <div className="absolute right-0 z-30 mt-1 w-52 panel p-2.5 shadow-lg">
+                <p className="mb-1.5 text-[10px] font-medium text-muted">Filter by month</p>
+                <input
+                  type="month"
+                  value={from ? from.slice(0, 7) : currentMonthKey()}
+                  onChange={(e) => {
+                    const bounds = monthBounds(e.target.value);
+                    setFrom(bounds.from);
+                    setTo(bounds.to);
+                    setOpenMonth(false);
+                  }}
+                  className="w-full rounded border border-line-subtle bg-elevated px-2 py-1.5 text-[11px] text-ink"
+                />
+                <button
+                  type="button"
+                  className="mt-2 w-full rounded px-2 py-1.5 text-left text-[11px] text-muted hover:bg-elevated"
+                  onClick={() => {
+                    setFrom("");
+                    setTo("");
+                    setOpenMonth(false);
+                  }}
+                >
+                  All time
+                </button>
+              </div>
+            ) : null}
+          </div>
           {canAdd ? (
             <button
               type="button"
@@ -236,6 +303,7 @@ export default function InjectionsModule() {
             <span className="text-[11px] text-muted">Province monitoring — add injections is hospital/super only</span>
           )}
         </div>
+      </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
@@ -258,7 +326,7 @@ export default function InjectionsModule() {
         <article className="panel p-3">
           <h2 className="text-[12px] font-semibold text-ink">Monthly mix by treatment type</h2>
           <ResponsiveContainer width="100%" height={188} className="mt-2">
-            <BarChart data={monthlyMix}>
+            <BarChart data={monthlyMix} {...CHART_BAR_PROPS}>
               <CartesianGrid stroke={c.grid} vertical={false} />
               <XAxis dataKey="month" stroke={c.tick} fontSize={10} tickLine={false} axisLine={false} />
               <YAxis stroke={c.tick} fontSize={10} width={28} tickLine={false} axisLine={false} />
@@ -453,7 +521,7 @@ export default function InjectionsModule() {
         </article>
       ) : null}
 
-      <section className="panel overflow-hidden">
+      <section className="panel admin-list-panel overflow-hidden">
           <div className="filter-bar">
             <label className="panel-inset flex h-8 min-w-[180px] flex-1 items-center gap-2 px-2.5 shadow-none">
               <Search className="size-3.5 text-faint" />
@@ -566,7 +634,7 @@ export default function InjectionsModule() {
               Export
             </button>
           </div>
-          <div className="overflow-x-auto">
+          <div className="admin-table-scroll overflow-x-auto">
             <table className="data-table w-full min-w-[920px] text-left text-sm">
               <thead className="bg-elevated text-[11px] uppercase tracking-wide text-muted">
                 <tr>
@@ -637,10 +705,78 @@ export default function InjectionsModule() {
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-1 text-muted">
-                        <Eye className="size-[15px] text-brand" />
-                        <MoreHorizontal className="size-[15px]" />
+                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="relative flex items-center gap-1 text-muted" data-row-menu>
+                        <button
+                          type="button"
+                          className="rounded-lg p-1.5 text-brand hover:bg-brand-soft"
+                          aria-label={`View ${row.displayCode}`}
+                          onClick={() => setSelected(row)}
+                        >
+                          <Eye className="size-[15px]" />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg p-1.5 hover:bg-elevated"
+                          aria-label={`More actions for ${row.displayCode}`}
+                          onClick={() => setRowMenu((current) => (current === row.id ? null : row.id))}
+                        >
+                          <MoreHorizontal className="size-[15px]" />
+                        </button>
+                        {rowMenu === row.id ? (
+                          <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden panel shadow-lg">
+                            <button
+                              type="button"
+                              className="block w-full px-3 py-2 text-left text-[11px] hover:bg-elevated"
+                              onClick={() => {
+                                setSelected(row);
+                                setRowMenu(null);
+                              }}
+                            >
+                              View details
+                            </button>
+                            <Link
+                              href={`/dashboard/patients/${row.patientId}`}
+                              className="block w-full px-3 py-2 text-left text-[11px] hover:bg-elevated"
+                              onClick={() => setRowMenu(null)}
+                            >
+                              Open patient profile
+                            </Link>
+                            <button
+                              type="button"
+                              className="block w-full px-3 py-2 text-left text-[11px] hover:bg-elevated"
+                              onClick={() => {
+                                void navigator.clipboard.writeText(row.displayCode || String(row.id));
+                                setRowMenu(null);
+                              }}
+                            >
+                              Copy injection ID
+                            </button>
+                            <button
+                              type="button"
+                              className="block w-full px-3 py-2 text-left text-[11px] hover:bg-elevated"
+                              onClick={() => {
+                                downloadCsv(
+                                  stampFilename(`injection-${row.displayCode || row.id}`),
+                                  ["Field", "Value"],
+                                  [
+                                    ["ID", row.displayCode || String(row.id)],
+                                    ["Patient", `${row.patientId} ${row.patientName}`],
+                                    ["Factor", row.factorMedicineName],
+                                    ["Dose", `${row.dose} ${row.unit}`],
+                                    ["Type", row.indication],
+                                    ["Status", row.status],
+                                    ["When", row.administeredAt],
+                                    ["Center", row.hospitalName],
+                                  ],
+                                );
+                                setRowMenu(null);
+                              }}
+                            >
+                              Export row
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

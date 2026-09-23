@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { useAuth } from "@/core/auth/AuthContext";
 import { homeColors } from "@/features/home/theme/homeTheme";
 
@@ -45,6 +46,7 @@ export function HomeHeader({
       </View>
 
       <View style={styles.rightRow}>
+        <LanguageToggle />
         <Pressable style={styles.iconBtn} onPress={onNotificationPress} hitSlop={8}>
           <Ionicons name="notifications-outline" size={24} color="#111827" />
           {notificationCount > 0 ? (

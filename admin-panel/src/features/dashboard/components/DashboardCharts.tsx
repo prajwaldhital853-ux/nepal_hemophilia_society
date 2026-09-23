@@ -17,6 +17,7 @@ import {
 } from "recharts";
 
 import type { DashboardTrendPoint, StockByHospital, StockUsageTrend } from "@/features/dashboard/types";
+import { CHART_BAR_PROPS } from "@/lib/chartColors";
 import { useTheme } from "@/lib/theme";
 
 const CHART_HEIGHT = 168;
@@ -162,7 +163,7 @@ export function StockSummaryChart({
         <p className="py-6 text-center text-[11px] text-muted">No stock records in your scope yet.</p>
       ) : view === "centers" ? (
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-          <BarChart data={topCenters} margin={{ top: 8, right: 4, left: 0, bottom: 20 }}>
+          <BarChart data={topCenters} margin={{ top: 8, right: 4, left: 0, bottom: 20 }} {...CHART_BAR_PROPS}>
             <CartesianGrid stroke={c.grid} vertical={false} />
             <XAxis dataKey="hospitalName" stroke={c.tick} fontSize={9} tickLine={false} axisLine={false} interval={0} angle={-16} textAnchor="end" height={40} />
             <YAxis stroke={c.tick} fontSize={10} width={32} tickLine={false} axisLine={false} />
@@ -179,7 +180,7 @@ export function StockSummaryChart({
         </ResponsiveContainer>
       ) : (
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-          <BarChart data={usageTrend} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
+          <BarChart data={usageTrend} margin={{ top: 8, right: 4, left: 0, bottom: 0 }} {...CHART_BAR_PROPS}>
             <CartesianGrid stroke={c.grid} vertical={false} />
             <XAxis dataKey="month" stroke={c.tick} fontSize={10} tickLine={false} axisLine={false} />
             <YAxis stroke={c.tick} fontSize={10} width={32} tickLine={false} axisLine={false} />

@@ -2,6 +2,12 @@
 
 import { useTheme } from "@/lib/theme";
 
+/** Keeps bars narrow even when the chart has only one or two categories. */
+export const CHART_BAR_PROPS = {
+  maxBarSize: 44,
+  barCategoryGap: "32%",
+} as const;
+
 export function useChartColors() {
   const { theme, ready } = useTheme();
   const dark = ready && theme === "dark";
