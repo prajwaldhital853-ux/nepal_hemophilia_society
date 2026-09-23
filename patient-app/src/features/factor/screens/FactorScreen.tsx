@@ -10,6 +10,7 @@ import { FactorHeroBanner } from "@/features/factor/components/FactorHeroBanner"
 import { FactorQuickActions } from "@/features/factor/components/FactorQuickActions";
 import { FactorStockStatus } from "@/features/factor/components/FactorStockStatus";
 import { FactorTabs } from "@/features/factor/components/FactorTabs";
+import { useClearTopics } from "@/features/notifications/useClearTopics";
 import { FactorUsageSummary } from "@/features/factor/components/FactorUsageSummary";
 import { MonthlyFactorUsageChart } from "@/features/factor/components/MonthlyFactorUsageChart";
 import { RecentFactorTransactions } from "@/features/factor/components/RecentFactorTransactions";
@@ -18,6 +19,7 @@ import { factorColors, factorSpacing } from "@/features/factor/theme/factorTheme
 type Props = StackScreenProps<RootStackParamList, "Factor">;
 
 export default function FactorScreen({ navigation }: Props) {
+  useClearTopics("Factor");
   const insets = useSafeAreaInsets();
 
   return (

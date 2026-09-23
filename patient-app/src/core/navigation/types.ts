@@ -8,6 +8,7 @@ export type RootStackParamList = {
   Factor: undefined;
   Notifications: undefined;
   Profile: undefined;
+  Appointments: { appointmentId?: number } | undefined;
   Documents: undefined;
   Injections: undefined;
   Treatments: undefined;

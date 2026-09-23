@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { StackScreenProps } from "@react-navigation/stack";
 
@@ -9,6 +9,7 @@ import { HomeHeader } from "@/features/home/components/HomeHeader";
 import { NotificationFilters } from "@/features/notifications/components/NotificationFilters";
 import { NotificationsHeroBanner } from "@/features/notifications/components/NotificationsHeroBanner";
 import type { NotificationFilterId } from "@/features/notifications/data/notificationsTypes";
+import { destinationForNotification } from "@/features/notifications/notificationRoutes";
 import { usePatientNotifications } from "@/features/notifications/hooks/usePatientNotifications";
 import { notificationsColors, notificationsSpacing } from "@/features/notifications/theme/notificationsTheme";
 
@@ -37,7 +38,7 @@ function formatWhen(iso: string) {
 export default function NotificationsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<NotificationFilterId>("all");
-  const { notifications, unreadCount, loading } = usePatientNotifications(FILTER_TO_CATEGORY[filter]);
+  const { notifications, unreadCount, loading, markRead } = usePatientNotifications(FILTER_TO_CATEGORY[filter]);
 
   return (
     <View style={styles.screen}>
@@ -70,14 +71,22 @@ export default function NotificationsScreen({ navigation }: Props) {
         ) : (
           <View style={styles.list}>
             {notifications.map((item) => (
-              <View key={item.id} style={[styles.card, !item.isRead ? styles.cardUnread : null]}>
+              <Pressable
+                key={item.id}
+                style={[styles.card, !item.isRead ? styles.cardUnread : null]}
+                onPress={() => {
+                  if (!item.isRead) void markRead(item.id);
+                  const destination = destinationForNotification(item);
+                  if (destination) navigation.navigate(destination.screen as never, destination.params as never);
+                }}
+              >
                 <View style={styles.cardHead}>
                   <Text style={styles.cardTitle}>{item.title}</Text>
                   {!item.isRead ? <View style={styles.unreadDot} /> : null}
                 </View>
                 <Text style={styles.cardMessage}>{item.message}</Text>
                 <Text style={styles.cardMeta}>{formatWhen(item.createdAt)} · {item.category}</Text>
-              </View>
+              </Pressable>
             ))}
           </View>
         )}

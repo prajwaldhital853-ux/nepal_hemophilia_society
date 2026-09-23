@@ -10,6 +10,7 @@ import {
   InjectionsScreen,
   InsightsScreen,
   NotificationsScreen,
+  AppointmentsScreen,
   ProfileScreen,
   ServiceContentDetailScreen,
   ServiceContentListScreen,
@@ -43,6 +44,7 @@ export function MainNavigator() {
       <Stack.Screen name="Factor" component={FactorScreen} options={mainTabOptions} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={mainTabOptions} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={mainTabOptions} />
+      <Stack.Screen name="Appointments" component={AppointmentsScreen} options={{ title: "Appointments" }} />
       <Stack.Screen name="Injections" component={InjectionsScreen} options={{ title: "Injection History" }} />
       <Stack.Screen name="Treatments" component={TreatmentsScreen} options={{ title: "Treatment History" }} />
       <Stack.Screen name="Bleeding" component={BleedingScreen} options={{ title: "Bleeding History" }} />

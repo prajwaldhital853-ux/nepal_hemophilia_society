@@ -4,6 +4,7 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Tex
 import { patientApi } from "@/core/api";
 import { useAuth } from "@/core/auth/AuthContext";
 import { DonutChart, InteractiveChart } from "@/features/services/components/charts";
+import { useClearTopics } from "@/features/notifications/useClearTopics";
 import { servicesColors } from "@/features/services/theme/servicesTheme";
 
 type Episode = {
@@ -19,6 +20,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const COLORS = ["#C1121F", "#001D3D", "#F59E0B", "#0F766E", "#7C3AED"];
 
 export default function BleedingScreen() {
+  useClearTopics("Bleeding");
   const { token } = useAuth();
   const [items, setItems] = useState<Episode[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);

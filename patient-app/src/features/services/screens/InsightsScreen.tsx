@@ -11,6 +11,7 @@ import {
 import type { StackScreenProps } from "@react-navigation/stack";
 
 import { useAuth } from "@/core/auth/AuthContext";
+import { useClearTopics } from "@/features/notifications/useClearTopics";
 import type { RootStackParamList } from "@/core/navigation/types";
 import { DonutChart, InteractiveChart } from "@/features/services/components/charts";
 import { fetchPatientInsights, type PatientInsights } from "@/features/services/insights";
@@ -38,6 +39,7 @@ function toneStyle(tone: string) {
 }
 
 export default function InsightsScreen({ navigation }: Props) {
+  useClearTopics("Insights");
   const { token, patient } = useAuth();
   const [data, setData] = useState<PatientInsights | null>(null);
   const [error, setError] = useState("");

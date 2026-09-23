@@ -1,6 +1,7 @@
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useAuth } from "@/core/auth/AuthContext";
+import { useClearTopics } from "@/features/notifications/useClearTopics";
 import { servicesColors } from "@/features/services/theme/servicesTheme";
 
 function Row({ label, value }: { label: string; value?: string }) {
@@ -14,6 +15,7 @@ function Row({ label, value }: { label: string; value?: string }) {
 }
 
 export default function EmergencyIdScreen() {
+  useClearTopics("EmergencyId");
   const { patient } = useAuth();
 
   return (

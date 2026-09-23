@@ -99,6 +99,9 @@ class TreatmentCreateSerializer(serializers.Serializer):
                 reason=VisitReason.TREATMENT,
                 treatment=record,
             )
+        from apps.notifications.services import notify_treatment_action
+
+        notify_treatment_action(record, user=request.user)
         return record
 
 
@@ -137,6 +140,9 @@ class TreatmentUpdateSerializer(serializers.Serializer):
                     reason=VisitReason.TREATMENT,
                     treatment=instance,
                 )
+        from apps.notifications.services import notify_treatment_action
+
+        notify_treatment_action(instance, user=self.context["request"].user)
         return instance
 
 

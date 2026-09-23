@@ -104,6 +104,14 @@ class PatientDocumentsView(APIView):
             ip=client_ip(request),
             detail=f"{len(created)} file(s) for {patient.unique_patient_id} at {hospital.name if hospital else 'n/a'}",
         )
+        from apps.notifications.services import notify_document_added
+
+        notify_document_added(
+            patient,
+            [upload.name for upload in uploads],
+            user=request.user,
+            hospital=hospital,
+        )
         return Response({"documents": created, "total": len(created)}, status=201)
 
 

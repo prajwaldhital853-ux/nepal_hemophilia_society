@@ -4,6 +4,7 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Tex
 import { patientApi } from "@/core/api";
 import { useAuth } from "@/core/auth/AuthContext";
 import { InteractiveChart } from "@/features/services/components/charts";
+import { useClearTopics } from "@/features/notifications/useClearTopics";
 import { servicesColors } from "@/features/services/theme/servicesTheme";
 
 type InjectionItem = {
@@ -38,6 +39,7 @@ function statusStyle(status: string) {
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export default function InjectionsScreen() {
+  useClearTopics("Injections");
   const { token } = useAuth();
   const [items, setItems] = useState<InjectionItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);

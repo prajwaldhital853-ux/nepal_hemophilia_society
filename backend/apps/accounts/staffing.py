@@ -412,6 +412,9 @@ def create_staff_account(actor, data: dict):
 
     apply_assigned_access(actor, user, kind, data.get("permissions"), parse_bool(data.get("viewOnly")))
     save_admin_photo(user, data.get("photo"))
+    from apps.notifications.services import notify_staff_created
+
+    notify_staff_created(user, actor=actor)
     return user, temp
 
 

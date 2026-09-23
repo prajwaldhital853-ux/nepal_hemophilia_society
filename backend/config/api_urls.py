@@ -6,10 +6,12 @@ from django.urls import include, path
 
 from apps.core.backup_views import BackupDownloadView, BackupListCreateView
 from apps.core.urls import CronPingView
+from apps.notifications.views import CronNotificationJobsView
 
 urlpatterns = [
     path("health/", include("apps.core.urls")),
     path("cron/", CronPingView.as_view(), name="cron-ping"),
+    path("cron/notifications/", CronNotificationJobsView.as_view(), name="cron-notifications"),
     path("backups/", BackupListCreateView.as_view(), name="backups"),
     path("backups/<str:filename>/download/", BackupDownloadView.as_view(), name="backup-download"),
     path("auth/", include("apps.accounts.urls")),
@@ -22,6 +24,7 @@ urlpatterns = [
     path("factors/", include("apps.factors.urls")),
     path("injections/", include("apps.injections.urls")),
     path("treatments/", include("apps.treatments.urls")),
+    path("appointments/", include("apps.appointments.urls")),
     path("stock/", include("apps.stock.urls")),
     path("notifications/", include("apps.notifications.urls")),
     path("audit/", include("apps.audit.urls")),

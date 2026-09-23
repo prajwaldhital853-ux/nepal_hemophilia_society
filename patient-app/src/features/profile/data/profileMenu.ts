@@ -3,7 +3,7 @@ export type ProfileMenuItem = {
   title: string;
   subtitle: string;
   icon: "person" | "people" | "medical" | "calendar" | "notifications" | "settings" | "help" | "logout";
-    action?: "profile" | "documents" | "events" | "notifications" | "settings" | "help" | "logout" | "community";
+    action?: "profile" | "documents" | "events" | "notifications" | "settings" | "help" | "logout" | "community" | "appointments";
 };
 
 export const profileMenuItems: ProfileMenuItem[] = [
@@ -31,9 +31,9 @@ export const profileMenuItems: ProfileMenuItem[] = [
   {
     id: "appointments",
     title: "Appointments",
-    subtitle: "NHS events and sessions",
+    subtitle: "Request and track centre visits",
     icon: "calendar",
-    action: "events",
+    action: "appointments",
   },
   {
     id: "notifications",

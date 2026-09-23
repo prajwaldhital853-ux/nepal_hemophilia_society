@@ -33,6 +33,7 @@
     "owner": "bulkipo",
     "plugins": [
       "expo-secure-store",
+      "expo-notifications",
       [
         "expo-build-properties",
         {

@@ -129,6 +129,7 @@ LOCAL_APPS = [
     "apps.factors",
     "apps.injections",
     "apps.treatments",
+    "apps.appointments",
     "apps.stock",
     "apps.notifications",
     "apps.audit",
@@ -307,6 +308,8 @@ SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
+# Shared secret for scheduled notification cron URLs (?key=...).
+CRON_SECRET = os.getenv("CRON_SECRET", "").strip()
 BACKUP_ROOT = BASE_DIR / "private_backups"
 # Optional. If unset, backups are encrypted with DJANGO_SECRET_KEY.
 BACKUP_ENCRYPTION_KEY = os.getenv("BACKUP_ENCRYPTION_KEY", "").strip()

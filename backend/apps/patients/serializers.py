@@ -434,6 +434,10 @@ class PatientSerializer(serializers.ModelSerializer):
         self._provision_user(patient, str(temp).strip())
         self._save_uploads(patient)
         self.issued_temporary_password = str(temp).strip()
+        if request and request.user.is_authenticated:
+            from apps.notifications.services import notify_patient_created
+
+            notify_patient_created(patient, user=request.user)
         return patient
 
     @transaction.atomic
@@ -453,6 +457,10 @@ class PatientSerializer(serializers.ModelSerializer):
         else:
             self._sync_user(patient, reset_value or None)
         self._save_uploads(patient)
+        if request and request.user.is_authenticated:
+            from apps.notifications.services import notify_profile_updated
+
+            notify_profile_updated(patient, user=request.user)
         return patient
 
     def to_representation(self, instance):

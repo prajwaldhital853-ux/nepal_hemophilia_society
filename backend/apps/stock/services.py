@@ -15,7 +15,7 @@ def _record_movement(*, stock, movement_type, delta, user, reason, notes="", pat
     if stock.quantity < 0:
         raise ValidationError("Insufficient stock at this treatment center for this product.")
     stock.save(update_fields=["quantity", "updated_at"])
-    return StockMovement.objects.create(
+    movement = StockMovement.objects.create(
         stock=stock,
         movement_type=movement_type,
         quantity_delta=delta,
@@ -26,6 +26,10 @@ def _record_movement(*, stock, movement_type, delta, user, reason, notes="", pat
         patient=patient,
         injection=injection,
     )
+    from apps.notifications.services import notify_stock_movement
+
+    notify_stock_movement(movement)
+    return movement
 
 
 def _net_consumed_for_injection(injection):

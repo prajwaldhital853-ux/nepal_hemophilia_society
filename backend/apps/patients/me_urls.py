@@ -1,5 +1,6 @@
 from django.urls import path
 
+from apps.appointments.views import PatientAppointmentDetailView, PatientAppointmentsView
 from apps.patients.bleeding_views import PatientMeBleedingEpisodesView
 from apps.patients.clinical_views import (
     PatientMeHistoryView,
@@ -22,4 +23,6 @@ urlpatterns = [
     path("documents/", PatientMeDocumentsView.as_view(), name="me-documents"),
     path("stock/", PatientMeStockView.as_view(), name="me-stock"),
     path("bleeding-episodes/", PatientMeBleedingEpisodesView.as_view(), name="me-bleeding"),
+    path("appointments/", PatientAppointmentsView.as_view(), name="me-appointments"),
+    path("appointments/<int:pk>/", PatientAppointmentDetailView.as_view(), name="me-appointment"),
 ]

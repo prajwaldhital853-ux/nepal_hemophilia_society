@@ -7,6 +7,7 @@ export type NavIconName =
   | "hospital"
   | "stock"
   | "treatment"
+  | "appointments"
   | "users"
   | "reports"
   | "audit"
@@ -40,6 +41,7 @@ export const mainNav: NavItem[] = [
   },
   { href: "/dashboard/stock", label: "Stock Management", icon: "stock" },
   { href: "/dashboard/injections", label: "Treatment & Injection", icon: "treatment" },
+  { href: "/dashboard/appointments", label: "Appointments", icon: "appointments" },
   { href: "/dashboard/users", label: "Users Management", icon: "users" },
   { href: "/dashboard/reports", label: "Reports & Analytics", icon: "reports" },
   { href: "/dashboard/audit", label: "Audit Logs", icon: "audit" },

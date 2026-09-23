@@ -50,6 +50,9 @@ PERM_DOCUMENTS_DELETE = "documents.delete"
 PERM_ADMINS_VIEW = "admins.view"
 PERM_ADMINS_MANAGE = "admins.manage"
 PERM_ADMINS_DELETE = "admins.delete"
+PERM_APPOINTMENTS_VIEW = "appointments.view"
+PERM_APPOINTMENTS_UPDATE = "appointments.update"
+PERM_APPOINTMENTS_DELETE = "appointments.delete"
 
 KIND_SUPER = "super_admin"
 KIND_ADMIN = "admin"
@@ -116,6 +119,9 @@ SUPER_PERMS = frozenset(
         PERM_ADMINS_VIEW,
         PERM_ADMINS_MANAGE,
         PERM_ADMINS_DELETE,
+        PERM_APPOINTMENTS_VIEW,
+        PERM_APPOINTMENTS_UPDATE,
+        PERM_APPOINTMENTS_DELETE,
     }
 )
 
@@ -150,6 +156,9 @@ PROVINCE_PERMS = frozenset(
         PERM_DOCUMENTS_DELETE,
         PERM_REPORTS_PROVINCE,
         PERM_REPORTS_HOSPITAL,
+        PERM_APPOINTMENTS_VIEW,
+        PERM_APPOINTMENTS_UPDATE,
+        PERM_APPOINTMENTS_DELETE,
     }
 )
 
@@ -175,6 +184,9 @@ HOSPITAL_PERMS = frozenset(
         PERM_DOCUMENTS_ADD,
         PERM_DOCUMENTS_DELETE,
         PERM_REPORTS_HOSPITAL,
+        PERM_APPOINTMENTS_VIEW,
+        PERM_APPOINTMENTS_UPDATE,
+        PERM_APPOINTMENTS_DELETE,
     }
 )
 
@@ -247,6 +259,15 @@ PERMISSION_GROUPS = [
             {"code": PERM_TREATMENTS_ADD, "action": "create", "label": "Add"},
             {"code": PERM_TREATMENTS_UPDATE, "action": "update", "label": "Update"},
             {"code": PERM_TREATMENTS_DELETE, "action": "delete", "label": "Delete"},
+        ],
+    },
+    {
+        "page": "appointments",
+        "label": "Appointments",
+        "permissions": [
+            {"code": PERM_APPOINTMENTS_VIEW, "action": "view", "label": "View"},
+            {"code": PERM_APPOINTMENTS_UPDATE, "action": "update", "label": "Update"},
+            {"code": PERM_APPOINTMENTS_DELETE, "action": "delete", "label": "Delete"},
         ],
     },
     {
@@ -368,6 +389,9 @@ PERMISSION_LABELS = {
     PERM_TREATMENTS_ADD: "Add treatments",
     PERM_TREATMENTS_UPDATE: "Update treatments",
     PERM_TREATMENTS_DELETE: "Delete treatments",
+    PERM_APPOINTMENTS_VIEW: "View appointments",
+    PERM_APPOINTMENTS_UPDATE: "Update appointments",
+    PERM_APPOINTMENTS_DELETE: "Delete appointments",
     PERM_HOSPITAL_STAFF_VIEW: "View hospital staff",
     PERM_HOSPITAL_STAFF_MANAGE: "Add and update hospital staff",
     PERM_HOSPITAL_STAFF_DELETE: "Delete hospital staff",
@@ -407,6 +431,7 @@ NAV_PERMISSIONS = {
     "/dashboard/hospitals/center-admins": PERM_HOSPITAL_STAFF_VIEW,
     "/dashboard/stock": PERM_STOCK_VIEW,
     "/dashboard/injections": PERM_INJECTIONS_VIEW,
+    "/dashboard/appointments": PERM_APPOINTMENTS_VIEW,
     "/dashboard/users": PERM_USERS_VIEW,
     "/dashboard/reports": PERM_REPORTS_HOSPITAL,
     "/dashboard/audit": PERM_AUDIT_VIEW,

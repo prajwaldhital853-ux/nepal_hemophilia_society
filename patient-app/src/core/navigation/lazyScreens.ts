@@ -9,6 +9,7 @@ export const ServicesScreen = lazyScreen(() => import("@/features/services/scree
 export const FactorScreen = lazyScreen(() => import("@/features/factor/screens/FactorScreen"));
 export const NotificationsScreen = lazyScreen(() => import("@/features/notifications/screens/NotificationsScreen"));
 export const ProfileScreen = lazyScreen(() => import("@/features/profile/screens/ProfileScreen"));
+export const AppointmentsScreen = lazyScreen(() => import("@/features/appointments/screens/AppointmentsScreen"));
 export const DocumentsScreen = lazyScreen(() => import("@/features/home/screens/DocumentsScreen"));
 export const InjectionsScreen = lazyScreen(() => import("@/features/injections/screens/InjectionsScreen"));
 export const TreatmentsScreen = lazyScreen(() => import("@/features/treatments/screens/TreatmentsScreen"));

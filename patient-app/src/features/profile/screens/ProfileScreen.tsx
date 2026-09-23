@@ -31,6 +31,10 @@ export default function ProfileScreen({ navigation }: Props) {
       navigation.navigate("Documents");
       return;
     }
+    if (item.action === "appointments") {
+      navigation.navigate("Appointments");
+      return;
+    }
     if (item.action === "events") {
       navigation.navigate("ServiceContentList", { kind: "events", title: "Events" });
       return;

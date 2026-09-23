@@ -16,6 +16,10 @@ class BackupListCreateView(APIView):
 
     def get(self, request):
         auto = maybe_auto_backup(actor=request.user)
+        if auto:
+            from apps.notifications.services import notify_backup
+
+            notify_backup("saved", auto.get("filename") or "backup", actor=request.user)
         rows = list_backups()
         return Response({"backups": rows, "autoCreated": bool(auto), "latest": rows[0] if rows else None})
 
@@ -25,6 +29,9 @@ class BackupListCreateView(APIView):
             kind = "manual"
         meta = write_encrypted_backup(kind, actor=request.user)
         prune_backups()
+        from apps.notifications.services import notify_backup
+
+        notify_backup("saved", meta["filename"], actor=request.user)
         AuditLog.objects.create(
             actor=request.user.get_username(),
             action="Created data backup",
@@ -51,6 +58,9 @@ class BackupDownloadView(APIView):
             ip=client_ip(request),
             detail="Decrypted zip downloaded to Super Admin device only",
         )
+        from apps.notifications.services import notify_backup
+
+        notify_backup("downloaded", filename, actor=request.user)
         zip_name = filename.replace(".zip.enc", ".zip")
         return FileResponse(
             BytesIO(raw),

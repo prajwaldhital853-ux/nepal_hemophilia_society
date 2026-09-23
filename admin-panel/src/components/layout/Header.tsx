@@ -1,7 +1,9 @@
 "use client";
 
-import { Bell, ChevronDown, Mail, Menu, Moon, Search, Sun } from "lucide-react";
+import { ChevronDown, Menu, Moon, Search, Sun } from "lucide-react";
 
+import { AppointmentInbox } from "@/components/layout/AppointmentInbox";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { useMobileNav } from "@/components/layout/MobileNavContext";
 import { OwnAvatar } from "@/components/ui/UserAvatar";
 import { useAuth } from "@/lib/auth";
@@ -45,16 +47,8 @@ export function Header() {
       </label>
 
       <div className="ml-auto flex items-center gap-1.5">
-        <button type="button" className="panel p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink" aria-label="Notifications">
-          <Bell className="size-4" />
-        </button>
-        <button
-          type="button"
-          className="hidden panel p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink sm:inline-flex"
-          aria-label="Messages"
-        >
-          <Mail className="size-4" />
-        </button>
+        <NotificationBell />
+        <AppointmentInbox />
 
         <button
           type="button"

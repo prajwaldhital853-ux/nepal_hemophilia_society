@@ -7,6 +7,7 @@ import { patientApi } from "@/core/api";
 import { useAuth } from "@/core/auth/AuthContext";
 import type { RootStackParamList } from "@/core/navigation/types";
 import { homeColors } from "@/features/home/theme/homeTheme";
+import { useClearTopics } from "@/features/notifications/useClearTopics";
 
 type Doc = {
   id?: number;
@@ -21,6 +22,7 @@ type Doc = {
 type Props = StackScreenProps<RootStackParamList, "Documents">;
 
 export default function DocumentsScreen({}: Props) {
+  useClearTopics("Documents");
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const [docs, setDocs] = useState<Doc[]>([]);
