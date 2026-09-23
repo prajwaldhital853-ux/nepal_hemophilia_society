@@ -70,6 +70,7 @@ patient-app/*.jks
 patient-app/*.p8
 patient-app/*.p12
 patient-app/*.mobileprovision
+patient-app/google-services.json
 *.iml
 *.ipr
 *.iws

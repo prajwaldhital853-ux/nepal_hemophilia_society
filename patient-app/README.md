@@ -43,6 +43,16 @@ copy .env.example .env
 npm install
 ```
 
+### Android push (EAS builds only)
+
+`google-services.json` is **not** in git (Firebase API keys must stay local).
+
+1. Firebase Console → Project settings → Your apps → Android app (`org.nepalhemophilia.patient`)
+2. Download `google-services.json`
+3. Save it as `patient-app/google-services.json` (see `google-services.json.example`)
+
+For EAS Build, upload the file as a [secret file](https://docs.expo.dev/build-reference/variables/#file-environment-variables) or keep it on the build machine.
+
 ## Run
 
 ```powershell

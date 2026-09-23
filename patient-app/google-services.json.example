@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "626057247520",
-    "project_id": "hemophilia-8789d",
-    "storage_bucket": "hemophilia-8789d.firebasestorage.app"
+    "project_number": "YOUR_FIREBASE_PROJECT_NUMBER",
+    "project_id": "your-firebase-project-id",
+    "storage_bucket": "your-firebase-project-id.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:626057247520:android:5c4ee103480e27fdcb3545",
+        "mobilesdk_app_id": "1:YOUR_FIREBASE_PROJECT_NUMBER:android:YOUR_ANDROID_APP_ID",
         "android_client_info": {
           "package_name": "org.nepalhemophilia.patient"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCuBnTpaNzRMwvlnZ-cyRiuSjL_2JSfKGM"
+          "current_key": "YOUR_FIREBASE_ANDROID_API_KEY"
         }
       ],
       "services": {
