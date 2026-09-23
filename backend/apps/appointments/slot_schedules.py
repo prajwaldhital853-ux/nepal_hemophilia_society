@@ -65,3 +65,28 @@ def extend_all_slot_schedules() -> int:
     for schedule in AppointmentSlotSchedule.objects.filter(is_active=True).select_related("hospital"):
         total += generate_slots_for_schedule(schedule)
     return total
+
+
+def delete_future_slots_for_schedule(schedule: AppointmentSlotSchedule) -> int:
+    """Remove upcoming slots that match this recurring rule."""
+    parsed_times: list[time] = []
+    for raw in schedule.times or []:
+        parsed = _parse_time(raw)
+        if parsed:
+            parsed_times.append(parsed.replace(second=0, microsecond=0))
+    if not parsed_times:
+        return 0
+
+    now = timezone.now()
+    qs = AppointmentSlot.objects.filter(hospital_id=schedule.hospital_id, slot_at__gte=now)
+    deleted = 0
+    for slot in qs.iterator():
+        local = timezone.localtime(slot.slot_at)
+        slot_time = local.time().replace(second=0, microsecond=0)
+        if slot_time not in parsed_times:
+            continue
+        if not day_allowed(schedule, local.weekday()):
+            continue
+        slot.delete()
+        deleted += 1
+    return deleted

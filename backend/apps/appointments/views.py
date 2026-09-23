@@ -15,7 +15,7 @@ from apps.appointments.models import (
     SlotRepeatMode,
     VisitType,
 )
-from apps.appointments.slot_schedules import generate_slots_for_schedule
+from apps.appointments.slot_schedules import delete_future_slots_for_schedule, generate_slots_for_schedule
 from apps.appointments.scope import appointments_for_admin
 from apps.appointments.serializers import AppointmentSerializer
 from apps.hospitals.models import Hospital
@@ -373,6 +373,7 @@ class AdminAppointmentSlotScheduleDetailView(APIView):
         schedule = _schedules_scope(request.user).filter(pk=pk).first()
         if not schedule:
             raise NotFound("Schedule not found.")
+        delete_future_slots_for_schedule(schedule)
         schedule.is_active = False
         schedule.save(update_fields=["is_active", "updated_at"])
         return Response(status=204)

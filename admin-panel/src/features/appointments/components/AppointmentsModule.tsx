@@ -211,6 +211,7 @@ export default function AppointmentsModule() {
         </div>
       </div>
 
+      <div className="admin-page-body">
       {showSlots ? <SlotManager /> : null}
 
       {selected ? (
@@ -350,6 +351,7 @@ export default function AppointmentsModule() {
           </table>
         </div>
       </section>
+      </div>
 
       {selected ? (
         <div
@@ -541,8 +543,21 @@ function SlotManager() {
     try {
       await apiFetch(`/appointments/slots/${id}/`, { method: "DELETE" });
       setSlots((rows) => rows.filter((row) => row.id !== id));
+      showToast("Time removed");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Could not remove the slot");
+      showToast(err instanceof Error ? err.message : "Could not remove the time");
+    }
+  }
+
+  async function removeDay(groupSlots: Slot[]) {
+    if (!window.confirm(`Remove all ${groupSlots.length} published times for this day?`)) return;
+    try {
+      await Promise.all(groupSlots.map((slot) => apiFetch(`/appointments/slots/${slot.id}/`, { method: "DELETE" })));
+      setSlots((rows) => rows.filter((row) => !groupSlots.some((slot) => slot.id === row.id)));
+      showToast("Day removed");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Could not remove this day");
+      await load();
     }
   }
 
@@ -580,9 +595,11 @@ function SlotManager() {
   }
 
   async function removeSchedule(id: number) {
+    if (!window.confirm("Remove this recurring schedule and all matching future times?")) return;
     try {
       await apiFetch(`/appointments/slots/schedules/${id}/`, { method: "DELETE" });
-      setSchedules((rows) => rows.filter((row) => row.id !== id));
+      await load();
+      showToast("Recurring schedule removed");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Could not remove the schedule");
     }
@@ -604,7 +621,8 @@ function SlotManager() {
   }, [slots]);
 
   return (
-    <section className="panel p-4">
+    <section className="panel flex min-h-0 flex-col overflow-hidden p-4">
+      <div className="shrink-0">
       <h2 className="text-[13px] font-semibold text-ink">Available dates and times</h2>
       <p className="mt-0.5 text-[11px] text-muted">
         Patients can only pick from the times you publish here when they book from the app.
@@ -714,7 +732,11 @@ function SlotManager() {
                 <span>
                   {row.hospitalName} · {row.repeatModeLabel} · {row.times.join(", ")} · {row.weeksAhead} wk
                 </span>
-                <button type="button" className="text-red-600" onClick={() => void removeSchedule(row.id)}>
+                <button
+                  type="button"
+                  className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold text-red-600 hover:bg-red-50"
+                  onClick={() => void removeSchedule(row.id)}
+                >
                   Remove
                 </button>
               </li>
@@ -722,28 +744,49 @@ function SlotManager() {
           </ul>
         ) : null}
       </div>
+      </div>
 
-      {grouped.length === 0 ? (
-        <p className="mt-3 text-[11px] text-muted">No upcoming times published yet.</p>
-      ) : (
-        <div className="mt-3 space-y-2">
-          {grouped.map(([label, groupSlots]) => (
-            <div key={label} className="panel-inset px-3 py-2">
-              <p className="text-[11px] font-semibold text-ink">{label}</p>
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                {groupSlots.map((slot) => (
-                  <span key={slot.id} className="panel flex items-center gap-1 px-2 py-0.5 text-[11px] text-ink shadow-none">
-                    {new Date(slot.slotAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                    <button type="button" aria-label="Remove time" className="text-muted hover:text-red-600" onClick={() => void removeSlot(slot.id)}>
-                      <X className="size-3" />
-                    </button>
-                  </span>
-                ))}
+      <div className="admin-scroll admin-panel-scroll--15 relative z-0 mt-3 pr-1">
+        {grouped.length === 0 ? (
+          <p className="text-[11px] text-muted">No upcoming times published yet.</p>
+        ) : (
+          <div className="space-y-2 pb-1">
+            {grouped.map(([label, groupSlots]) => (
+              <div key={label} className="panel-inset px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-semibold text-ink">{label}</p>
+                  <button
+                    type="button"
+                    className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-red-600 hover:bg-red-50"
+                    onClick={() => void removeDay(groupSlots)}
+                  >
+                    Remove day
+                  </button>
+                </div>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {groupSlots.map((slot) => (
+                    <span key={slot.id} className="panel inline-flex items-center gap-1 px-2 py-0.5 text-[11px] text-ink shadow-none">
+                      {new Date(slot.slotAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                      <button
+                        type="button"
+                        aria-label="Remove time"
+                        className="relative z-10 rounded p-1 text-muted hover:bg-red-50 hover:text-red-600"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void removeSlot(slot.id);
+                        }}
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
