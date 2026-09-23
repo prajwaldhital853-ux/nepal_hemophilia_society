@@ -17,7 +17,7 @@ import {
 } from "@/features/admins/api";
 import { fetchHospitals } from "@/features/hospitals/api";
 import type { HospitalOption } from "@/features/hospitals/types";
-import { provinceDistricts } from "@/features/patients/data/geo";
+import { provinceDistricts, splitOfficeAddress } from "@/features/patients/data/geo";
 import { NEPAL_PROVINCES } from "@/lib/constants/provinces";
 import { apiFetch } from "@/lib/api";
 import { isOwnStaffAccount } from "@/features/admins/identity";
@@ -106,6 +106,8 @@ const emptyForm = (): FormState => ({
 });
 
 function formFromStaff(staff: StaffRecord): FormState {
+  const province = staff.province || "";
+  const { officeAddress, district } = splitOfficeAddress(staff.officeAddress || "", province);
   return {
     kind: staff.kind,
     fullName: staff.fullName,
@@ -115,9 +117,9 @@ function formFromStaff(staff: StaffRecord): FormState {
     phone: staff.phone,
     nationalId: staff.nationalId || "",
     designation: staff.designation || "",
-    province: staff.province || "",
-    district: "",
-    officeAddress: staff.officeAddress || "",
+    province,
+    district,
+    officeAddress,
     treatmentCenter: staff.treatmentCenter || "",
     notes: staff.notes || "",
     viewOnly: staff.viewOnly,
@@ -331,10 +333,16 @@ export default function StaffAccountForm({
   });
 
   useEffect(() => {
-    if (!form.treatmentCenter) return;
+    if (!initial || mode !== "edit") return;
+    setForm(formFromStaff(initial));
+    setPhotoPreview(initial.photoUrl || "");
+  }, [initial, mode]);
+
+  useEffect(() => {
+    if (!form.treatmentCenter || !hospitals.length) return;
     const stillValid = scopedHospitals.some((hospital) => hospital.name === form.treatmentCenter);
     if (!stillValid) setForm((current) => ({ ...current, treatmentCenter: "" }));
-  }, [form.province, form.treatmentCenter, scopedHospitals]);
+  }, [form.province, form.treatmentCenter, scopedHospitals, hospitals.length]);
   const progress = ((step - 1) / (steps.length - 1)) * 100;
 
   function patch(partial: Partial<FormState>) {

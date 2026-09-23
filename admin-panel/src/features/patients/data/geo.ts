@@ -86,3 +86,21 @@ export const careCenters = [
 ];
 
 export const bloodGroups = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
+
+/** Split stored office address "street, District" back into fields for edit forms. */
+export function splitOfficeAddress(stored: string, province: string) {
+  const raw = (stored || "").trim();
+  if (!raw) return { officeAddress: "", district: "" };
+  const districts = provinceDistricts[province] ?? [];
+  for (const name of districts) {
+    const suffix = `, ${name}`;
+    if (raw === name) return { officeAddress: "", district: name };
+    if (raw.endsWith(suffix)) {
+      return {
+        officeAddress: raw.slice(0, -suffix.length).trim(),
+        district: name,
+      };
+    }
+  }
+  return { officeAddress: raw, district: "" };
+}
