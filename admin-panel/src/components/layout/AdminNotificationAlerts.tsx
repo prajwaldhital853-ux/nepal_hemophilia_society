@@ -106,8 +106,9 @@ export function AdminNotificationAlerts() {
     if (Notification.permission !== "granted") return;
     pushRegistered.current = true;
     void registerAdminWebPush()
-      .then((ok) => {
-        pushReady.current = ok;
+      .then((result) => {
+        pushReady.current = result.ok;
+        if (!result.ok) pushRegistered.current = false;
       })
       .catch(() => {
         pushRegistered.current = false;

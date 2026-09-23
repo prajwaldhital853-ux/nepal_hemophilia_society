@@ -72,9 +72,9 @@ export function NotificationBell() {
     const permission = await requestBrowserNotificationPermission();
     setBrowserAlerts(permission);
     if (permission === "granted") {
-      const ok = await registerAdminWebPush().catch(() => false);
-      if (!ok) {
-        window.alert("Browser alerts are on, but push registration failed. Check Firebase env keys on Vercel and redeploy.");
+      const result = await registerAdminWebPush();
+      if (!result.ok) {
+        window.alert(`Browser alerts are on, but push registration failed.\n\n${result.error}`);
       }
     }
   }
