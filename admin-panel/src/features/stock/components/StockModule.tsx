@@ -19,9 +19,12 @@ import {
   type StockLot,
   type StockMovementRow,
 } from "@/features/stock/api";
+import { PaginatedScroll } from "@/components/ui/PaginatedScroll";
 import { isNationalScope, useAuth } from "@/lib/auth";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { Perm } from "@/lib/permissions";
+import { useToast } from "@/lib/toast";
+import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
 const fieldClass =
   "mt-1 w-full rounded border border-line-subtle bg-elevated px-2.5 py-1.5 text-[12px] text-ink outline-none focus:border-brand";
@@ -55,6 +58,7 @@ function movementTypeClass(type: string) {
 }
 
 export default function StockModule() {
+  const toast = useToast();
   const { can, user } = useAuth();
   const canManage = can(Perm.stockManage) && !user?.viewOnly;
   const canDeleteLot = can(Perm.stockDelete) && !user?.viewOnly;
@@ -95,7 +99,7 @@ export default function StockModule() {
           from,
           to,
           hospitalName: hospitalFilter,
-          limit: 15,
+          limit: 10,
         }),
       ]);
       setLots(stock.stock ?? []);
@@ -104,7 +108,9 @@ export default function StockModule() {
       setHistoryTotal(history.total ?? 0);
       setMovementCursor(history.nextCursor ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load stock");
+      const message = err instanceof Error ? err.message : "Could not load stock";
+      setError(message);
+      toast.show(message);
     } finally {
       setLoading(false);
     }
@@ -121,7 +127,7 @@ export default function StockModule() {
         to,
         hospitalName: hospitalFilter,
         cursor: movementCursor,
-        limit: 15,
+        limit: 10,
       });
       setMovements((current) => [...current, ...(history.movements ?? [])]);
       setMovementCursor(history.nextCursor ?? null);
@@ -135,6 +141,17 @@ export default function StockModule() {
     void loadFactorCatalog().then(setFactors).catch(() => setFactors([]));
     if (canPickCenter) void fetchHospitals().then(setHospitals).catch(() => setHospitals([]));
   }, [load, canPickCenter]);
+
+  const inventoryPage = useVisibleSlice(lots, 10);
+  const historyPage = useVisibleSlice(movements, 10);
+
+  async function loadMoreHistory() {
+    if (historyPage.hasMore) {
+      historyPage.loadMore();
+      return;
+    }
+    await loadMoreMovements();
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -214,7 +231,13 @@ export default function StockModule() {
             </p>
           </div>
         ) : (
-          <div className={lots.length > 6 ? "max-h-[320px] overflow-y-auto" : ""}>
+          <PaginatedScroll
+            showing={inventoryPage.showing}
+            total={inventoryPage.total}
+            hasMore={inventoryPage.hasMore}
+            onLoadMore={inventoryPage.loadMore}
+            label="lots"
+          >
           <table className="inner-table w-full text-left">
             <thead className="sticky top-0 bg-card text-[11px] uppercase text-faint">
               <tr>
@@ -226,7 +249,7 @@ export default function StockModule() {
               </tr>
             </thead>
             <tbody>
-              {lots.map((lot) => (
+              {inventoryPage.visible.map((lot) => (
                 <tr key={lot.id}>
                   <td className="px-2 py-2 text-[11px]">
                     <span className="font-semibold text-ink">{lot.factorMedicineName}</span>
@@ -263,7 +286,12 @@ export default function StockModule() {
                             className="rounded border border-red-200 px-1.5 py-0.5 text-red-600"
                             onClick={() => {
                               if (!window.confirm("Delete this lot? Lots with remaining quantity can only be deleted by Super Admin.")) return;
-                              void deleteStockLot(lot.id).then(load).catch((err: Error) => setError(err.message));
+                              void deleteStockLot(lot.id)
+                                .then(load)
+                                .catch((err: Error) => {
+                                  setError(err.message);
+                                  toast.show(err.message);
+                                });
                             }}
                           >
                             Delete
@@ -278,7 +306,7 @@ export default function StockModule() {
               ))}
             </tbody>
           </table>
-          </div>
+          </PaginatedScroll>
         )}
       </article>
 
@@ -334,8 +362,16 @@ export default function StockModule() {
             Export history
           </button>
         </div>
+        <PaginatedScroll
+          showing={historyPage.showing}
+          total={historyTotal}
+          hasMore={historyPage.hasMore || Boolean(movementCursor)}
+          onLoadMore={() => void loadMoreHistory()}
+          loading={loadingMore}
+          label="movements"
+        >
         <table className="inner-table w-full text-left">
-          <thead className="text-[11px] uppercase text-faint">
+          <thead className="sticky top-0 bg-card text-[11px] uppercase text-faint">
             <tr>
               {["When", "Type", "Product / batch", "Qty", "Center", "Patient", "By", "Reason"].map((h) => (
                 <th key={h} className="px-2 py-2">
@@ -352,7 +388,7 @@ export default function StockModule() {
                 </td>
               </tr>
             ) : (
-              movements.map((row) => (
+              historyPage.visible.map((row) => (
                 <tr key={row.id}>
                   <td className="px-2 py-2 text-[10px]">{when(row.recordedAt)}</td>
                   <td className="px-2 py-2 text-[11px]">
@@ -379,21 +415,7 @@ export default function StockModule() {
             )}
           </tbody>
         </table>
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <p className="text-[10px] text-muted">
-            {movements.length} of {historyTotal} movement(s) loaded
-          </p>
-          {movementCursor ? (
-            <button
-              type="button"
-              disabled={loadingMore}
-              onClick={() => void loadMoreMovements()}
-              className="rounded border border-line px-2 py-1 text-[10px] font-semibold text-brand disabled:opacity-40"
-            >
-              {loadingMore ? "Loading…" : "Load more"}
-            </button>
-          ) : null}
-        </div>
+        </PaginatedScroll>
       </article>
 
       {showAdd ? (

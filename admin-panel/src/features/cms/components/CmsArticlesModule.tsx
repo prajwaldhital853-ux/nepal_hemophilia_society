@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
 
+import { PaginatedScroll } from "@/components/ui/PaginatedScroll";
 import { deleteAdminArticle, fetchAdminArticles, saveAdminArticle } from "@/features/cms/api";
 import type { CmsArticle, ContentKind } from "@/features/cms/types";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
+import { useToast } from "@/lib/toast";
+import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
 const fieldClass =
   "mt-1 w-full rounded border border-line-subtle bg-elevated px-2.5 py-1.5 text-[12px] text-ink outline-none focus:border-brand";
@@ -43,6 +46,7 @@ type Props = { kind: ContentKind };
 
 export default function CmsArticlesModule({ kind }: Props) {
   const meta = KIND_META[kind];
+  const toast = useToast();
   const { can, user } = useAuth();
   const canManage = can(Perm.websiteManage) && !user?.viewOnly;
   const canDelete = can(Perm.websiteDelete) && !user?.viewOnly;
@@ -50,6 +54,7 @@ export default function CmsArticlesModule({ kind }: Props) {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<CmsArticle | null>(null);
@@ -76,7 +81,9 @@ export default function CmsArticlesModule({ kind }: Props) {
       setRows(data.articles ?? []);
       setNextCursor(data.nextCursor ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load content");
+      const message = err instanceof Error ? err.message : "Could not load content";
+      setError(message);
+      toast.show(message);
       setRows([]);
     } finally {
       setLoading(false);
@@ -121,9 +128,33 @@ export default function CmsArticlesModule({ kind }: Props) {
     setShowForm(true);
   }
 
+  const contentPage = useVisibleSlice(rows, 10);
+
+  async function loadMore() {
+    if (contentPage.hasMore) {
+      contentPage.loadMore();
+      return;
+    }
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await fetchAdminArticles({ kind, search, cursor: nextCursor });
+      setRows((current) => [...current, ...(data.articles ?? [])]);
+      setNextCursor(data.nextCursor ?? null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not load more";
+      setError(message);
+      toast.show(message);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
   async function onSave() {
     if (!form.title.trim()) {
-      setError("Title is required.");
+      const message = "Title is required.";
+      setError(message);
+      toast.show(message);
       return;
     }
     setSaving(true);
@@ -151,7 +182,9 @@ export default function CmsArticlesModule({ kind }: Props) {
       resetForm();
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save");
+      const message = err instanceof Error ? err.message : "Could not save";
+      setError(message);
+      toast.show(message);
     } finally {
       setSaving(false);
     }
@@ -163,12 +196,15 @@ export default function CmsArticlesModule({ kind }: Props) {
       await deleteAdminArticle(row.id);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete");
+      const message = err instanceof Error ? err.message : "Could not delete";
+      setError(message);
+      toast.show(message);
     }
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="admin-page admin-page--fill">
+      <div className="admin-page-sticky space-y-2">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[18px] font-semibold text-ink">{meta.title}</h1>
@@ -204,10 +240,22 @@ export default function CmsArticlesModule({ kind }: Props) {
       </div>
 
       {error ? <p className="text-[12px] font-medium text-red">{error}</p> : null}
+      </div>
 
-      <div className="panel overflow-x-auto">
+      <section className="panel admin-list-panel p-3">
+        {loading ? (
+          <p className="px-3 py-6 text-center text-[12px] text-muted">Loading…</p>
+        ) : (
+        <PaginatedScroll
+          showing={contentPage.showing}
+          total={rows.length}
+          hasMore={contentPage.hasMore || Boolean(nextCursor)}
+          onLoadMore={() => void loadMore()}
+          loading={loadingMore}
+          label="items"
+        >
         <table className="w-full min-w-[640px] text-left text-[12px]">
-          <thead className="border-b border-line-subtle bg-elevated/60 text-[11px] uppercase text-muted">
+          <thead className="sticky top-0 border-b border-line-subtle bg-elevated/60 text-[11px] uppercase text-muted">
             <tr>
               <th className="px-3 py-2">Title</th>
               {kind === "event" ? <th className="px-3 py-2">When / where</th> : <th className="px-3 py-2">Summary</th>}
@@ -216,20 +264,14 @@ export default function CmsArticlesModule({ kind }: Props) {
             </tr>
           </thead>
           <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={4} className="px-3 py-6 text-center text-muted">
-                  Loading…
-                </td>
-              </tr>
-            ) : rows.length === 0 ? (
+            {rows.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-3 py-6 text-center text-muted">
                   Nothing published yet.
                 </td>
               </tr>
             ) : (
-              rows.map((row) => (
+              contentPage.visible.map((row) => (
                 <tr key={row.id} className="border-b border-line-subtle last:border-0">
                   <td className="px-3 py-2 font-semibold text-ink">{row.title}</td>
                   <td className="px-3 py-2 text-muted">
@@ -264,8 +306,9 @@ export default function CmsArticlesModule({ kind }: Props) {
             )}
           </tbody>
         </table>
-        {nextCursor ? <p className="px-3 py-2 text-[11px] text-muted">More items available — refine search to review them.</p> : null}
-      </div>
+        </PaginatedScroll>
+        )}
+      </section>
 
       {showForm ? (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">

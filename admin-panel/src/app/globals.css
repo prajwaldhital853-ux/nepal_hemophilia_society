@@ -188,6 +188,23 @@ body {
     overflow-y: auto;
   }
 
+  .admin-page-summary--compact {
+    max-height: min(22vh, 13rem);
+  }
+
+  .admin-panel-scroll {
+    overflow: auto;
+    max-height: min(28rem, calc(100dvh - var(--topbar-h) - 14rem));
+  }
+
+  .admin-panel-scroll--15 {
+    max-height: min(40rem, calc(100dvh - var(--topbar-h) - 12rem));
+  }
+
+  .admin-page--fill .admin-list-panel .admin-table-scroll {
+    min-height: min(28rem, calc(100dvh - var(--topbar-h) - 20rem));
+  }
+
   .admin-list-panel {
     display: flex;
     min-height: 0;

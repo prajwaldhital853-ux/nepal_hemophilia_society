@@ -304,7 +304,7 @@ export default function InjectionsModule() {
       </div>
       </div>
 
-      <div className="admin-page-summary">
+      <div className="admin-page-summary admin-page-summary--compact">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {[
           ["Total logged", formatNumber(liveStats.total)],

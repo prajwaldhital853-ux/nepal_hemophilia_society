@@ -18,10 +18,13 @@ import { Download, FileBarChart } from "lucide-react";
 
 import { InjectionOverviewChart, StockSummaryChart } from "@/features/dashboard/components/DashboardCharts";
 import type { DashboardTrendPoint, ProvinceStat, StockByHospital, StockUsageTrend, SystemOverview } from "@/features/dashboard/types";
+import { PaginatedScroll } from "@/components/ui/PaginatedScroll";
 import { apiFetch } from "@/lib/api";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { useAuth } from "@/lib/auth";
 import { CHART_BAR_PROPS, useChartColors } from "@/lib/chartColors";
+import { useToast } from "@/lib/toast";
+import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
 const PIE = ["#2F6FED", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4"];
 
@@ -55,6 +58,7 @@ const EMPTY_OVERVIEW: SystemOverview = {
 };
 
 export default function ReportsModule() {
+  const toast = useToast();
   const { user } = useAuth();
   const c = useChartColors();
   const [from, setFrom] = useState("");
@@ -116,13 +120,19 @@ export default function ReportsModule() {
       setDevices(data.devices ?? []);
       setOverview(data.systemOverview ?? EMPTY_OVERVIEW);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load reports");
+      const message = err instanceof Error ? err.message : "Could not load reports";
+      setError(message);
+      toast.show(message);
     }
-  }, [from, to, user?.role]);
+  }, [from, to, user?.role, toast]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  const activityPage = useVisibleSlice(activity, 15);
+  const loginPage = useVisibleSlice(loginTracking, 15);
+  const devicePage = useVisibleSlice(devices, 15);
 
   const kpis = [
     { label: "Patients", value: totals.patients, meta: `${totals.activePatients} active` },
@@ -341,19 +351,28 @@ export default function ReportsModule() {
               Export log
             </button>
           </div>
-          <ul className="mt-2 divide-y divide-line-subtle">
-            {activity.slice(0, 16).map((row) => (
-              <li key={row.id} className="py-2 text-[11px]">
-                <p className="font-medium text-ink">{row.action}</p>
-                <p className="text-[10px] text-muted">
-                  {row.actor} · {row.module} · {row.createdAt ? new Date(row.createdAt).toLocaleString() : ""}
-                  {row.ip ? ` · ${row.ip}` : ""}
-                </p>
-                {row.detail ? <p className="text-[10px] text-faint">{row.detail}</p> : null}
-              </li>
-            ))}
-            {activity.length === 0 ? <li className="py-4 text-[11px] text-muted">No activity in this scope.</li> : null}
-          </ul>
+          <PaginatedScroll
+            showing={activityPage.showing}
+            total={activityPage.total}
+            hasMore={activityPage.hasMore}
+            onLoadMore={activityPage.loadMore}
+            label="entries"
+            className="admin-panel-scroll--15 mt-2"
+          >
+            <ul className="divide-y divide-line-subtle">
+              {activityPage.visible.map((row) => (
+                <li key={row.id} className="py-2 text-[11px]">
+                  <p className="font-medium text-ink">{row.action}</p>
+                  <p className="text-[10px] text-muted">
+                    {row.actor} · {row.module} · {row.createdAt ? new Date(row.createdAt).toLocaleString() : ""}
+                    {row.ip ? ` · ${row.ip}` : ""}
+                  </p>
+                  {row.detail ? <p className="text-[10px] text-faint">{row.detail}</p> : null}
+                </li>
+              ))}
+              {activity.length === 0 ? <li className="py-4 text-[11px] text-muted">No activity in this scope.</li> : null}
+            </ul>
+          </PaginatedScroll>
         </article>
         <article className="panel overflow-x-auto p-3">
           <div className="flex items-center justify-between">
@@ -372,38 +391,47 @@ export default function ReportsModule() {
               Export logins
             </button>
           </div>
-          <table className="inner-table mt-2 w-full text-left">
-            <thead className="text-[10px] uppercase text-faint">
-              <tr>
-                {["Admin", "Role", "Last login", "Active"].map((h) => (
-                  <th key={h} className="px-2 py-2">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loginTracking.length === 0 ? (
+          <PaginatedScroll
+            showing={loginPage.showing}
+            total={loginPage.total}
+            hasMore={loginPage.hasMore}
+            onLoadMore={loginPage.loadMore}
+            label="logins"
+            className="admin-panel-scroll--15 mt-2"
+          >
+            <table className="inner-table w-full text-left">
+              <thead className="sticky top-0 bg-card text-[10px] uppercase text-faint">
                 <tr>
-                  <td colSpan={4} className="px-2 py-4 text-[11px] text-muted">
-                    No login history yet.
-                  </td>
+                  {["Admin", "Role", "Last login", "Active"].map((h) => (
+                    <th key={h} className="px-2 py-2">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ) : (
-                loginTracking.slice(0, 16).map((row) => (
-                  <tr key={row.username}>
-                    <td className="px-2 py-2 text-[11px]">
-                      {row.name}
-                      <span className="block text-[10px] text-muted">{row.username}</span>
+              </thead>
+              <tbody>
+                {loginTracking.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-2 py-4 text-[11px] text-muted">
+                      No login history yet.
                     </td>
-                    <td className="px-2 py-2 text-[11px]">{row.role}</td>
-                    <td className="px-2 py-2 text-[10px]">{row.lastLogin ? new Date(row.lastLogin).toLocaleString() : "Never"}</td>
-                    <td className="px-2 py-2 text-[11px]">{row.active ? "Yes" : "No"}</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  loginPage.visible.map((row) => (
+                    <tr key={row.username}>
+                      <td className="px-2 py-2 text-[11px]">
+                        {row.name}
+                        <span className="block text-[10px] text-muted">{row.username}</span>
+                      </td>
+                      <td className="px-2 py-2 text-[11px]">{row.role}</td>
+                      <td className="px-2 py-2 text-[10px]">{row.lastLogin ? new Date(row.lastLogin).toLocaleString() : "Never"}</td>
+                      <td className="px-2 py-2 text-[11px]">{row.active ? "Yes" : "No"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </PaginatedScroll>
         </article>
       </div>
 
@@ -424,35 +452,44 @@ export default function ReportsModule() {
             Export devices
           </button>
         </div>
-        <table className="inner-table mt-2 w-full text-left">
-          <thead className="text-[10px] uppercase text-faint">
-            <tr>
-              {["Identifier", "User", "Failed tries", "Locked"].map((h) => (
-                <th key={h} className="px-2 py-2">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {devices.length === 0 ? (
+        <PaginatedScroll
+          showing={devicePage.showing}
+          total={devicePage.total}
+          hasMore={devicePage.hasMore}
+          onLoadMore={devicePage.loadMore}
+          label="devices"
+          className="admin-panel-scroll--15 mt-2"
+        >
+          <table className="inner-table w-full text-left">
+            <thead className="sticky top-0 bg-card text-[10px] uppercase text-faint">
               <tr>
-                <td colSpan={4} className="px-2 py-4 text-[11px] text-muted">
-                  No device lock events in this scope.
-                </td>
+                {["Identifier", "User", "Failed tries", "Locked"].map((h) => (
+                  <th key={h} className="px-2 py-2">
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ) : (
-              devices.map((row, index) => (
-                <tr key={`${row.identifier}-${index}`}>
-                  <td className="px-2 py-2 text-[11px]">{row.identifier}</td>
-                  <td className="px-2 py-2 text-[11px]">{row.user || "—"}</td>
-                  <td className="px-2 py-2 text-[11px]">{row.failedAttempts}</td>
-                  <td className="px-2 py-2 text-[11px]">{row.locked ? "Locked" : "Open"}</td>
+            </thead>
+            <tbody>
+              {devices.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-2 py-4 text-[11px] text-muted">
+                    No device lock events in this scope.
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                devicePage.visible.map((row, index) => (
+                  <tr key={`${row.identifier}-${index}`}>
+                    <td className="px-2 py-2 text-[11px]">{row.identifier}</td>
+                    <td className="px-2 py-2 text-[11px]">{row.user || "—"}</td>
+                    <td className="px-2 py-2 text-[11px]">{row.failedAttempts}</td>
+                    <td className="px-2 py-2 text-[11px]">{row.locked ? "Locked" : "Open"}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </PaginatedScroll>
       </article>
     </div>
   );

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
 
+import { PaginatedScroll } from "@/components/ui/PaginatedScroll";
 import { deleteAdminService, fetchAdminServices, saveAdminService } from "@/features/cms/api";
 import {
   APP_SCREENS,
@@ -14,6 +15,8 @@ import {
 } from "@/features/cms/types";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
+import { useToast } from "@/lib/toast";
+import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
 const fieldClass =
   "mt-1 w-full rounded border border-line-subtle bg-elevated px-2.5 py-1.5 text-[12px] text-ink outline-none focus:border-brand";
@@ -45,6 +48,7 @@ function slugFromTitle(title: string) {
 }
 
 export default function AppServicesModule() {
+  const toast = useToast();
   const { can, user } = useAuth();
   const canManage = can(Perm.websiteManage) && !user?.viewOnly;
   const canDelete = can(Perm.websiteDelete) && !user?.viewOnly;
@@ -53,6 +57,7 @@ export default function AppServicesModule() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<AppService | null>(null);
@@ -67,7 +72,9 @@ export default function AppServicesModule() {
       setRows(data.services ?? []);
       setNextCursor(data.nextCursor ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load services");
+      const message = err instanceof Error ? err.message : "Could not load services";
+      setError(message);
+      toast.show(message);
       setRows([]);
     } finally {
       setLoading(false);
@@ -106,9 +113,33 @@ export default function AppServicesModule() {
     setShowForm(true);
   }
 
+  const servicesPage = useVisibleSlice(rows, 10);
+
+  async function loadMore() {
+    if (servicesPage.hasMore) {
+      servicesPage.loadMore();
+      return;
+    }
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await fetchAdminServices({ search, category, cursor: nextCursor });
+      setRows((current) => [...current, ...(data.services ?? [])]);
+      setNextCursor(data.nextCursor ?? null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not load more";
+      setError(message);
+      toast.show(message);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
   async function onSave() {
     if (!form.title.trim()) {
-      setError("Title is required.");
+      const message = "Title is required.";
+      setError(message);
+      toast.show(message);
       return;
     }
     setSaving(true);
@@ -127,7 +158,9 @@ export default function AppServicesModule() {
       setShowForm(false);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save service");
+      const message = err instanceof Error ? err.message : "Could not save service";
+      setError(message);
+      toast.show(message);
     } finally {
       setSaving(false);
     }
@@ -140,12 +173,15 @@ export default function AppServicesModule() {
       await deleteAdminService(row.id);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete service");
+      const message = err instanceof Error ? err.message : "Could not delete service";
+      setError(message);
+      toast.show(message);
     }
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="admin-page admin-page--fill">
+      <div className="admin-page-sticky space-y-2">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[18px] font-semibold text-ink">App Services</h1>
@@ -186,10 +222,22 @@ export default function AppServicesModule() {
       </div>
 
       {error ? <p className="text-[12px] font-medium text-red">{error}</p> : null}
+      </div>
 
-      <div className="panel overflow-x-auto">
+      <section className="panel admin-list-panel p-3">
+        {loading ? (
+          <p className="px-3 py-6 text-center text-[12px] text-muted">Loading…</p>
+        ) : (
+        <PaginatedScroll
+          showing={servicesPage.showing}
+          total={rows.length}
+          hasMore={servicesPage.hasMore || Boolean(nextCursor)}
+          onLoadMore={() => void loadMore()}
+          loading={loadingMore}
+          label="services"
+        >
         <table className="w-full min-w-[760px] text-left text-[12px]">
-          <thead className="border-b border-line-subtle bg-elevated/60 text-[11px] uppercase text-muted">
+          <thead className="sticky top-0 border-b border-line-subtle bg-elevated/60 text-[11px] uppercase text-muted">
             <tr>
               <th className="px-3 py-2">Service</th>
               <th className="px-3 py-2">Category</th>
@@ -199,20 +247,14 @@ export default function AppServicesModule() {
             </tr>
           </thead>
           <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-muted">
-                  Loading…
-                </td>
-              </tr>
-            ) : rows.length === 0 ? (
+            {rows.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-3 py-6 text-center text-muted">
                   No services yet.
                 </td>
               </tr>
             ) : (
-              rows.map((row) => (
+              servicesPage.visible.map((row) => (
                 <tr key={row.id} className="border-b border-line-subtle last:border-0">
                   <td className="px-3 py-2">
                     <p className="font-semibold text-ink">{row.title}</p>
@@ -249,10 +291,9 @@ export default function AppServicesModule() {
             )}
           </tbody>
         </table>
-        {nextCursor ? (
-          <p className="px-3 py-2 text-[11px] text-muted">More services exist. Narrow the search to review them.</p>
-        ) : null}
-      </div>
+        </PaginatedScroll>
+        )}
+      </section>
 
       {showForm ? (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">

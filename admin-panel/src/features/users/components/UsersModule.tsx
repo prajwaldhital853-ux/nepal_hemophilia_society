@@ -5,9 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Download, Search, Users } from "lucide-react";
 
+import { PaginatedScroll } from "@/components/ui/PaginatedScroll";
 import { apiFetch } from "@/lib/api";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { useAuth } from "@/lib/auth";
+import { useToast } from "@/lib/toast";
+import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
 type DirectoryUser = {
   id: string;
@@ -66,6 +69,7 @@ function statusClass(status: string) {
 }
 
 export default function UsersModule() {
+  const toast = useToast();
   const { user } = useAuth();
   const router = useRouter();
   const [rows, setRows] = useState<DirectoryUser[]>([]);
@@ -100,7 +104,9 @@ export default function UsersModule() {
       setLoginTracking(data.loginTracking ?? []);
       setDevices(data.devices ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load users");
+      const message = err instanceof Error ? err.message : "Could not load users";
+      setError(message);
+      toast.show(message);
       setRows([]);
     } finally {
       setLoading(false);
@@ -156,6 +162,9 @@ export default function UsersModule() {
     }
     return all.filter((item) => ["All", "patient", "center_admin", "treatment_admin"].includes(item.id));
   }, [user?.role]);
+
+  const loginPage = useVisibleSlice(loginTracking, 10);
+  const devicePage = useVisibleSlice(devices, 10);
 
   return (
     <div className="admin-page admin-page--fill">
@@ -323,72 +332,90 @@ export default function UsersModule() {
       </section>
 
       <div className="admin-page-footer grid shrink-0 gap-3 lg:grid-cols-2">
-        <article className="panel overflow-x-auto p-3">
+        <article className="panel p-3">
           <h2 className="text-[12px] font-semibold text-ink">Login tracking</h2>
-          <table className="inner-table mt-2 w-full text-left">
-            <thead className="text-[10px] uppercase text-faint">
-              <tr>
-                {["User", "Role", "Last login", "Active"].map((h) => (
-                  <th key={h} className="px-2 py-2">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loginTracking.length === 0 ? (
+          <PaginatedScroll
+            showing={loginPage.showing}
+            total={loginPage.total}
+            hasMore={loginPage.hasMore}
+            onLoadMore={loginPage.loadMore}
+            label="logins"
+            className="mt-2"
+          >
+            <table className="inner-table w-full text-left">
+              <thead className="sticky top-0 bg-card text-[10px] uppercase text-faint">
                 <tr>
-                  <td colSpan={4} className="px-2 py-4 text-[11px] text-muted">
-                    No login history yet.
-                  </td>
+                  {["User", "Role", "Last login", "Active"].map((h) => (
+                    <th key={h} className="px-2 py-2">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ) : (
-                loginTracking.map((row) => (
-                  <tr key={row.username}>
-                    <td className="px-2 py-2 text-[11px]">
-                      {row.name}
-                      <span className="block text-[10px] text-muted">{row.username}</span>
+              </thead>
+              <tbody>
+                {loginTracking.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-2 py-4 text-[11px] text-muted">
+                      No login history yet.
                     </td>
-                    <td className="px-2 py-2 text-[11px]">{row.role}</td>
-                    <td className="px-2 py-2 text-[10px]">{when(row.lastLogin)}</td>
-                    <td className="px-2 py-2 text-[11px]">{row.active ? "Yes" : "No"}</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  loginPage.visible.map((row) => (
+                    <tr key={row.username}>
+                      <td className="px-2 py-2 text-[11px]">
+                        {row.name}
+                        <span className="block text-[10px] text-muted">{row.username}</span>
+                      </td>
+                      <td className="px-2 py-2 text-[11px]">{row.role}</td>
+                      <td className="px-2 py-2 text-[10px]">{when(row.lastLogin)}</td>
+                      <td className="px-2 py-2 text-[11px]">{row.active ? "Yes" : "No"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </PaginatedScroll>
         </article>
-        <article className="panel overflow-x-auto p-3">
+        <article className="panel p-3">
           <h2 className="text-[12px] font-semibold text-ink">Device / lock tracking</h2>
-          <table className="inner-table mt-2 w-full text-left">
-            <thead className="text-[10px] uppercase text-faint">
-              <tr>
-                {["Identifier", "User", "Failed tries", "Locked until"].map((h) => (
-                  <th key={h} className="px-2 py-2">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {devices.length === 0 ? (
+          <PaginatedScroll
+            showing={devicePage.showing}
+            total={devicePage.total}
+            hasMore={devicePage.hasMore}
+            onLoadMore={devicePage.loadMore}
+            label="devices"
+            className="mt-2"
+          >
+            <table className="inner-table w-full text-left">
+              <thead className="sticky top-0 bg-card text-[10px] uppercase text-faint">
                 <tr>
-                  <td colSpan={4} className="px-2 py-4 text-[11px] text-muted">
-                    No device lock events.
-                  </td>
+                  {["Identifier", "User", "Failed tries", "Locked until"].map((h) => (
+                    <th key={h} className="px-2 py-2">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ) : (
-                devices.map((row, index) => (
-                  <tr key={`${row.identifier}-${index}`}>
-                    <td className="px-2 py-2 text-[11px]">{row.identifier}</td>
-                    <td className="px-2 py-2 text-[11px]">{row.user || "—"}</td>
-                    <td className="px-2 py-2 text-[11px]">{row.failedAttempts}</td>
-                    <td className="px-2 py-2 text-[10px]">{when(row.lockedUntil)}</td>
+              </thead>
+              <tbody>
+                {devices.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-2 py-4 text-[11px] text-muted">
+                      No device lock events.
+                    </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  devicePage.visible.map((row, index) => (
+                    <tr key={`${row.identifier}-${index}`}>
+                      <td className="px-2 py-2 text-[11px]">{row.identifier}</td>
+                      <td className="px-2 py-2 text-[11px]">{row.user || "—"}</td>
+                      <td className="px-2 py-2 text-[11px]">{row.failedAttempts}</td>
+                      <td className="px-2 py-2 text-[10px]">{when(row.lockedUntil)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </PaginatedScroll>
         </article>
       </div>
     </div>

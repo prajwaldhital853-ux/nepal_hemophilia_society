@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { fetchHospitals } from "@/features/hospitals/api";
+import { useToast } from "@/lib/toast";
 import type { HospitalOption } from "@/features/hospitals/types";
 import { fetchFactors, type FactorOption } from "@/features/injections/api";
 import { bloodGroups, provinceDistricts } from "@/features/patients/data/geo";
@@ -89,6 +90,7 @@ function validateStep(step: number, form: PatientPayload, mode: "create" | "edit
     if (!form.district) fieldErrors.district = "District is required";
     if (!form.localLevel.trim()) fieldErrors.localLevel = "Local level is required";
     if (!form.wardNumber.trim()) fieldErrors.wardNumber = "Ward number is required";
+    else if (!/^\d+$/.test(form.wardNumber.trim())) fieldErrors.wardNumber = "Ward number must be a number";
     if (!form.address.trim()) fieldErrors.address = "Full address is required";
   }
   if (step === 3) {
@@ -145,6 +147,7 @@ export default function PatientFormWizard({
   initial?: PatientRecord;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const { user, can } = useAuth();
   const lockedProvince = user?.role === "province_admin" ? user.provinceAdmin?.province || "" : "";
   const [step, setStep] = useState(1);
@@ -239,12 +242,16 @@ export default function PatientFormWizard({
   function goNext() {
     const nextErrors = validateStep(step, form, mode);
     setFieldErrors(nextErrors);
-    if (Object.keys(nextErrors).length) return;
+    if (Object.keys(nextErrors).length) {
+      toast.show(Object.values(nextErrors)[0]);
+      return;
+    }
     setStep((s) => Math.min(5, s + 1));
   }
 
   function showServerError(message: string) {
     setServerError(message);
+    toast.show(message);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -254,6 +261,7 @@ export default function PatientFormWizard({
     setFieldErrors(allErrors);
     if (firstInvalid) {
       setStep(firstInvalid);
+      toast.show(Object.values(allErrors)[0]);
       return;
     }
     setSaving(true);

@@ -92,6 +92,36 @@ export async function refreshAccessToken(): Promise<string | null> {
 
 type ApiInit = RequestInit & { skipAuthRedirect?: boolean; _retried?: boolean };
 
+const API_FIELD_LABELS: Record<string, string> = {
+  wardNumber: "Ward number",
+  fullName: "Full name",
+  dateOfBirth: "Date of birth",
+  mobile: "Mobile number",
+  email: "Email",
+  province: "Province",
+  district: "District",
+  localLevel: "Local level",
+  address: "Address",
+  bloodGroup: "Blood group",
+  baselineFactorLevel: "Baseline factor level",
+  primaryHospital: "Primary hospital",
+  treatmentPlan: "Treatment plan",
+  emergencyContactName: "Emergency contact name",
+  emergencyContactPhone: "Emergency contact phone",
+  temporaryPassword: "Temporary password",
+};
+
+function extractApiMessage(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (Array.isArray(value) && value.length) return extractApiMessage(value[0]);
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (typeof record.string === "string" && record.string.trim()) return record.string.trim();
+    if (typeof record.message === "string" && record.message.trim()) return record.message.trim();
+  }
+  return null;
+}
+
 function formatApiError(data: unknown, fallback = "Request failed") {
   if (!data || typeof data !== "object") return fallback;
   const record = data as Record<string, unknown>;
@@ -99,8 +129,25 @@ function formatApiError(data: unknown, fallback = "Request failed") {
   if (typeof record.detail === "string" && record.detail) return record.detail;
   if (Array.isArray(record.detail) && typeof record.detail[0] === "string") return record.detail[0];
   if (typeof record.detail === "object" && record.detail !== null) {
-    const nonField = (record.detail as { non_field_errors?: string[] }).non_field_errors;
+    const detail = record.detail as Record<string, unknown>;
+    const nonField = detail.non_field_errors;
     if (Array.isArray(nonField) && typeof nonField[0] === "string") return nonField[0];
+    for (const [key, value] of Object.entries(detail)) {
+      if (key === "non_field_errors") continue;
+      const message = extractApiMessage(value);
+      if (message) {
+        const label = API_FIELD_LABELS[key] || key.replace(/_/g, " ");
+        return `${label}: ${message}`;
+      }
+    }
+  }
+  for (const [key, value] of Object.entries(record)) {
+    if (["error", "detail", "code", "attemptsRemaining", "lockedUntil", "retryAfterSeconds"].includes(key)) continue;
+    const message = extractApiMessage(value);
+    if (message) {
+      const label = API_FIELD_LABELS[key] || key.replace(/_/g, " ");
+      return `${label}: ${message}`;
+    }
   }
   return fallback;
 }
