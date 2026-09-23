@@ -432,8 +432,8 @@ export default function StaffAccountForm({
 
   if (credentials) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-        <div className="panel w-full max-w-md p-5">
+      <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:py-8">
+        <div className="panel my-4 w-full max-w-md shrink-0 p-5 sm:my-8">
           <h2 className="text-[14px] font-semibold text-ink">Account created</h2>
           <p className="mt-1 text-[11px] text-muted">
             Share these once. They can sign in with username, email, or Admin ID. The account stays Pending until they set their own password on first login — then it becomes Active automatically.
@@ -461,8 +461,8 @@ export default function StaffAccountForm({
 
   if (editingSelf) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-        <div className="panel max-w-md p-5">
+      <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:py-8">
+        <div className="panel my-4 max-w-md shrink-0 p-5 sm:my-8">
           <h2 className="text-[15px] font-semibold text-ink">Cannot edit your own account</h2>
           <p className="mt-2 text-[12px] text-muted">
             Another administrator must update your profile, permissions, password, or account status.
@@ -476,8 +476,8 @@ export default function StaffAccountForm({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="panel flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden p-4">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:py-8">
+      <div className="panel my-4 flex max-h-[min(92vh,calc(100dvh-4rem))] w-full max-w-4xl shrink-0 flex-col overflow-hidden p-4 sm:my-8">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-[15px] font-semibold text-ink">

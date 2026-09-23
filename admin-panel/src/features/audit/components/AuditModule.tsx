@@ -101,7 +101,7 @@ export default function AuditModule() {
 
   return (
     <div className="admin-page admin-page--fill">
-      <div className="admin-page-sticky space-y-2">
+      <div className="admin-page-sticky admin-page-sticky--fixed space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-[15px] font-semibold text-ink">Audit Logs</h1>

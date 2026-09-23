@@ -9,6 +9,7 @@ import type { CmsArticle, ContentKind } from "@/features/cms/types";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
 import { useToast } from "@/lib/toast";
+import { showToast } from "@/lib/toastBus";
 import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
 const fieldClass =
@@ -180,6 +181,7 @@ export default function CmsArticlesModule({ kind }: Props) {
       setShowForm(false);
       setEditing(null);
       resetForm();
+      showToast(editing ? "Content updated" : "Content published");
       await load();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not save";
@@ -194,6 +196,7 @@ export default function CmsArticlesModule({ kind }: Props) {
     if (!window.confirm(`Delete “${row.title}”?`)) return;
     try {
       await deleteAdminArticle(row.id);
+      showToast("Content deleted");
       await load();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not delete";
@@ -203,8 +206,8 @@ export default function CmsArticlesModule({ kind }: Props) {
   }
 
   return (
-    <div className="admin-page admin-page--fill">
-      <div className="admin-page-sticky space-y-2">
+    <div className="admin-page">
+      <div className="space-y-2">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[18px] font-semibold text-ink">{meta.title}</h1>
@@ -242,7 +245,7 @@ export default function CmsArticlesModule({ kind }: Props) {
       {error ? <p className="text-[12px] font-medium text-red">{error}</p> : null}
       </div>
 
-      <section className="panel admin-list-panel p-3">
+      <section className="panel overflow-x-auto p-3">
         {loading ? (
           <p className="px-3 py-6 text-center text-[12px] text-muted">Loading…</p>
         ) : (
@@ -253,9 +256,10 @@ export default function CmsArticlesModule({ kind }: Props) {
           onLoadMore={() => void loadMore()}
           loading={loadingMore}
           label="items"
+          scroll={false}
         >
         <table className="w-full min-w-[640px] text-left text-[12px]">
-          <thead className="sticky top-0 border-b border-line-subtle bg-elevated/60 text-[11px] uppercase text-muted">
+          <thead className="border-b border-line-subtle bg-elevated text-[11px] uppercase text-muted">
             <tr>
               <th className="px-3 py-2">Title</th>
               {kind === "event" ? <th className="px-3 py-2">When / where</th> : <th className="px-3 py-2">Summary</th>}

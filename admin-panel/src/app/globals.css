@@ -132,8 +132,8 @@ body {
   }
 
   .admin-page-footer {
-    max-height: min(38vh, 22rem);
-    overflow: auto;
+    max-height: none;
+    overflow: visible;
   }
 
   .admin-page-sticky,
@@ -143,10 +143,8 @@ body {
     padding-bottom: 0.5rem;
   }
 
-  .admin-page--fill > .admin-page-sticky,
-  .admin-page--fill > .admin-profile-sticky,
-  .admin-page:not(.admin-page--fill) .admin-page-sticky,
-  .admin-page:not(.admin-page--fill) .admin-profile-sticky {
+  .admin-page-sticky--fixed,
+  .admin-page--fill > .admin-profile-sticky {
     position: sticky;
     top: 0;
     z-index: 20;
@@ -155,18 +153,19 @@ body {
   }
 
   .admin-page-sticky > .filter-bar,
-  .admin-page--fill > .filter-bar {
+  .filter-bar {
     border: 1px solid var(--line-subtle);
     border-radius: 0.375rem;
     box-shadow: var(--card-shadow);
   }
 
-  .admin-page--fill > .filter-bar {
+  .admin-filter-sticky {
     position: sticky;
     top: 0;
-    z-index: 19;
+    z-index: 20;
     flex-shrink: 0;
     background: var(--card);
+    margin-bottom: 0.125rem;
   }
 
   .admin-page-body {
@@ -190,6 +189,11 @@ body {
 
   .admin-page-summary--compact {
     max-height: min(22vh, 13rem);
+  }
+
+  .admin-page-summary--natural {
+    max-height: none;
+    overflow: visible;
   }
 
   .admin-panel-scroll {

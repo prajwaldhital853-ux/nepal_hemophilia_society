@@ -9,6 +9,7 @@ type PaginatedScrollProps = {
   loading?: boolean;
   className?: string;
   label?: string;
+  scroll?: boolean;
 };
 
 export function PaginatedScroll({
@@ -20,10 +21,11 @@ export function PaginatedScroll({
   loading = false,
   className = "",
   label = "records",
+  scroll = true,
 }: PaginatedScrollProps) {
   return (
     <div>
-      <div className={`admin-panel-scroll ${className}`}>{children}</div>
+      <div className={scroll ? `admin-panel-scroll ${className}` : className}>{children}</div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[10px] text-muted">
           Showing {showing} of {total} {label}

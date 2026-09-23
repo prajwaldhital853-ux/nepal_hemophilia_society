@@ -1,3 +1,5 @@
+import { showToast } from "@/lib/toastBus";
+
 export function downloadCsv(filename: string, headers: string[], rows: Array<Array<string | number | null | undefined>>) {
   const escape = (value: string | number | null | undefined) => {
     const text = value == null ? "" : String(value).replace(/\r?\n/g, " ").replace(/\t/g, " ");
@@ -14,6 +16,7 @@ export function downloadCsv(filename: string, headers: string[], rows: Array<Arr
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+  showToast("Export downloaded");
 }
 
 export function stampFilename(prefix: string) {

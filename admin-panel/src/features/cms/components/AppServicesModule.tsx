@@ -16,6 +16,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
 import { useToast } from "@/lib/toast";
+import { showToast } from "@/lib/toastBus";
 import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
 const fieldClass =
@@ -156,6 +157,7 @@ export default function AppServicesModule() {
         editing?.id,
       );
       setShowForm(false);
+      showToast(editing ? "Service updated" : "Service published");
       await load();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not save service";
@@ -171,6 +173,7 @@ export default function AppServicesModule() {
     setError("");
     try {
       await deleteAdminService(row.id);
+      showToast("Service deleted");
       await load();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not delete service";
@@ -180,8 +183,8 @@ export default function AppServicesModule() {
   }
 
   return (
-    <div className="admin-page admin-page--fill">
-      <div className="admin-page-sticky space-y-2">
+    <div className="admin-page">
+      <div className="space-y-2">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[18px] font-semibold text-ink">App Services</h1>
@@ -224,7 +227,7 @@ export default function AppServicesModule() {
       {error ? <p className="text-[12px] font-medium text-red">{error}</p> : null}
       </div>
 
-      <section className="panel admin-list-panel p-3">
+      <section className="panel overflow-x-auto p-3">
         {loading ? (
           <p className="px-3 py-6 text-center text-[12px] text-muted">Loading…</p>
         ) : (
@@ -235,9 +238,10 @@ export default function AppServicesModule() {
           onLoadMore={() => void loadMore()}
           loading={loadingMore}
           label="services"
+          scroll={false}
         >
         <table className="w-full min-w-[760px] text-left text-[12px]">
-          <thead className="sticky top-0 border-b border-line-subtle bg-elevated/60 text-[11px] uppercase text-muted">
+          <thead className="border-b border-line-subtle bg-elevated text-[11px] uppercase text-muted">
             <tr>
               <th className="px-3 py-2">Service</th>
               <th className="px-3 py-2">Category</th>

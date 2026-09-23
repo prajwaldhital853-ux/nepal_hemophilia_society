@@ -243,8 +243,7 @@ export default function InjectionsModule() {
     : null;
 
   return (
-    <div className="admin-page admin-page--fill">
-      <div className="admin-page-sticky space-y-2">
+    <div className="admin-page">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-[15px] font-semibold text-ink">Treatment & Injection</h1>
@@ -302,9 +301,8 @@ export default function InjectionsModule() {
           )}
         </div>
       </div>
-      </div>
 
-      <div className="admin-page-summary admin-page-summary--compact">
+      <div className="admin-page-summary admin-page-summary--natural">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {[
           ["Total logged", formatNumber(liveStats.total)],
@@ -521,7 +519,7 @@ export default function InjectionsModule() {
       ) : null}
       </div>
 
-      <div className="filter-bar">
+      <div className="filter-bar admin-filter-sticky">
             <label className="panel-inset flex h-8 min-w-[180px] flex-1 items-center gap-2 px-2.5 shadow-none">
               <Search className="size-3.5 text-faint" />
               <input
@@ -634,8 +632,7 @@ export default function InjectionsModule() {
             </button>
       </div>
 
-      <section className="panel admin-list-panel overflow-hidden">
-          <div className="admin-table-scroll overflow-x-auto">
+      <section className="panel overflow-x-auto">
             <table className="data-table w-full min-w-[920px] text-left text-sm">
               <thead className="bg-elevated text-[11px] uppercase tracking-wide text-muted">
                 <tr>
@@ -770,7 +767,6 @@ export default function InjectionsModule() {
                 </button>
               </div>
             ) : null}
-          </div>
         </section>
       {showLog ? (
         <LogInjectionDialog

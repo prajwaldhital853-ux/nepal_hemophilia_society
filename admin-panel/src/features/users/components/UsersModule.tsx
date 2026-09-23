@@ -9,7 +9,7 @@ import { PaginatedScroll } from "@/components/ui/PaginatedScroll";
 import { apiFetch } from "@/lib/api";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { useAuth } from "@/lib/auth";
-import { useToast } from "@/lib/toast";
+import { showToast } from "@/lib/toastBus";
 import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
 type DirectoryUser = {
@@ -69,7 +69,6 @@ function statusClass(status: string) {
 }
 
 export default function UsersModule() {
-  const toast = useToast();
   const { user } = useAuth();
   const router = useRouter();
   const [rows, setRows] = useState<DirectoryUser[]>([]);
@@ -106,7 +105,7 @@ export default function UsersModule() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not load users";
       setError(message);
-      toast.show(message);
+      showToast(message);
       setRows([]);
     } finally {
       setLoading(false);
@@ -167,8 +166,8 @@ export default function UsersModule() {
   const devicePage = useVisibleSlice(devices, 10);
 
   return (
-    <div className="admin-page admin-page--fill">
-      <div className="admin-page-sticky space-y-2">
+    <div className="admin-page">
+      <div className="space-y-2">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h1 className="text-[15px] font-semibold text-ink">Users Management</h1>
@@ -261,7 +260,7 @@ export default function UsersModule() {
         </div>
       </div>
 
-      <section className="panel admin-list-panel overflow-hidden">
+      <section className="panel overflow-x-auto">
         {loading ? (
           <p className="px-3 py-8 text-center text-[11px] text-muted">Loading users…</p>
         ) : rows.length === 0 ? (
@@ -272,7 +271,7 @@ export default function UsersModule() {
             <p className="text-[13px] font-semibold text-ink">No accounts in this filter</p>
           </div>
         ) : (
-          <div className="admin-table-scroll overflow-x-auto">
+          <>
             <table className="data-table w-full min-w-[960px] text-left text-sm">
               <thead className="bg-elevated text-[11px] uppercase text-muted">
                 <tr>
@@ -327,11 +326,11 @@ export default function UsersModule() {
                 </button>
               </div>
             ) : null}
-          </div>
+          </>
         )}
       </section>
 
-      <div className="admin-page-footer grid shrink-0 gap-3 lg:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2">
         <article className="panel p-3">
           <h2 className="text-[12px] font-semibold text-ink">Login tracking</h2>
           <PaginatedScroll
@@ -341,6 +340,7 @@ export default function UsersModule() {
             onLoadMore={loginPage.loadMore}
             label="logins"
             className="mt-2"
+            scroll={false}
           >
             <table className="inner-table w-full text-left">
               <thead className="sticky top-0 bg-card text-[10px] uppercase text-faint">
@@ -385,6 +385,7 @@ export default function UsersModule() {
             onLoadMore={devicePage.loadMore}
             label="devices"
             className="mt-2"
+            scroll={false}
           >
             <table className="inner-table w-full text-left">
               <thead className="sticky top-0 bg-card text-[10px] uppercase text-faint">

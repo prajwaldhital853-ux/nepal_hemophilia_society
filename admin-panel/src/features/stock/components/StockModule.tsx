@@ -23,7 +23,7 @@ import { PaginatedScroll } from "@/components/ui/PaginatedScroll";
 import { isNationalScope, useAuth } from "@/lib/auth";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { Perm } from "@/lib/permissions";
-import { useToast } from "@/lib/toast";
+import { showToast } from "@/lib/toastBus";
 import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
 const fieldClass =
@@ -58,7 +58,6 @@ function movementTypeClass(type: string) {
 }
 
 export default function StockModule() {
-  const toast = useToast();
   const { can, user } = useAuth();
   const canManage = can(Perm.stockManage) && !user?.viewOnly;
   const canDeleteLot = can(Perm.stockDelete) && !user?.viewOnly;
@@ -110,7 +109,7 @@ export default function StockModule() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not load stock";
       setError(message);
-      toast.show(message);
+      showToast(message);
     } finally {
       setLoading(false);
     }
@@ -290,7 +289,7 @@ export default function StockModule() {
                                 .then(load)
                                 .catch((err: Error) => {
                                   setError(err.message);
-                                  toast.show(err.message);
+                                  showToast(err.message);
                                 });
                             }}
                           >
