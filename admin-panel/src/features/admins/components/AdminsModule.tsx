@@ -23,6 +23,7 @@ import { Perm } from "@/lib/permissions";
 import { usePageRbac } from "@/components/rbac/ReadOnlyBanner";
 import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 import { TableBodySkeleton } from "@/components/ui/Skeleton";
+import { showToast } from "@/lib/toastBus";
 import { useLocale } from "@/lib/i18n";
 
 function statusClass(status: string) {
@@ -62,13 +63,11 @@ export default function AdminsModule() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState("");
   const [roles, setRoles] = useState<StaffKind[]>([]);
   const [showForm, setShowForm] = useState(false);
 
   async function load() {
     setLoading(true);
-    setError("");
     try {
       const data = await fetchStaffDirectory({
         kind: kind || undefined,
@@ -81,7 +80,7 @@ export default function AdminsModule() {
     } catch (err) {
       setRows([]);
       setNextCursor(null);
-      setError(err instanceof Error ? err.message : "Failed to load admins");
+      showToast(err instanceof Error ? err.message : "Failed to load admins");
     } finally {
       setLoading(false);
     }
@@ -101,7 +100,7 @@ export default function AdminsModule() {
       setRows((current) => [...current, ...data.staff]);
       setNextCursor(data.nextCursor);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load more admins");
+      showToast(err instanceof Error ? err.message : "Failed to load more admins");
     } finally {
       setLoadingMore(false);
     }
@@ -171,8 +170,6 @@ export default function AdminsModule() {
           ) : null}
         </div>
       </div>
-
-      {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
 
       <div className="flex flex-wrap gap-1">
         {TABS.filter((tab) => !tab.id || roles.includes(tab.id)).map((tab) => (
@@ -309,7 +306,7 @@ export default function AdminsModule() {
                             onClick={() => {
                               void updateStaffAccount(row.id, { status: "Active" })
                                 .then(() => void load())
-                                .catch((err: Error) => setError(err.message || "Could not activate admin"));
+                                .catch((err: Error) => showToast(err.message || "Could not activate admin"));
                             }}
                           >
                             <CheckCircle2 className="size-[15px]" />
@@ -334,7 +331,7 @@ export default function AdminsModule() {
                               if (!window.confirm(`Delete admin ${row.id} (${row.fullName})? This cannot be undone.`)) return;
                               void deleteStaffAccount(row.id)
                                 .then(() => setRows((current) => current.filter((item) => item.id !== row.id)))
-                                .catch((err: Error) => setError(err.message || "Could not delete admin"));
+                                .catch((err: Error) => showToast(err.message || "Could not delete admin"));
                             }}
                           >
                             <Trash2 className="size-[15px]" />
@@ -375,7 +372,7 @@ export default function AdminsModule() {
                               onClick: () => {
                                 void updateStaffAccount(row.id, { status: "Active" })
                                   .then(() => void load())
-                                  .catch((err: Error) => setError(err.message || "Could not activate admin"));
+                                  .catch((err: Error) => showToast(err.message || "Could not activate admin"));
                               },
                             },
                             {
@@ -386,7 +383,7 @@ export default function AdminsModule() {
                                 if (!window.confirm(`Delete admin ${row.id} (${row.fullName})? This cannot be undone.`)) return;
                                 void deleteStaffAccount(row.id)
                                   .then(() => setRows((current) => current.filter((item) => item.id !== row.id)))
-                                  .catch((err: Error) => setError(err.message || "Could not delete admin"));
+                                  .catch((err: Error) => showToast(err.message || "Could not delete admin"));
                               },
                             },
                           ]}

@@ -84,11 +84,9 @@ export default function UsersModule() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError("");
     const q = new URLSearchParams();
     if (search.trim()) q.set("search", search.trim());
     if (kind !== "All") q.set("kind", kind);
@@ -104,9 +102,7 @@ export default function UsersModule() {
       setLoginTracking(data.loginTracking ?? []);
       setDevices(data.devices ?? []);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not load users";
-      setError(message);
-      showToast(message);
+      showToast(err instanceof Error ? err.message : "Could not load users");
       setRows([]);
     } finally {
       setLoading(false);
@@ -129,7 +125,7 @@ export default function UsersModule() {
       setRows((current) => [...current, ...(data.users ?? [])]);
       setNextCursor(data.nextCursor ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load more users");
+      showToast(err instanceof Error ? err.message : "Could not load more users");
     } finally {
       setLoadingMore(false);
     }
@@ -243,7 +239,6 @@ export default function UsersModule() {
       </div>
       )}
 
-      {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
       </div>
 
       <div className="filter-bar admin-filter-sticky">

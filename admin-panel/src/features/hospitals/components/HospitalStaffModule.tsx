@@ -28,6 +28,7 @@ import { Perm } from "@/lib/permissions";
 import { usePageRbac } from "@/components/rbac/ReadOnlyBanner";
 import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 import { TableBodySkeleton } from "@/components/ui/Skeleton";
+import { showToast } from "@/lib/toastBus";
 
 function statusClass(status: HospitalStaffRow["status"]) {
   if (status === "Active") return "bg-status-green-soft text-status-green";
@@ -53,12 +54,10 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
   const [totalsByProvince, setTotalsByProvince] = useState<Record<string, number>>({ All: 0 });
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
 
   async function loadData() {
     setLoading(true);
-    setError("");
     try {
       const data = await fetchHospitalStaff(staffType, { province, search: debounced, limit: 10 });
       setRows(data.staff.map(toStaffRow));
@@ -69,7 +68,7 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
       setRows([]);
       setNextCursor(null);
       setTotal(0);
-      setError(err instanceof Error ? err.message : "Failed to load staff");
+      showToast(err instanceof Error ? err.message : "Failed to load staff");
     } finally {
       setLoading(false);
     }
@@ -88,7 +87,7 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
       setRows((current) => [...current, ...data.staff.map(toStaffRow)]);
       setNextCursor(data.nextCursor ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load more staff");
+      showToast(err instanceof Error ? err.message : "Failed to load more staff");
     } finally {
       setLoadingMore(false);
     }
@@ -136,8 +135,6 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
           ) : null}
         </div>
       </div>
-
-      {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
 
         <div className="filter-bar">
           <label className="panel-inset flex h-8 min-w-[200px] flex-1 items-center gap-2 px-2.5 shadow-none">

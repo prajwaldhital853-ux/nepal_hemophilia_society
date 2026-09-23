@@ -46,13 +46,12 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
+    <label className="block" aria-invalid={error ? true : undefined}>
       <span className="text-[11px] font-medium text-muted">
         {label}
         {required ? <span className="text-red-500"> *</span> : null}
       </span>
       {children}
-      {error ? <p className="mt-1 text-[10px] font-semibold text-red-600">{error}</p> : null}
     </label>
   );
 }

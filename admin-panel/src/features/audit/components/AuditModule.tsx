@@ -7,6 +7,7 @@ import { StatCardsSkeleton, TablePanelSkeleton } from "@/components/ui/Skeleton"
 import { AUDIT_MODULES, type AuditLog, type AuditSeverity } from "@/features/audit/types";
 import { apiFetch } from "@/lib/api";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
+import { showToast } from "@/lib/toastBus";
 
 function severityClass(severity: AuditSeverity) {
   if (severity === "Critical") return "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400";
@@ -23,7 +24,6 @@ export default function AuditModule() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
@@ -51,7 +51,7 @@ export default function AuditModule() {
         setNextCursor(data.nextCursor ?? null);
         if (next[0]) setOpenId(String(next[0].id));
       })
-      .catch((err: Error) => setError(err.message || "Audit logs are Super Admin only."))
+      .catch((err: Error) => showToast(err.message || "Audit logs are Super Admin only."))
       .finally(() => setLoading(false));
   }, [query, moduleFilter, from, to]);
 
@@ -80,7 +80,7 @@ export default function AuditModule() {
       setLogs((current) => [...current, ...extra]);
       setNextCursor(data.nextCursor ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load more audit events");
+      showToast(err instanceof Error ? err.message : "Could not load more audit events");
     } finally {
       setLoadingMore(false);
     }
@@ -116,8 +116,6 @@ export default function AuditModule() {
           {logs.length} events
         </span>
       </div>
-      {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
-
       {loading ? (
         <StatCardsSkeleton count={4} />
       ) : (

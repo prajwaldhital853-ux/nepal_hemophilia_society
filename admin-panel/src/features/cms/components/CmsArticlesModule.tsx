@@ -9,7 +9,6 @@ import { deleteAdminArticle, fetchAdminArticles, saveAdminArticle } from "@/feat
 import type { CmsArticle, ContentKind } from "@/features/cms/types";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
-import { useToast } from "@/lib/toast";
 import { showToast } from "@/lib/toastBus";
 import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
@@ -48,7 +47,6 @@ type Props = { kind: ContentKind };
 
 export default function CmsArticlesModule({ kind }: Props) {
   const meta = KIND_META[kind];
-  const toast = useToast();
   const { can, user } = useAuth();
   const canManage = can(Perm.websiteManage) && !user?.viewOnly;
   const canDelete = can(Perm.websiteDelete) && !user?.viewOnly;
@@ -58,7 +56,6 @@ export default function CmsArticlesModule({ kind }: Props) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
   const [editing, setEditing] = useState<CmsArticle | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -77,15 +74,12 @@ export default function CmsArticlesModule({ kind }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError("");
     try {
       const data = await fetchAdminArticles({ kind, search });
       setRows(data.articles ?? []);
       setNextCursor(data.nextCursor ?? null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not load content";
-      setError(message);
-      toast.show(message);
+      showToast(err instanceof Error ? err.message : "Could not load content");
       setRows([]);
     } finally {
       setLoading(false);
@@ -144,9 +138,7 @@ export default function CmsArticlesModule({ kind }: Props) {
       setRows((current) => [...current, ...(data.articles ?? [])]);
       setNextCursor(data.nextCursor ?? null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not load more";
-      setError(message);
-      toast.show(message);
+      showToast(err instanceof Error ? err.message : "Could not load more");
     } finally {
       setLoadingMore(false);
     }
@@ -154,13 +146,10 @@ export default function CmsArticlesModule({ kind }: Props) {
 
   async function onSave() {
     if (!form.title.trim()) {
-      const message = "Title is required.";
-      setError(message);
-      toast.show(message);
+      showToast("Title is required.");
       return;
     }
     setSaving(true);
-    setError("");
     try {
       await saveAdminArticle(
         {
@@ -185,9 +174,7 @@ export default function CmsArticlesModule({ kind }: Props) {
       showToast(editing ? "Content updated" : "Content published");
       await load();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save";
-      setError(message);
-      toast.show(message);
+      showToast(err instanceof Error ? err.message : "Could not save");
     } finally {
       setSaving(false);
     }
@@ -200,9 +187,7 @@ export default function CmsArticlesModule({ kind }: Props) {
       showToast("Content deleted");
       await load();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not delete";
-      setError(message);
-      toast.show(message);
+      showToast(err instanceof Error ? err.message : "Could not delete");
     }
   }
 
@@ -243,7 +228,6 @@ export default function CmsArticlesModule({ kind }: Props) {
         </div>
       </div>
 
-      {error ? <p className="text-[12px] font-medium text-red">{error}</p> : null}
       </div>
 
       <section className="panel overflow-x-auto p-3">

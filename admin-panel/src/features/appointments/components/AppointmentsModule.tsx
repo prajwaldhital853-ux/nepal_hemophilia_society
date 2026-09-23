@@ -5,6 +5,7 @@ import { CalendarPlus, Search, Trash2, X } from "lucide-react";
 
 import { TableBodySkeleton } from "@/components/ui/Skeleton";
 import { apiFetch } from "@/lib/api";
+import { showToast } from "@/lib/toastBus";
 
 type Appointment = {
   id: number;
@@ -75,7 +76,6 @@ export default function AppointmentsModule() {
   const [doctorName, setDoctorName] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [adminNote, setAdminNote] = useState("");
-  const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showSlots, setShowSlots] = useState(false);
@@ -105,7 +105,7 @@ export default function AppointmentsModule() {
   }, [debounced, status]);
 
   useEffect(() => {
-    void load().catch((err: Error) => setError(err.message));
+    void load().catch((err: Error) => showToast(err.message));
   }, [load]);
 
   function open(row: Appointment) {
@@ -113,18 +113,15 @@ export default function AppointmentsModule() {
     setDoctorName(row.doctorName || "");
     setScheduledAt(toInput(row.scheduledAt || row.preferredAt));
     setAdminNote(row.adminNote || "");
-    setError("");
   }
 
   function closeDetail() {
     setSelected(null);
-    setError("");
   }
 
   async function save(nextStatus: string) {
     if (!selected) return;
     setSaving(true);
-    setError("");
     try {
       await apiFetch(`/appointments/${selected.id}/`, {
         method: "PUT",
@@ -135,10 +132,11 @@ export default function AppointmentsModule() {
           adminNote,
         }),
       });
+      showToast("Appointment updated");
       closeDetail();
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update the appointment");
+      showToast(err instanceof Error ? err.message : "Could not update the appointment");
     } finally {
       setSaving(false);
     }
@@ -149,10 +147,11 @@ export default function AppointmentsModule() {
     setSaving(true);
     try {
       await apiFetch(`/appointments/${selected.id}/`, { method: "DELETE" });
+      showToast("Appointment deleted");
       closeDetail();
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete the appointment");
+      showToast(err instanceof Error ? err.message : "Could not delete the appointment");
     } finally {
       setSaving(false);
     }
@@ -179,8 +178,6 @@ export default function AppointmentsModule() {
           </button>
         ) : null}
       </div>
-
-      {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
 
         <div className="filter-bar">
           <label className="panel-inset flex h-8 min-w-[200px] flex-1 items-center gap-2 px-2.5 shadow-none">
@@ -214,7 +211,7 @@ export default function AppointmentsModule() {
         </div>
       </div>
 
-      {showSlots ? <SlotManager onError={setError} /> : null}
+      {showSlots ? <SlotManager /> : null}
 
       {selected ? (
         <section className="panel p-4">
@@ -478,7 +475,7 @@ const WEEKDAY_OPTIONS = [
   { value: 6, label: "Sunday" },
 ];
 
-function SlotManager({ onError }: { onError: (message: string) => void }) {
+function SlotManager() {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [schedules, setSchedules] = useState<SlotSchedule[]>([]);
   const [centers, setCenters] = useState<Center[]>([]);
@@ -504,9 +501,9 @@ function SlotManager({ onError }: { onError: (message: string) => void }) {
       setCenters(rows);
       setHospitalId((current) => current ?? rows[0]?.id ?? null);
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Could not load available times");
+      showToast(err instanceof Error ? err.message : "Could not load available times");
     }
-  }, [onError]);
+  }, []);
 
   useEffect(() => {
     void load();
@@ -514,7 +511,7 @@ function SlotManager({ onError }: { onError: (message: string) => void }) {
 
   async function add() {
     if (!hospitalId || !date) {
-      onError("Pick a centre and a date first.");
+      showToast("Pick a centre and a date first.");
       return;
     }
     const parsed = times
@@ -523,11 +520,10 @@ function SlotManager({ onError }: { onError: (message: string) => void }) {
       .filter((item) => /^\d{1,2}:\d{2}$/.test(item))
       .map((item) => `${date}T${item.padStart(5, "0")}`);
     if (parsed.length === 0) {
-      onError("Enter at least one time, for example 10:00.");
+      showToast("Enter at least one time, for example 10:00.");
       return;
     }
     setSaving(true);
-    onError("");
     try {
       await apiFetch("/appointments/slots/", {
         method: "POST",
@@ -535,7 +531,7 @@ function SlotManager({ onError }: { onError: (message: string) => void }) {
       });
       await load();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Could not save the times");
+      showToast(err instanceof Error ? err.message : "Could not save the times");
     } finally {
       setSaving(false);
     }
@@ -546,13 +542,13 @@ function SlotManager({ onError }: { onError: (message: string) => void }) {
       await apiFetch(`/appointments/slots/${id}/`, { method: "DELETE" });
       setSlots((rows) => rows.filter((row) => row.id !== id));
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Could not remove the slot");
+      showToast(err instanceof Error ? err.message : "Could not remove the slot");
     }
   }
 
   async function addRecurring() {
     if (!hospitalId) {
-      onError("Pick a centre first.");
+      showToast("Pick a centre first.");
       return;
     }
     const parsed = times
@@ -560,11 +556,10 @@ function SlotManager({ onError }: { onError: (message: string) => void }) {
       .map((item) => item.trim())
       .filter((item) => /^\d{1,2}:\d{2}$/.test(item));
     if (parsed.length === 0) {
-      onError("Enter at least one time, for example 10:00.");
+      showToast("Enter at least one time, for example 10:00.");
       return;
     }
     setSavingSchedule(true);
-    onError("");
     try {
       await apiFetch("/appointments/slots/schedules/", {
         method: "POST",
@@ -578,7 +573,7 @@ function SlotManager({ onError }: { onError: (message: string) => void }) {
       });
       await load();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Could not save the recurring schedule");
+      showToast(err instanceof Error ? err.message : "Could not save the recurring schedule");
     } finally {
       setSavingSchedule(false);
     }
@@ -589,7 +584,7 @@ function SlotManager({ onError }: { onError: (message: string) => void }) {
       await apiFetch(`/appointments/slots/schedules/${id}/`, { method: "DELETE" });
       setSchedules((rows) => rows.filter((row) => row.id !== id));
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Could not remove the schedule");
+      showToast(err instanceof Error ? err.message : "Could not remove the schedule");
     }
   }
 

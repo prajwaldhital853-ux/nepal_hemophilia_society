@@ -42,6 +42,7 @@ export default function RootLayout({
             </ToastProvider>
           </LocaleProvider>
         </ThemeProvider>
+        <div id="nhs-toast-host" />
       </body>
     </html>
   );

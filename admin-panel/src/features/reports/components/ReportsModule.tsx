@@ -24,7 +24,7 @@ import { apiFetch } from "@/lib/api";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { useAuth } from "@/lib/auth";
 import { CHART_BAR_PROPS, useChartColors } from "@/lib/chartColors";
-import { useToast } from "@/lib/toast";
+import { showToast } from "@/lib/toastBus";
 import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
 const PIE = ["#2F6FED", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4"];
@@ -59,7 +59,6 @@ const EMPTY_OVERVIEW: SystemOverview = {
 };
 
 export default function ReportsModule() {
-  const toast = useToast();
   const { user } = useAuth();
   const c = useChartColors();
   const [from, setFrom] = useState("");
@@ -90,12 +89,10 @@ export default function ReportsModule() {
   const [movement, setMovement] = useState({ stockIn: 0, stockOut: 0, adjustments: 0, injections: 0 });
   const [devices, setDevices] = useState<DeviceRow[]>([]);
   const [overview, setOverview] = useState<SystemOverview>(EMPTY_OVERVIEW);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError("");
     const q = new URLSearchParams();
     if (from) q.set("from", from);
     if (to) q.set("to", to);
@@ -124,12 +121,11 @@ export default function ReportsModule() {
       setOverview(data.systemOverview ?? EMPTY_OVERVIEW);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not load reports";
-      setError(message);
-      toast.show(message);
+      showToast(message);
     } finally {
       setLoading(false);
     }
-  }, [from, to, user?.role, toast]);
+  }, [from, to, user?.role]);
 
   useEffect(() => {
     void load();
@@ -188,7 +184,6 @@ export default function ReportsModule() {
           </div>
         </div>
 
-        {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
       </div>
 
       <div className="flex flex-col gap-3 pb-6">

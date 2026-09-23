@@ -16,7 +16,6 @@ import {
 } from "@/features/cms/types";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
-import { useToast } from "@/lib/toast";
 import { showToast } from "@/lib/toastBus";
 import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
@@ -50,7 +49,6 @@ function slugFromTitle(title: string) {
 }
 
 export default function AppServicesModule() {
-  const toast = useToast();
   const { can, user } = useAuth();
   const canManage = can(Perm.websiteManage) && !user?.viewOnly;
   const canDelete = can(Perm.websiteDelete) && !user?.viewOnly;
@@ -61,22 +59,18 @@ export default function AppServicesModule() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
   const [editing, setEditing] = useState<AppService | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError("");
     try {
       const data = await fetchAdminServices({ search, category });
       setRows(data.services ?? []);
       setNextCursor(data.nextCursor ?? null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not load services";
-      setError(message);
-      toast.show(message);
+      showToast(err instanceof Error ? err.message : "Could not load services");
       setRows([]);
     } finally {
       setLoading(false);
@@ -129,9 +123,7 @@ export default function AppServicesModule() {
       setRows((current) => [...current, ...(data.services ?? [])]);
       setNextCursor(data.nextCursor ?? null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not load more";
-      setError(message);
-      toast.show(message);
+      showToast(err instanceof Error ? err.message : "Could not load more");
     } finally {
       setLoadingMore(false);
     }
@@ -139,13 +131,10 @@ export default function AppServicesModule() {
 
   async function onSave() {
     if (!form.title.trim()) {
-      const message = "Title is required.";
-      setError(message);
-      toast.show(message);
+      showToast("Title is required.");
       return;
     }
     setSaving(true);
-    setError("");
     try {
       const slug = form.slug.trim() || slugFromTitle(form.title);
       await saveAdminService(
@@ -161,9 +150,7 @@ export default function AppServicesModule() {
       showToast(editing ? "Service updated" : "Service published");
       await load();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save service";
-      setError(message);
-      toast.show(message);
+      showToast(err instanceof Error ? err.message : "Could not save service");
     } finally {
       setSaving(false);
     }
@@ -171,15 +158,12 @@ export default function AppServicesModule() {
 
   async function onDelete(row: AppService) {
     if (!window.confirm(`Delete “${row.title}” from the patient app?`)) return;
-    setError("");
     try {
       await deleteAdminService(row.id);
       showToast("Service deleted");
       await load();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not delete service";
-      setError(message);
-      toast.show(message);
+      showToast(err instanceof Error ? err.message : "Could not delete service");
     }
   }
 
@@ -225,7 +209,6 @@ export default function AppServicesModule() {
         </select>
       </div>
 
-      {error ? <p className="text-[12px] font-medium text-red">{error}</p> : null}
       </div>
 
       <section className="panel overflow-x-auto p-3">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { homeForUser, type AuthUser, useAuth } from "@/lib/auth";
 import { ApiClientError, apiFetch, setAuthTokens } from "@/lib/api";
+import { showToast } from "@/lib/toastBus";
 import { ensureAdminDeviceId, getAdminDeviceAuth } from "@/lib/deviceId";
 
 function formatRemaining(untilIso?: string, fallbackSeconds?: number) {
@@ -21,7 +22,6 @@ export default function LoginPage() {
   const [passwordChanged, setPasswordChanged] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [lockedUntil, setLockedUntil] = useState("");
   const [lockLabel, setLockLabel] = useState("");
@@ -41,7 +41,6 @@ export default function LoginPage() {
       setLockLabel(next.label);
       if (next.seconds <= 0) {
         setLockedUntil("");
-        setError("");
       }
     };
     tick();
@@ -51,7 +50,6 @@ export default function LoginPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
     setLoading(true);
     try {
       const { deviceId, deviceSignals } = await getAdminDeviceAuth();
@@ -75,14 +73,14 @@ export default function LoginPage() {
       if (err instanceof ApiClientError) {
         if (err.code === "device_locked" || err.status === 423) {
           setLockedUntil(err.lockedUntil || new Date(Date.now() + (err.retryAfterSeconds || 300) * 1000).toISOString());
-          setError(err.message);
+          showToast(err.message);
         } else if (err.attemptsRemaining != null) {
-          setError(`${err.message} Attempts left on this device: ${err.attemptsRemaining}.`);
+          showToast(`${err.message} Attempts left on this device: ${err.attemptsRemaining}.`);
         } else {
-          setError(err.message);
+          showToast(err.message);
         }
       } else {
-        setError(err instanceof Error ? err.message : "Login failed");
+        showToast(err instanceof Error ? err.message : "Login failed");
       }
     } finally {
       setLoading(false);
@@ -127,7 +125,6 @@ export default function LoginPage() {
               disabled={locked}
             />
           </div>
-          {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
           {locked ? (
             <p className="text-[11px] font-semibold text-amber-700">Device locked. Try again in {lockLabel}.</p>
           ) : null}

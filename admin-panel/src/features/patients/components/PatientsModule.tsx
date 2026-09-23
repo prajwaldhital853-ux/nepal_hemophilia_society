@@ -21,6 +21,7 @@ import { apiFetch } from "@/lib/api";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 import { TableBodySkeleton } from "@/components/ui/Skeleton";
+import { showToast } from "@/lib/toastBus";
 import { Perm } from "@/lib/permissions";
 
 function ageFromDob(dob: string) {
@@ -71,7 +72,6 @@ export default function PatientsModule() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
@@ -92,7 +92,6 @@ export default function PatientsModule() {
     params.set("limit", "25");
     const suffix = `?${params.toString()}`;
     setLoading(true);
-    setError("");
     void apiFetch(`/patients/${suffix}`)
       .then((data) => {
         const next = Array.isArray(data.patients) ? data.patients.map(toRow) : [];
@@ -102,7 +101,7 @@ export default function PatientsModule() {
       .catch((err: Error) => {
         setRows([]);
         setNextCursor(null);
-        setError(err.message || "Failed to load patients");
+        showToast(err.message || "Failed to load patients");
       })
       .finally(() => setLoading(false));
   }, [debounced, from, to]);
@@ -122,7 +121,7 @@ export default function PatientsModule() {
       setRows((current) => [...current, ...extra]);
       setNextCursor(data.nextCursor ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load more patients");
+      showToast(err instanceof Error ? err.message : "Failed to load more patients");
     } finally {
       setLoadingMore(false);
     }
@@ -175,8 +174,6 @@ export default function PatientsModule() {
           ) : null}
         </div>
       </div>
-
-      {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
 
         <div className="filter-bar">
           <label className="panel-inset flex h-8 min-w-[200px] flex-1 items-center gap-2 px-2.5 shadow-none">
@@ -339,7 +336,7 @@ export default function PatientsModule() {
                               if (!window.confirm(`Delete patient ${row.id}? This cannot be undone if they have no clinical records.`)) return;
                               void apiFetch(`/patients/${encodeURIComponent(row.id)}/`, { method: "DELETE" })
                                 .then(() => setRows((current) => current.filter((item) => item.id !== row.id)))
-                                .catch((err: Error) => setError(err.message || "Could not delete patient"));
+                                .catch((err: Error) => showToast(err.message || "Could not delete patient"));
                             }}
                           >
                             <Trash2 className="size-[15px]" />
@@ -387,7 +384,7 @@ export default function PatientsModule() {
                                 if (!window.confirm(`Delete patient ${row.id}? This cannot be undone if they have no clinical records.`)) return;
                                 void apiFetch(`/patients/${encodeURIComponent(row.id)}/`, { method: "DELETE" })
                                   .then(() => setRows((current) => current.filter((item) => item.id !== row.id)))
-                                  .catch((err: Error) => setError(err.message || "Could not delete patient"));
+                                  .catch((err: Error) => showToast(err.message || "Could not delete patient"));
                               },
                             },
                           ]}

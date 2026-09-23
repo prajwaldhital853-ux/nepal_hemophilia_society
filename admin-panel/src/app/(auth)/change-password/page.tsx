@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { homeForUser, needsPasswordChange, type AuthUser, useAuth } from "@/lib/auth";
 import { apiFetch, setAuthTokens } from "@/lib/api";
+import { showToast } from "@/lib/toastBus";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -13,12 +14,10 @@ export default function ChangePasswordPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
     setLoading(true);
     try {
       const data = await apiFetch("/auth/change-password/", {
@@ -32,7 +31,7 @@ export default function ChangePasswordPage() {
       setSession(data.user as AuthUser);
       router.replace(homeForUser(data.user as AuthUser));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update password");
+      showToast(err instanceof Error ? err.message : "Could not update password");
     } finally {
       setLoading(false);
     }
@@ -82,7 +81,6 @@ export default function ChangePasswordPage() {
               minLength={8}
             />
           </div>
-          {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
           <button
             type="submit"
             disabled={loading}

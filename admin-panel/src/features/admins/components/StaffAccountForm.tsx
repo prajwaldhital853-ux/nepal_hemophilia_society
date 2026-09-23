@@ -48,13 +48,12 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
+    <label className="block" aria-invalid={error ? true : undefined}>
       <span className="text-[11px] font-medium text-muted">
         {label}
         {required ? <span className="text-red-500"> *</span> : null}
       </span>
       {children}
-      {error ? <p className="mt-1 text-[10px] font-semibold text-red-600">{error}</p> : null}
     </label>
   );
 }
@@ -197,7 +196,6 @@ export default function StaffAccountForm({
   const [hospitals, setHospitals] = useState<HospitalOption[]>([]);
   const [provinceOptions, setProvinceOptions] = useState<string[]>([...NEPAL_PROVINCES]);
   const [taken, setTaken] = useState<string[]>(takenProvinces);
-  const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -285,7 +283,7 @@ export default function StaffAccountForm({
           };
         });
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "Could not load roles"));
+      .catch((err) => showToast(err instanceof Error ? err.message : "Could not load roles"));
   }, [initial, lockedKind, mode]);
 
   useEffect(() => {
@@ -309,7 +307,7 @@ export default function StaffAccountForm({
           return defaults.length ? { ...current, permissions: defaults } : current;
         });
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "Could not load permissions"));
+      .catch((err) => showToast(err instanceof Error ? err.message : "Could not load permissions"));
   }, [form.kind, mode]);
 
   useEffect(() => {
@@ -397,7 +395,6 @@ export default function StaffAccountForm({
       return;
     }
     setSaving(true);
-    setError("");
     try {
       const payload: Record<string, unknown> = {
         kind: form.kind,
@@ -429,9 +426,7 @@ export default function StaffAccountForm({
       if (data.credentials) setCredentials(data.credentials);
       else onSaved();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save admin";
-      setError(message);
-      showToast(message);
+      showToast(err instanceof Error ? err.message : "Could not save admin");
     } finally {
       setSaving(false);
     }
@@ -836,7 +831,6 @@ export default function StaffAccountForm({
           ) : null}
         </div>
 
-        {error ? <p className="mt-2 text-[11px] text-red-600">{error}</p> : null}
 
         <div className="mt-3 flex justify-between gap-2">
           <button

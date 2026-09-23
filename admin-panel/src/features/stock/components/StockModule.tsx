@@ -69,7 +69,6 @@ export default function StockModule() {
   const [factors, setFactors] = useState<FactorOption[]>([]);
   const [hospitals, setHospitals] = useState<HospitalOption[]>([]);
   const [totalQuantity, setTotalQuantity] = useState<string | number>(0);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [activeLot, setActiveLot] = useState<StockLot | null>(null);
@@ -85,7 +84,6 @@ export default function StockModule() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError("");
     try {
       const [stock, history] = await Promise.all([
         fetchStock({
@@ -108,9 +106,7 @@ export default function StockModule() {
       setHistoryTotal(history.total ?? 0);
       setMovementCursor(history.nextCursor ?? null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not load stock";
-      setError(message);
-      showToast(message);
+      showToast(err instanceof Error ? err.message : "Could not load stock");
     } finally {
       setLoading(false);
     }
@@ -192,8 +188,6 @@ export default function StockModule() {
         </article>
       </div>
       )}
-
-      {error ? <p className="text-[12px] text-red-600">{error}</p> : null}
 
       <article className="panel overflow-x-auto p-3">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -292,10 +286,7 @@ export default function StockModule() {
                               if (!window.confirm("Delete this lot? Lots with remaining quantity can only be deleted by Super Admin.")) return;
                               void deleteStockLot(lot.id)
                                 .then(load)
-                                .catch((err: Error) => {
-                                  setError(err.message);
-                                  showToast(err.message);
-                                });
+                                .catch((err: Error) => showToast(err.message));
                             }}
                           >
                             Delete
@@ -489,7 +480,6 @@ function StockFormDialog({
   const [allocations, setAllocations] = useState<CenterAllocRow[]>([{ hospitalName: "", quantity: "" }]);
   const [reason, setReason] = useState("Shipment received");
   const [notes, setNotes] = useState("");
-  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   return (
@@ -499,7 +489,6 @@ function StockFormDialog({
         onSubmit={(e) => {
           e.preventDefault();
           setBusy(true);
-          setError("");
           void onSubmit({
             factorMedicineId: Number(factorMedicineId),
             quantity,
@@ -515,7 +504,7 @@ function StockFormDialog({
             reason,
             notes,
           })
-            .catch((err: Error) => setError(err.message))
+            .catch((err: Error) => showToast(err.message))
             .finally(() => setBusy(false));
         }}
       >
@@ -621,7 +610,6 @@ function StockFormDialog({
           Notes
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={fieldClass} rows={2} />
         </label>
-        {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
         <div className="flex gap-2">
           <button type="button" onClick={onClose} className="flex-1 rounded border border-line py-2 text-[11px] font-semibold">
             Cancel
@@ -654,7 +642,6 @@ function StockMoveDialog({
   const [expiryDate, setExpiryDate] = useState(lot.expiryDate || "");
   const [reason, setReason] = useState(mode === "in" ? "Stock in" : mode === "out" ? "Manual stock out" : "Count correction");
   const [notes, setNotes] = useState("");
-  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   return (
@@ -664,7 +651,6 @@ function StockMoveDialog({
         onSubmit={(e) => {
           e.preventDefault();
           setBusy(true);
-          setError("");
           void onSubmit({
             quantity,
             reason,
@@ -677,7 +663,7 @@ function StockMoveDialog({
                 }
               : {}),
           })
-            .catch((err: Error) => setError(err.message))
+            .catch((err: Error) => showToast(err.message))
             .finally(() => setBusy(false));
         }}
       >
@@ -721,7 +707,6 @@ function StockMoveDialog({
           Notes
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={fieldClass} rows={2} />
         </label>
-        {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
         <div className="flex gap-2">
           <button type="button" onClick={onClose} className="flex-1 rounded border border-line py-2 text-[11px] font-semibold">
             Cancel
