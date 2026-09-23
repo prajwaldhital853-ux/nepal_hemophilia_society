@@ -422,3 +422,58 @@ body {
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
 }
+
+#nhs-toast-host {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 99999;
+  display: flex;
+  width: min(92vw, 28rem);
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.nhs-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #fff;
+  background-color: #2f6fed;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.nhs-toast__message {
+  min-width: 0;
+  flex: 1;
+}
+
+.nhs-toast__dismiss {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+  font-size: 1rem;
+  line-height: 1;
+  color: rgb(255 255 255 / 0.9);
+  background: transparent;
+  cursor: pointer;
+}
+
+.nhs-toast__dismiss:hover {
+  background: rgb(255 255 255 / 0.15);
+}
+
+.field-has-error input,
+.field-has-error select,
+.field-has-error textarea {
+  border-color: var(--red) !important;
+}

@@ -11,8 +11,6 @@ function getHost(): HTMLElement | null {
     host.id = TOAST_HOST_ID;
     document.body.appendChild(host);
   }
-  host.className =
-    "pointer-events-none fixed bottom-4 right-4 z-[99999] flex w-[min(92vw,28rem)] flex-col gap-2";
   host.setAttribute("aria-live", "polite");
   return host;
 }
@@ -25,18 +23,16 @@ function dismissToast(el: HTMLElement, timer: number) {
 function renderToast(host: HTMLElement, message: string) {
   const el = document.createElement("div");
   el.setAttribute("role", "status");
-  el.className =
-    "pointer-events-auto flex items-center justify-between gap-3 rounded-xl px-5 py-3.5 text-[13px] font-medium text-white shadow-lg";
-  el.style.backgroundColor = "#2f6fed";
+  el.className = "nhs-toast";
 
   const text = document.createElement("span");
-  text.className = "min-w-0 flex-1 leading-snug";
+  text.className = "nhs-toast__message";
   text.textContent = message;
 
   const button = document.createElement("button");
   button.type = "button";
   button.setAttribute("aria-label", "Dismiss notification");
-  button.className = "shrink-0 rounded px-1 text-base leading-none text-white/90 hover:bg-white/15";
+  button.className = "nhs-toast__dismiss";
   button.textContent = "×";
 
   const timer = window.setTimeout(() => dismissToast(el, timer), TOAST_DURATION_MS);

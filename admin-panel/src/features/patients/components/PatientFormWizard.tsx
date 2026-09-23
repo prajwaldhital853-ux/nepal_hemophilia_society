@@ -46,7 +46,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block" aria-invalid={error ? true : undefined}>
+    <label className={`block${error ? " field-has-error" : ""}`} aria-invalid={error ? true : undefined}>
       <span className="text-[11px] font-medium text-muted">
         {label}
         {required ? <span className="text-red-500"> *</span> : null}
@@ -392,13 +392,13 @@ export default function PatientFormWizard({
       <section className="panel p-4">
         {step === 1 ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Full name" required>
+            <Field label="Full name" required error={fieldErrors.fullName}>
               <input className={fieldClass} value={form.fullName} onChange={(e) => patch({ fullName: e.target.value })} />
             </Field>
-            <Field label="Date of birth" required>
+            <Field label="Date of birth" required error={fieldErrors.dateOfBirth}>
               <input type="date" className={fieldClass} value={form.dateOfBirth ?? ""} onChange={(e) => patch({ dateOfBirth: e.target.value })} />
             </Field>
-            <Field label="Gender" required>
+            <Field label="Gender" required error={fieldErrors.gender}>
               <select className={fieldClass} value={form.gender} onChange={(e) => patch({ gender: e.target.value as PatientPayload["gender"] })}>
                 <option>Male</option>
                 <option>Female</option>

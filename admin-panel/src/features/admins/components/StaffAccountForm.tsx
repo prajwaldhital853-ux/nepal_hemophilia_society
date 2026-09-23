@@ -48,7 +48,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block" aria-invalid={error ? true : undefined}>
+    <label className={`block${error ? " field-has-error" : ""}`} aria-invalid={error ? true : undefined}>
       <span className="text-[11px] font-medium text-muted">
         {label}
         {required ? <span className="text-red-500"> *</span> : null}
