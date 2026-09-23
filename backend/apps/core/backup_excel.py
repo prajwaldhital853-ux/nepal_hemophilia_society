@@ -2,10 +2,23 @@
 
 from __future__ import annotations
 
+import json
 from io import BytesIO
 import zipfile
 
 from openpyxl import Workbook
+
+
+def _excel_cell_value(value):
+    if value is None:
+        return ""
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    if isinstance(value, (list, dict)):
+        return json.dumps(value, default=str)
+    return str(value)
 
 
 def rows_to_xlsx_bytes(sheet_name: str, rows: list[dict]) -> bytes:
@@ -15,10 +28,16 @@ def rows_to_xlsx_bytes(sheet_name: str, rows: list[dict]) -> bytes:
     if not rows:
         sheet.append(["(no rows)"])
     else:
-        headers = list(rows[0].keys())
+        headers: list[str] = []
+        seen: set[str] = set()
+        for row in rows:
+            for key in row.keys():
+                if key not in seen:
+                    seen.add(key)
+                    headers.append(key)
         sheet.append(headers)
         for row in rows:
-            sheet.append([row.get(header) for header in headers])
+            sheet.append([_excel_cell_value(row.get(header)) for header in headers])
     buffer = BytesIO()
     workbook.save(buffer)
     return buffer.getvalue()
