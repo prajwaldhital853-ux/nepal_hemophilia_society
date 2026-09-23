@@ -254,10 +254,12 @@ def apply_assigned_access(actor, user, kind: str, permissions, view_only: bool):
 
 
 def apply_profile_fields(user, data: dict):
+    update_fields: list[str] = []
     if "fullName" in data and data.get("fullName"):
         first, last = split_name(str(data["fullName"]))
         user.first_name = first
         user.last_name = last
+        update_fields.extend(["first_name", "last_name"])
     if "email" in data and data.get("email") is not None:
         email = str(data.get("email") or "").strip().lower()
         if email:
@@ -265,29 +267,42 @@ def apply_profile_fields(user, data: dict):
             if qs.exists():
                 raise ValidationError({"email": "This email is already used."})
             user.email = email
+            update_fields.append("email")
     if "phone" in data:
         user.mobile = validate_mobile(str(data.get("phone") or ""))
+        update_fields.append("mobile")
     if "dateOfBirth" in data:
         user.date_of_birth = coerce_date(data.get("dateOfBirth"))
+        update_fields.append("date_of_birth")
     if "gender" in data:
         user.gender = str(data.get("gender") or "")[:20]
+        update_fields.append("gender")
     if "designation" in data:
         user.designation = str(data.get("designation") or "")[:120]
+        update_fields.append("designation")
     if "employeeId" in data:
         user.employee_id = str(data.get("employeeId") or "")[:40]
+        update_fields.append("employee_id")
     if "nationalId" in data:
         user.national_id = str(data.get("nationalId") or "")[:40]
+        update_fields.append("national_id")
     if "officeAddress" in data:
         user.office_address = str(data.get("officeAddress") or "")
+        update_fields.append("office_address")
     if "notes" in data:
         user.notes = str(data.get("notes") or "")
+        update_fields.append("notes")
     if data.get("status") == "Inactive":
         user.is_active_account = False
+        update_fields.append("is_active_account")
     elif data.get("status") in ("Active", "Pending"):
         user.is_active_account = True
+        update_fields.append("is_active_account")
         if data.get("status") == "Active":
             user.must_change_password = False
-    user.save()
+            update_fields.append("must_change_password")
+    if update_fields:
+        user.save(update_fields=update_fields)
 
 
 def _require_hospital(actor, data: dict, kind: str) -> Hospital:

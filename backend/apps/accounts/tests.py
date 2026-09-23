@@ -508,14 +508,60 @@ class RbacMatrixTests(APITestCase):
             format="json",
         )
         self.assertEqual(changed.status_code, 200, changed.data)
+        self.assertTrue(changed.data.get("access"))
+        self.assertFalse(changed.data.get("mustChangePassword"))
         self.client.credentials()
         again = post_admin_login(self.client, created.data["credentials"]["username"], "OwnPass#2026")
         self.assertEqual(again.status_code, 200, again.data)
         self.assertFalse(again.data["mustChangePassword"])
+        by_email = post_admin_login(self.client, "pending.admin@hemophilia.org.np", "OwnPass#2026")
+        self.assertEqual(by_email.status_code, 200, by_email.data)
+        self.assertFalse(by_email.data["mustChangePassword"])
         self.client.force_authenticate(self.super)
         staff = self.client.get(f"/api/v1/admins/staff/{created.data['admin']['id']}/")
         self.assertEqual(staff.status_code, 200)
         self.assertEqual(staff.data["admin"]["status"], "Active")
+
+    def test_staff_profile_update_does_not_clobber_changed_password(self):
+        self.client.force_authenticate(self.super)
+        created = self.client.post(
+            "/api/v1/admins/staff/",
+            {
+                "kind": "admin",
+                "fullName": "Password Keeper",
+                "email": "keeper.admin@hemophilia.org.np",
+                "phone": "9841778899",
+                "designation": "Coordinator",
+                "temporaryPassword": "TempPass#123",
+            },
+            format="json",
+        )
+        self.assertEqual(created.status_code, 201, created.data)
+        admin_id = created.data["admin"]["id"]
+        self.client.force_authenticate(None)
+        login = post_admin_login(self.client, "keeper.admin@hemophilia.org.np", "TempPass#123")
+        self.assertEqual(login.status_code, 200, login.data)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        changed = self.client.post(
+            "/api/v1/auth/change-password/",
+            {
+                "currentPassword": "TempPass#123",
+                "newPassword": "OwnPass#2026",
+                "confirmPassword": "OwnPass#2026",
+            },
+            format="json",
+        )
+        self.assertEqual(changed.status_code, 200, changed.data)
+        self.client.force_authenticate(self.super)
+        updated = self.client.put(
+            f"/api/v1/admins/staff/{admin_id}/",
+            {"designation": "Senior Coordinator"},
+            format="json",
+        )
+        self.assertEqual(updated.status_code, 200, updated.data)
+        self.client.force_authenticate(None)
+        relogin = post_admin_login(self.client, "keeper.admin@hemophilia.org.np", "OwnPass#2026")
+        self.assertEqual(relogin.status_code, 200, relogin.data)
 
     def test_super_marks_pending_admin_active_without_first_login(self):
         self.client.force_authenticate(self.super)

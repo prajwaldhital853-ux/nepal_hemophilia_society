@@ -306,6 +306,7 @@ class HospitalStaffUpdateSerializer(HospitalStaffSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         user = instance.user
+        user_update_fields: list[str] = []
         full_name = validated_data.pop("fullName", None)
         hospital_name = validated_data.pop("treatmentCenter", None)
         status = validated_data.pop("status", None)
@@ -316,11 +317,14 @@ class HospitalStaffUpdateSerializer(HospitalStaffSerializer):
             first, last = split_name(full_name)
             user.first_name = first
             user.last_name = last
+            user_update_fields.extend(["first_name", "last_name"])
 
         if "email" in user_data:
             user.email = user_data["email"]
+            user_update_fields.append("email")
         if "mobile" in user_data:
             user.mobile = user_data["mobile"]
+            user_update_fields.append("mobile")
 
         if hospital_name:
             hospital = Hospital.objects.filter(name=hospital_name, is_active=True).select_related("province").first()
@@ -339,10 +343,13 @@ class HospitalStaffUpdateSerializer(HospitalStaffSerializer):
 
         if status == "Inactive":
             user.is_active_account = False
+            user_update_fields.append("is_active_account")
         elif status in ("Active", "Pending"):
             user.is_active_account = True
+            user_update_fields.append("is_active_account")
             if status == "Active":
                 user.must_change_password = False
+                user_update_fields.append("must_change_password")
 
         if reset_temp and str(reset_temp).strip():
             try:
@@ -353,13 +360,15 @@ class HospitalStaffUpdateSerializer(HospitalStaffSerializer):
             user.set_password(str(reset_temp))
             user.must_change_password = True
             user.password_changed_at = None
+            user_update_fields.extend(["password", "must_change_password", "password_changed_at"])
             self.issued_temporary_password = str(reset_temp)
 
         for field in ("date_of_birth", "gender", "address"):
             if field in validated_data:
                 setattr(instance, field, validated_data[field])
 
-        user.save()
+        if user_update_fields:
+            user.save(update_fields=user_update_fields)
         instance.save()
         request = self.context.get("request")
         if request and ("permissions" in self.initial_data or "viewOnly" in self.initial_data):
