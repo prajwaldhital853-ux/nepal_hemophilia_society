@@ -90,7 +90,6 @@ export const dynamicPhraseMap: Record<string, string> = {
   Mild: "हल्का",
   Moderate: "मध्यम",
   Severe: "गम्भीर",
-  "stock in": "स्टक इन",
 };
 
 export function localizeText(

@@ -37,7 +37,7 @@ function NavLink({
   onNavigate?: () => void;
 }) {
   const active = isActive(pathname, item.href);
-  const { l, t } = useLocale();
+  const { l } = useLocale();
 
   return (
     <Link
@@ -108,7 +108,7 @@ function NavGroup({
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const { l, t, locale } = useLocale();
+  const { t, locale } = useLocale();
   const { open, closeNav } = useMobileNav();
   const allowed = user?.nav ?? [];
   const mainItems = filterNav(mainNav, allowed);
