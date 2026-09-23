@@ -7,7 +7,6 @@ import {
   ChevronDown,
   Download,
   Eye,
-  MoreHorizontal,
   Plus,
   Search,
   Syringe,
@@ -37,6 +36,7 @@ import {
   type InjectionStatus,
 } from "@/features/injections/api";
 import LogInjectionDialog from "@/features/injections/components/LogInjectionDialog";
+import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 import { formatNumber } from "@/lib/format";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { CHART_BAR_PROPS, useChartColors } from "@/lib/chartColors";
@@ -94,7 +94,6 @@ export default function InjectionsModule() {
   const [from, setFrom] = useState(() => monthBounds(currentMonthKey()).from);
   const [to, setTo] = useState(() => monthBounds(currentMonthKey()).to);
   const [openMonth, setOpenMonth] = useState(false);
-  const [rowMenu, setRowMenu] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -139,15 +138,14 @@ export default function InjectionsModule() {
   }, [load]);
 
   useEffect(() => {
-    if (rowMenu === null && !openMonth) return;
+    if (!openMonth) return;
     function onPointerDown(event: MouseEvent) {
       const target = event.target as Element;
-      if (rowMenu !== null && !target.closest("[data-row-menu]")) setRowMenu(null);
       if (openMonth && !target.closest("[data-month-picker]")) setOpenMonth(false);
     }
     document.addEventListener("mousedown", onPointerDown);
     return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [rowMenu, openMonth]);
+  }, [openMonth]);
 
   const loadRelated = useCallback(async (patientId: string) => {
     setRelatedLoading(true);
@@ -523,8 +521,7 @@ export default function InjectionsModule() {
       ) : null}
       </div>
 
-      <section className="panel admin-list-panel overflow-hidden">
-          <div className="filter-bar">
+      <div className="filter-bar">
             <label className="panel-inset flex h-8 min-w-[180px] flex-1 items-center gap-2 px-2.5 shadow-none">
               <Search className="size-3.5 text-faint" />
               <input
@@ -635,7 +632,9 @@ export default function InjectionsModule() {
               <Download className="size-3.5" />
               Export
             </button>
-          </div>
+      </div>
+
+      <section className="panel admin-list-panel overflow-hidden">
           <div className="admin-table-scroll overflow-x-auto">
             <table className="data-table w-full min-w-[920px] text-left text-sm">
               <thead className="bg-elevated text-[11px] uppercase tracking-wide text-muted">
@@ -708,7 +707,7 @@ export default function InjectionsModule() {
                       )}
                     </td>
                     <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="relative flex items-center gap-1 text-muted" data-row-menu>
+                      <div className="flex items-center gap-1 text-muted">
                         <button
                           type="button"
                           className="rounded-lg p-1.5 text-brand hover:bg-brand-soft"
@@ -717,47 +716,24 @@ export default function InjectionsModule() {
                         >
                           <Eye className="size-[15px]" />
                         </button>
-                        <button
-                          type="button"
-                          className="rounded-lg p-1.5 hover:bg-elevated"
-                          aria-label={`More actions for ${row.displayCode}`}
-                          onClick={() => setRowMenu((current) => (current === row.id ? null : row.id))}
-                        >
-                          <MoreHorizontal className="size-[15px]" />
-                        </button>
-                        {rowMenu === row.id ? (
-                          <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden panel shadow-lg">
-                            <button
-                              type="button"
-                              className="block w-full px-3 py-2 text-left text-[11px] hover:bg-elevated"
-                              onClick={() => {
-                                setSelected(row);
-                                setRowMenu(null);
-                              }}
-                            >
-                              View details
-                            </button>
-                            <Link
-                              href={`/dashboard/patients/${row.patientId}`}
-                              className="block w-full px-3 py-2 text-left text-[11px] hover:bg-elevated"
-                              onClick={() => setRowMenu(null)}
-                            >
-                              Open patient profile
-                            </Link>
-                            <button
-                              type="button"
-                              className="block w-full px-3 py-2 text-left text-[11px] hover:bg-elevated"
-                              onClick={() => {
-                                void navigator.clipboard.writeText(row.displayCode || String(row.id));
-                                setRowMenu(null);
-                              }}
-                            >
-                              Copy injection ID
-                            </button>
-                            <button
-                              type="button"
-                              className="block w-full px-3 py-2 text-left text-[11px] hover:bg-elevated"
-                              onClick={() => {
+                        <ActionsMenu
+                          ariaLabel={`More actions for ${row.displayCode}`}
+                          items={[
+                            {
+                              label: "View details",
+                              onClick: () => setSelected(row),
+                            },
+                            {
+                              label: "Open patient profile",
+                              href: `/dashboard/patients/${row.patientId}`,
+                            },
+                            {
+                              label: "Copy injection ID",
+                              onClick: () => void copyText(row.displayCode || String(row.id)),
+                            },
+                            {
+                              label: "Export row",
+                              onClick: () =>
                                 downloadCsv(
                                   stampFilename(`injection-${row.displayCode || row.id}`),
                                   ["Field", "Value"],
@@ -771,14 +747,10 @@ export default function InjectionsModule() {
                                     ["When", row.administeredAt],
                                     ["Center", row.hospitalName],
                                   ],
-                                );
-                                setRowMenu(null);
-                              }}
-                            >
-                              Export row
-                            </button>
-                          </div>
-                        ) : null}
+                                ),
+                            },
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>

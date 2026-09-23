@@ -132,10 +132,7 @@ export default function AuditModule() {
           <p className="text-[15px] font-semibold text-ink">{uniqueActors}</p>
         </article>
       </div>
-      </div>
 
-      <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <section className="panel admin-list-panel overflow-hidden">
           <div className="filter-bar">
             <label className="panel-inset flex h-8 min-w-[180px] flex-1 items-center gap-2 px-2.5 shadow-none">
               <Search className="size-3.5 text-faint" />
@@ -192,6 +189,10 @@ export default function AuditModule() {
               Export trail
             </button>
           </div>
+      </div>
+
+      <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <section className="panel admin-list-panel overflow-hidden">
           <div className="admin-table-scroll">
           <ul className="divide-y divide-line-subtle">
             {rows.map((row) => (

@@ -180,6 +180,37 @@ export default function AppointmentsModule() {
       </div>
 
       {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
+
+        <div className="filter-bar">
+          <label className="panel-inset flex h-8 min-w-[200px] flex-1 items-center gap-2 px-2.5 shadow-none">
+            <Search className="size-3.5 text-faint" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
+              placeholder="Search by name or Unique Patient ID (HEM-…)"
+            />
+          </label>
+          <select
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+            className="panel h-8 px-2.5 text-[11px] text-muted shadow-none outline-none"
+          >
+            {STATUS_OPTIONS.map(([value, label]) => (
+              <option key={value || "all"} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-muted">
+            Total: <span className="text-[13px] font-semibold text-ink">{rows.length}</span>
+            {waiting > 0 ? (
+              <>
+                {" "}· Awaiting reply: <span className="text-[13px] font-semibold text-ink">{waiting}</span>
+              </>
+            ) : null}
+          </p>
+        </div>
       </div>
 
       {showSlots ? <SlotManager onError={setError} /> : null}
@@ -273,37 +304,6 @@ export default function AppointmentsModule() {
       ) : null}
 
       <section className="panel admin-list-panel overflow-hidden">
-        <div className="filter-bar">
-          <label className="panel-inset flex h-8 min-w-[200px] flex-1 items-center gap-2 px-2.5 shadow-none">
-            <Search className="size-3.5 text-faint" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
-              placeholder="Search by name or Unique Patient ID (HEM-…)"
-            />
-          </label>
-          <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-            className="panel h-8 px-2.5 text-[11px] text-muted shadow-none outline-none"
-          >
-            {STATUS_OPTIONS.map(([value, label]) => (
-              <option key={value || "all"} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <p className="text-[11px] text-muted">
-            Total: <span className="text-[13px] font-semibold text-ink">{rows.length}</span>
-            {waiting > 0 ? (
-              <>
-                {" "}· Awaiting reply: <span className="text-[13px] font-semibold text-ink">{waiting}</span>
-              </>
-            ) : null}
-          </p>
-        </div>
-
         <div className="admin-table-scroll overflow-x-auto">
           <table className="data-table w-full min-w-[860px] text-left text-sm">
             <thead className="bg-elevated text-[11px] uppercase tracking-wide text-muted">

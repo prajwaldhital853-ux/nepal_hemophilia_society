@@ -28,10 +28,10 @@ function DashboardFrame({ children }: { children: React.ReactNode }) {
         <AdminNotificationAlerts />
         <NotificationPageSync />
         <BackupAutoDownload />
-        <main className="admin-scroll relative z-0 flex min-h-0 flex-1 flex-col overflow-y-auto p-2.5 sm:p-3">
-          <div className="mx-auto flex w-full min-w-0 max-w-[1360px] flex-1 flex-col">
+        <main className="admin-scroll relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden p-2.5 sm:p-3">
+          <div className="mx-auto flex h-full min-h-0 w-full min-w-0 max-w-[1360px] flex-1 flex-col">
             <ViewOnlyBar />
-            {children}
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
           </div>
         </main>
       </div>

@@ -7,7 +7,6 @@ import {
   ChevronDown,
   Download,
   Eye,
-  MoreHorizontal,
   Plus,
   Search,
   X,
@@ -27,6 +26,7 @@ import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
 import { usePageRbac } from "@/components/rbac/ReadOnlyBanner";
+import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 
 function statusClass(status: HospitalStaffRow["status"]) {
   if (status === "Active") return "bg-status-green-soft text-status-green";
@@ -137,9 +137,7 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
       </div>
 
       {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
-      </div>
 
-      <section className="panel admin-list-panel overflow-hidden">
         <div className="filter-bar">
           <label className="panel-inset flex h-8 min-w-[200px] flex-1 items-center gap-2 px-2.5 shadow-none">
             <Search className="size-3.5 text-faint" />
@@ -236,7 +234,9 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
             Export
           </button>
         </div>
+      </div>
 
+      <section className="panel admin-list-panel overflow-hidden">
         <div className="admin-table-scroll overflow-x-auto">
           <table className="data-table w-full min-w-[960px] text-left text-sm">
             <thead className="bg-elevated text-[11px] uppercase tracking-wide text-muted">
@@ -294,9 +294,41 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
                         >
                           <Eye className="size-[15px]" />
                         </button>
-                        <button type="button" className="rounded-lg p-1.5 hover:bg-elevated" aria-label="More">
-                          <MoreHorizontal className="size-[15px]" />
-                        </button>
+                        <ActionsMenu
+                          ariaLabel={`More actions for ${row.name}`}
+                          items={[
+                            {
+                              label: "View profile",
+                              href: `${labels.profilePath}/${row.id}`,
+                            },
+                            {
+                              label: "Copy staff ID",
+                              onClick: () => void copyText(row.id),
+                            },
+                            {
+                              label: "Copy email",
+                              onClick: () => void copyText(row.email),
+                            },
+                            {
+                              label: "Export row",
+                              onClick: () =>
+                                downloadCsv(
+                                  stampFilename(`${labels.singular.replaceAll(" ", "-").toLowerCase()}-${row.id}`),
+                                  ["Field", "Value"],
+                                  [
+                                    ["ID", row.id],
+                                    ["Name", row.name],
+                                    ["Email", row.email],
+                                    ["Phone", row.phone],
+                                    ["Center", row.treatmentCenter],
+                                    ["Province", row.province],
+                                    ["Status", row.status],
+                                    ["Joined", row.joinedDate],
+                                  ],
+                                ),
+                            },
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>

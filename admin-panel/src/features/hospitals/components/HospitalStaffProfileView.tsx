@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Building2, Check, FileText, MoreHorizontal, Pencil, Shield, Trash2 } from "lucide-react";
+import { Building2, Check, FileText, Pencil, Shield, Trash2 } from "lucide-react";
 
+import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { fetchHospitalStaffProfile } from "@/features/hospitals/api";
 import StaffAccountForm from "@/features/admins/components/StaffAccountForm";
@@ -12,6 +13,7 @@ import { deleteStaffAccount, fetchStaffAccount, updateStaffAccount, type StaffRe
 import { isOwnStaffAccount } from "@/features/admins/identity";
 import { staffLabels, type HospitalStaffProfile, type HospitalStaffType } from "@/features/hospitals/types";
 import { useAuth } from "@/lib/auth";
+import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { PERM_LABELS } from "@/lib/permissions";
 
 const tabs = ["Overview", "Activity Log", "Permissions", "Documents"];
@@ -346,9 +348,55 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
               Delete
             </button>
           ) : null}
-          <button type="button" className="panel p-1.5 shadow-none" aria-label="More">
-            <MoreHorizontal className="size-3.5" />
-          </button>
+          <ActionsMenu
+            ariaLabel={`More ${labels.singular.toLowerCase()} actions`}
+            buttonClassName="panel p-1.5 shadow-none"
+            iconClassName="size-3.5"
+            items={[
+              { label: "Copy staff ID", onClick: () => void copyText(profile.id) },
+              { label: "Copy email", onClick: () => void copyText(profile.email) },
+              {
+                label: "Copy username",
+                onClick: () => void copyText(profile.username || staff?.username || ""),
+                hidden: !profile.username && !staff?.username,
+              },
+              {
+                label: "Export profile",
+                onClick: () =>
+                  downloadCsv(
+                    stampFilename(`${labels.singular.replaceAll(" ", "-").toLowerCase()}-${profile.id}`),
+                    ["Field", "Value"],
+                    [
+                      ["ID", profile.id],
+                      ["Name", profile.fullName],
+                      ["Role", profile.roleLabel || labels.singular],
+                      ["Email", profile.email],
+                      ["Phone", profile.phone || ""],
+                      ["Status", profile.status],
+                      ["Province", profile.province],
+                      ["Center", profile.treatmentCenter],
+                    ],
+                  ),
+              },
+              { label: "View permissions", onClick: () => setTab("Permissions") },
+              { label: "View activity log", onClick: () => setTab("Activity Log") },
+              {
+                label: "Mark as Active",
+                hidden: !canEditThis || staff?.status !== "Pending",
+                onClick: () => void setAccountStatus("Active"),
+              },
+              {
+                label: "Deactivate account",
+                hidden: !canEditThis || staff?.status !== "Active",
+                onClick: () => void setAccountStatus("Inactive"),
+              },
+              {
+                label: "Activate account",
+                hidden: !canEditThis || staff?.status !== "Inactive",
+                onClick: () => void setAccountStatus("Active"),
+              },
+            ]}
+          />
         </div>
       </div>
       {error ? <p className="text-[11px] text-red-600">{error}</p> : null}

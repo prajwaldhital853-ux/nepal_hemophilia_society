@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Droplets, MapPin, MoreHorizontal, Pencil, Trash2, UserRound } from "lucide-react";
+import { CalendarDays, Droplets, MapPin, Pencil, Trash2, UserRound } from "lucide-react";
 
+import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import type { PatientRecord } from "@/features/patients/types";
 import { PatientInjectionsPanel, PatientTreatmentsPanel } from "@/features/injections/components/PatientClinicalPanels";
@@ -13,6 +14,7 @@ import PatientDocumentsPanel from "@/features/patients/components/PatientDocumen
 import { fetchStockMovements, type StockMovementRow } from "@/features/stock/api";
 import { apiFetch, resolveMediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { Perm } from "@/lib/permissions";
 
 const tabs = ["Overview", "Treatment History", "Injections", "Bleeding Episodes", "Medicines / Stock", "Documents", "Notes"];
@@ -158,9 +160,53 @@ export default function PatientProfileView({ id }: { id: string }) {
               Delete
             </button>
           ) : null}
-          <button type="button" className="panel p-1.5 shadow-none" aria-label="More">
-            <MoreHorizontal className="size-3.5" />
-          </button>
+          <ActionsMenu
+            ariaLabel="More patient actions"
+            buttonClassName="panel p-1.5 shadow-none"
+            iconClassName="size-3.5"
+            items={[
+              { label: "Copy patient ID", onClick: () => void copyText(record.id) },
+              { label: "Copy email", onClick: () => void copyText(record.email || ""), hidden: !record.email },
+              { label: "Copy phone", onClick: () => void copyText(record.mobile || ""), hidden: !record.mobile },
+              {
+                label: "Export summary",
+                onClick: () =>
+                  downloadCsv(
+                    stampFilename(`patient-${record.id}`),
+                    ["Field", "Value"],
+                    [
+                      ["ID", record.id],
+                      ["Name", record.fullName],
+                      ["Status", record.status],
+                      ["Province", record.province],
+                      ["Center", record.primaryHospital || ""],
+                      ["Blood group", record.bloodGroup],
+                      ["Diagnosis", `Hemophilia ${record.hemophiliaType} (${record.severity})`],
+                      ["Phone", record.mobile],
+                      ["Email", record.email || ""],
+                    ],
+                  ),
+              },
+              { label: "View injections", onClick: () => setTab("Injections") },
+              { label: "View documents", onClick: () => setTab("Documents") },
+              {
+                label: "Edit patient",
+                href: `/dashboard/patients/${id}/edit`,
+                hidden: !record.canEdit,
+              },
+              {
+                label: "Delete patient",
+                destructive: true,
+                hidden: !record.canDelete,
+                onClick: () => {
+                  if (!window.confirm(`Delete patient ${record.id}? This cannot be undone if they have no clinical records.`)) return;
+                  void apiFetch(`/patients/${encodeURIComponent(record.id)}/`, { method: "DELETE" })
+                    .then(() => router.push("/dashboard/patients"))
+                    .catch((err: Error) => setActionError(err.message));
+                },
+              },
+            ]}
+          />
         </div>
       </div>
       {actionError ? <p className="text-[11px] text-red-600">{actionError}</p> : null}

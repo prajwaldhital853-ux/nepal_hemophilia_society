@@ -222,9 +222,7 @@ export default function UsersModule() {
       </div>
 
       {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
-      </div>
 
-      <section className="panel admin-list-panel overflow-hidden">
         <div className="filter-bar">
           <label className="panel-inset flex h-8 min-w-[180px] flex-1 items-center gap-2 px-2.5 shadow-none">
             <Search className="size-3.5 text-faint" />
@@ -252,6 +250,9 @@ export default function UsersModule() {
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
         </div>
+      </div>
+
+      <section className="panel admin-list-panel overflow-hidden">
         {loading ? (
           <p className="px-3 py-8 text-center text-[11px] text-muted">Loading users…</p>
         ) : rows.length === 0 ? (

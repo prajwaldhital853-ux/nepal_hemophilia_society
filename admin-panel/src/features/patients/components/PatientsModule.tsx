@@ -6,7 +6,6 @@ import {
   ChevronDown,
   Download,
   Eye,
-  MoreHorizontal,
   Pencil,
   Plus,
   Search,
@@ -20,6 +19,7 @@ import { useAuth } from "@/lib/auth";
 import { formatNumber } from "@/lib/format";
 import { apiFetch } from "@/lib/api";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
+import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 import { Perm } from "@/lib/permissions";
 
 function ageFromDob(dob: string) {
@@ -176,9 +176,7 @@ export default function PatientsModule() {
       </div>
 
       {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
-      </div>
 
-      <section className="panel admin-list-panel overflow-hidden">
         <div className="filter-bar">
           <label className="panel-inset flex h-8 min-w-[200px] flex-1 items-center gap-2 px-2.5 shadow-none">
             <Search className="size-3.5 text-faint" />
@@ -268,7 +266,9 @@ export default function PatientsModule() {
             Export
           </button>
         </div>
+      </div>
 
+      <section className="panel admin-list-panel overflow-hidden">
         <div className="admin-table-scroll overflow-x-auto">
           <table className="data-table w-full min-w-[880px] text-left text-sm">
             <thead className="bg-elevated text-[11px] uppercase tracking-wide text-muted">
@@ -348,9 +348,53 @@ export default function PatientsModule() {
                             <Trash2 className="size-[15px]" />
                           </button>
                         ) : null}
-                        <button type="button" className="rounded-lg p-1.5 hover:bg-elevated" aria-label="More">
-                          <MoreHorizontal className="size-[15px]" />
-                        </button>
+                        <ActionsMenu
+                          ariaLabel={`More actions for ${row.name}`}
+                          items={[
+                            {
+                              label: "View profile",
+                              href: `/dashboard/patients/${row.id}`,
+                            },
+                            {
+                              label: "Edit patient",
+                              href: `/dashboard/patients/${row.id}/edit`,
+                              hidden: !row.canEdit,
+                            },
+                            {
+                              label: "Copy patient ID",
+                              onClick: () => void copyText(row.id),
+                            },
+                            {
+                              label: "Export row",
+                              onClick: () =>
+                                downloadCsv(
+                                  stampFilename(`patient-${row.id}`),
+                                  ["Field", "Value"],
+                                  [
+                                    ["ID", row.id],
+                                    ["Name", row.name],
+                                    ["Province", row.province],
+                                    ["Center", row.center],
+                                    ["Blood group", row.bloodGroup],
+                                    ["Age", String(row.age)],
+                                    ["Last visit", row.lastVisit],
+                                    ["Status", row.status],
+                                  ],
+                                ),
+                            },
+                            {
+                              label: "Delete patient",
+                              destructive: true,
+                              hidden: !row.canDelete || user?.viewOnly,
+                              onClick: () => {
+                                if (!window.confirm(`Delete patient ${row.id}? This cannot be undone if they have no clinical records.`)) return;
+                                void apiFetch(`/patients/${encodeURIComponent(row.id)}/`, { method: "DELETE" })
+                                  .then(() => setRows((current) => current.filter((item) => item.id !== row.id)))
+                                  .catch((err: Error) => setError(err.message || "Could not delete patient"));
+                              },
+                            },
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>

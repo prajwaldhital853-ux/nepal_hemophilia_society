@@ -21,6 +21,7 @@ import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { formatNumber } from "@/lib/format";
 import { Perm } from "@/lib/permissions";
 import { usePageRbac } from "@/components/rbac/ReadOnlyBanner";
+import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 import { useLocale } from "@/lib/i18n";
 
 function statusClass(status: string) {
@@ -186,9 +187,7 @@ export default function AdminsModule() {
           </button>
         ))}
       </div>
-      </div>
 
-      <section className="panel admin-list-panel overflow-hidden">
         <div className="filter-bar">
           <label className="panel-inset flex h-8 min-w-[200px] flex-1 items-center gap-2 px-2.5 shadow-none">
             <Search className="size-3.5 text-faint" />
@@ -253,7 +252,9 @@ export default function AdminsModule() {
             {t("admins.adminsCount")}: <span className="text-[15px] font-semibold text-ink">{formatNumber(visible.length)}</span>
           </p>
         </div>
+      </div>
 
+      <section className="panel admin-list-panel overflow-hidden">
         <div className="admin-table-scroll overflow-x-auto">
           <table className="data-table w-full min-w-[880px] text-left text-sm">
             <thead className="bg-elevated text-[11px] uppercase tracking-wide text-muted">
@@ -342,6 +343,57 @@ export default function AdminsModule() {
                             <Trash2 className="size-[15px]" />
                           </button>
                         ) : null}
+                        <ActionsMenu
+                          ariaLabel={`More actions for ${row.fullName}`}
+                          items={[
+                            { label: "View profile", href: profileHref(row) },
+                            {
+                              label: "Edit profile",
+                              href: profileHref(row),
+                              hidden: !canManage || !row.canEdit || isOwnStaffAccount(user, row),
+                            },
+                            { label: "Copy admin ID", onClick: () => void copyText(row.id) },
+                            { label: "Copy email", onClick: () => void copyText(row.email) },
+                            {
+                              label: "Export row",
+                              onClick: () =>
+                                downloadCsv(
+                                  stampFilename(`admin-${row.id}`),
+                                  ["Field", "Value"],
+                                  [
+                                    ["ID", row.id],
+                                    ["Name", row.fullName],
+                                    ["Role", row.roleLabel],
+                                    ["Email", row.email],
+                                    ["Phone", row.phone || ""],
+                                    ["Province", row.province || ""],
+                                    ["Center", row.treatmentCenter || ""],
+                                    ["Status", row.status],
+                                  ],
+                                ),
+                            },
+                            {
+                              label: "Mark as Active",
+                              hidden: !canManage || !row.canEdit || isOwnStaffAccount(user, row) || row.status !== "Pending",
+                              onClick: () => {
+                                void updateStaffAccount(row.id, { status: "Active" })
+                                  .then(() => void load())
+                                  .catch((err: Error) => setError(err.message || "Could not activate admin"));
+                              },
+                            },
+                            {
+                              label: "Delete admin",
+                              destructive: true,
+                              hidden: !row.canDelete,
+                              onClick: () => {
+                                if (!window.confirm(`Delete admin ${row.id} (${row.fullName})? This cannot be undone.`)) return;
+                                void deleteStaffAccount(row.id)
+                                  .then(() => setRows((current) => current.filter((item) => item.id !== row.id)))
+                                  .catch((err: Error) => setError(err.message || "Could not delete admin"));
+                              },
+                            },
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>

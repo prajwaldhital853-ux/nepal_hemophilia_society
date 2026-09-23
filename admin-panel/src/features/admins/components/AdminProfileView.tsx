@@ -3,13 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, MoreHorizontal, Pencil, Shield, Trash2 } from "lucide-react";
+import { Check, Pencil, Shield, Trash2 } from "lucide-react";
 
+import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { deleteStaffAccount, fetchStaffAccount, KIND_LABELS, updateStaffAccount, type StaffRecord } from "@/features/admins/api";
 import StaffAccountForm from "@/features/admins/components/StaffAccountForm";
 import { isOwnStaffAccount } from "@/features/admins/identity";
 import { useAuth } from "@/lib/auth";
+import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { PERM_LABELS } from "@/lib/permissions";
 
 const tabs = ["Overview", "Roles & Permissions"];
@@ -144,9 +146,50 @@ export default function AdminProfileView({ id }: { id: string }) {
               ) : null}
             </>
           ) : null}
-          <button type="button" className="panel p-1.5 shadow-none" aria-label="More">
-            <MoreHorizontal className="size-3.5" />
-          </button>
+          <ActionsMenu
+            ariaLabel="More admin actions"
+            buttonClassName="panel p-1.5 shadow-none"
+            iconClassName="size-3.5"
+            items={[
+              { label: "Copy admin ID", onClick: () => void copyText(admin.id) },
+              { label: "Copy email", onClick: () => void copyText(admin.email) },
+              { label: "Copy username", onClick: () => void copyText(admin.username) },
+              {
+                label: "Export profile",
+                onClick: () =>
+                  downloadCsv(
+                    stampFilename(`admin-${admin.id}`),
+                    ["Field", "Value"],
+                    [
+                      ["ID", admin.id],
+                      ["Name", admin.fullName],
+                      ["Role", roleLabel],
+                      ["Email", admin.email],
+                      ["Phone", admin.phone || ""],
+                      ["Status", admin.status],
+                      ["Province", admin.province || "National"],
+                      ["Center", admin.treatmentCenter || ""],
+                    ],
+                  ),
+              },
+              { label: "View permissions", onClick: () => setTab("Roles & Permissions") },
+              {
+                label: "Mark as Active",
+                hidden: !canEditThis || admin.status !== "Pending",
+                onClick: () => void setAccountStatus("Active"),
+              },
+              {
+                label: "Deactivate account",
+                hidden: !canEditThis || admin.status !== "Active",
+                onClick: () => void setAccountStatus("Inactive"),
+              },
+              {
+                label: "Activate account",
+                hidden: !canEditThis || admin.status !== "Inactive",
+                onClick: () => void setAccountStatus("Active"),
+              },
+            ]}
+          />
         </div>
       </div>
       {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
