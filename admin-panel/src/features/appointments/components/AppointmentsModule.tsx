@@ -119,13 +119,6 @@ export default function AppointmentsModule() {
   return (
     <div className="space-y-3">
       <section className="panel overflow-hidden">
-        <div className="bg-[#001D3D] px-4 py-4 text-white">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-red-200">Centre scheduling</p>
-          <h1 className="mt-1 text-xl font-bold">Appointments</h1>
-          <p className="mt-1 max-w-2xl text-[13px] text-slate-200">
-            Requests from patients at your centre or province. Confirm a doctor and time, reschedule, or decline. Patients are notified of every decision.
-          </p>
-        </div>
         <div className="flex flex-wrap items-center gap-2 px-3 py-3">
           <input
             value={search}
