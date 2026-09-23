@@ -113,7 +113,11 @@ export default function AppointmentsModule() {
     setScheduledAt(toInput(row.scheduledAt || row.preferredAt));
     setAdminNote(row.adminNote || "");
     setError("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function closeDetail() {
+    setSelected(null);
+    setError("");
   }
 
   async function save(nextStatus: string) {
@@ -130,7 +134,7 @@ export default function AppointmentsModule() {
           adminNote,
         }),
       });
-      setSelected(null);
+      closeDetail();
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update the appointment");
@@ -144,7 +148,7 @@ export default function AppointmentsModule() {
     setSaving(true);
     try {
       await apiFetch(`/appointments/${selected.id}/`, { method: "DELETE" });
-      setSelected(null);
+      closeDetail();
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete the appointment");
@@ -350,6 +354,112 @@ export default function AppointmentsModule() {
           </table>
         </div>
       </section>
+
+      {selected ? (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4"
+          onClick={() => closeDetail()}
+        >
+          <section
+            className="panel mt-4 w-full max-w-3xl p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="appointment-detail-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-line-subtle pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 id="appointment-detail-title" className="text-[15px] font-semibold text-ink">
+                    {selected.patientName}
+                  </h2>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusClass(selected.status)}`}>
+                    {selected.statusLabel}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[11px] text-muted">
+                  {selected.patientId} · {selected.visitTypeLabel} · {selected.hospitalName}, {selected.province}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rounded p-1 text-muted hover:bg-elevated"
+                aria-label="Close"
+                onClick={() => closeDetail()}
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div className="space-y-2">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted">Request</p>
+                <p className="panel-inset px-3 py-2 text-[12px] text-ink">{selected.reason || "No reason given."}</p>
+                <p className="text-[11px] text-muted">
+                  Preferred time: <span className="font-medium text-ink">{when(selected.preferredAt)}</span>
+                </p>
+                {selected.patientNote ? <p className="text-[11px] text-muted">Patient note: {selected.patientNote}</p> : null}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted">Response</p>
+                <label className="block text-[11px] font-medium text-ink">
+                  Doctor / clinician
+                  <input
+                    value={doctorName}
+                    onChange={(event) => setDoctorName(event.target.value)}
+                    className="panel-inset mt-1 h-8 w-full px-2.5 text-[12px] text-ink outline-none"
+                  />
+                </label>
+                <label className="block text-[11px] font-medium text-ink">
+                  Confirmed date and time
+                  <input
+                    type="datetime-local"
+                    value={scheduledAt}
+                    onChange={(event) => setScheduledAt(event.target.value)}
+                    className="panel-inset mt-1 h-8 w-full px-2.5 text-[12px] text-ink outline-none"
+                  />
+                </label>
+                <label className="block text-[11px] font-medium text-ink">
+                  Message to the patient
+                  <textarea
+                    value={adminNote}
+                    onChange={(event) => setAdminNote(event.target.value)}
+                    className="panel-inset mt-1 min-h-16 w-full px-2.5 py-2 text-[12px] text-ink outline-none"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line-subtle pt-3">
+              {canUpdate ? (
+                <>
+                  <button type="button" disabled={saving} onClick={() => void save("confirmed")} className="rounded bg-brand px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-blueDark disabled:opacity-60">
+                    Confirm
+                  </button>
+                  <button type="button" disabled={saving} onClick={() => void save("rescheduled")} className="panel px-3 py-1.5 text-[11px] font-semibold text-ink shadow-none hover:bg-elevated disabled:opacity-60">
+                    Reschedule
+                  </button>
+                  <button type="button" disabled={saving} onClick={() => void save("completed")} className="panel px-3 py-1.5 text-[11px] font-semibold text-ink shadow-none hover:bg-elevated disabled:opacity-60">
+                    Mark visited
+                  </button>
+                  <button type="button" disabled={saving} onClick={() => void save("declined")} className="panel px-3 py-1.5 text-[11px] font-semibold text-red-600 shadow-none hover:bg-red-50 disabled:opacity-60">
+                    Decline
+                  </button>
+                </>
+              ) : (
+                <p className="text-[11px] text-muted">View only — update permission is required to take action.</p>
+              )}
+              {canDelete ? (
+                <button type="button" disabled={saving} onClick={() => void remove()} className="ml-auto flex items-center gap-1 text-[11px] font-semibold text-red-600 hover:underline disabled:opacity-60">
+                  <Trash2 className="size-3.5" />
+                  Delete
+                </button>
+              ) : null}
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
