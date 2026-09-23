@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarPlus, Search, Trash2, X } from "lucide-react";
 
+import { PaginatedScroll } from "@/components/ui/PaginatedScroll";
 import { TableBodySkeleton } from "@/components/ui/Skeleton";
 import { apiFetch } from "@/lib/api";
 import { showToast } from "@/lib/toastBus";
+import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
 type Appointment = {
   id: number;
@@ -171,10 +173,10 @@ export default function AppointmentsModule() {
           <button
             type="button"
             className="flex items-center gap-1.5 rounded bg-brand px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-blueDark"
-            onClick={() => setShowSlots((value) => !value)}
+            onClick={() => setShowSlots(true)}
           >
             <CalendarPlus className="size-3.5" />
-            {showSlots ? "Hide available times" : "Set available times"}
+            Set available times
           </button>
         ) : null}
       </div>
@@ -212,8 +214,6 @@ export default function AppointmentsModule() {
       </div>
 
       <div className="admin-page-body">
-      {showSlots ? <SlotManager /> : null}
-
       {selected ? (
         <section className="panel p-4">
           <div className="flex items-start justify-between gap-3 border-b border-line-subtle pb-3">
@@ -458,6 +458,8 @@ export default function AppointmentsModule() {
           </section>
         </div>
       ) : null}
+
+      {showSlots ? <SlotManager onClose={() => setShowSlots(false)} /> : null}
     </div>
   );
 }
@@ -477,7 +479,7 @@ const WEEKDAY_OPTIONS = [
   { value: 6, label: "Sunday" },
 ];
 
-function SlotManager() {
+function SlotManager({ onClose }: { onClose: () => void }) {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [schedules, setSchedules] = useState<SlotSchedule[]>([]);
   const [centers, setCenters] = useState<Center[]>([]);
@@ -612,23 +614,59 @@ function SlotManager() {
   }
 
   const grouped = useMemo(() => {
-    const map = new Map<string, Slot[]>();
+    const map = new Map<string, { label: string; sortAt: number; slots: Slot[] }>();
     for (const slot of slots) {
-      const key = `${slot.hospitalName} — ${new Date(slot.slotAt).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`;
-      map.set(key, [...(map.get(key) || []), slot]);
+      const date = new Date(slot.slotAt);
+      const label = `${slot.hospitalName} — ${date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`;
+      const existing = map.get(label);
+      if (existing) {
+        existing.slots.push(slot);
+      } else {
+        map.set(label, { label, sortAt: date.getTime(), slots: [slot] });
+      }
     }
-    return Array.from(map.entries());
+    return Array.from(map.values())
+      .sort((a, b) => a.sortAt - b.sortAt)
+      .map((row) => [row.label, row.slots] as [string, Slot[]]);
   }, [slots]);
 
-  return (
-    <section className="panel flex min-h-0 flex-col overflow-hidden p-4">
-      <div className="shrink-0">
-      <h2 className="text-[13px] font-semibold text-ink">Available dates and times</h2>
-      <p className="mt-0.5 text-[11px] text-muted">
-        Patients can only pick from the times you publish here when they book from the app.
-      </p>
+  const daysPage = useVisibleSlice(grouped, 5);
 
-      <div className="mt-3 flex flex-wrap items-end gap-2">
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <section
+        className="panel flex max-h-[min(92vh,calc(100dvh-3rem))] w-full max-w-3xl flex-col overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="slot-manager-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="shrink-0 border-b border-line-subtle px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 id="slot-manager-title" className="text-[15px] font-semibold text-ink">
+                Available dates and times
+              </h2>
+              <p className="mt-0.5 text-[11px] text-muted">
+                Patients can only pick from the times you publish here when they book from the app.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="rounded p-1 text-muted hover:bg-elevated"
+              aria-label="Close"
+              onClick={onClose}
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="admin-scroll min-h-0 flex-1 overflow-y-auto px-4 py-3">
+      <div className="flex flex-wrap items-end gap-2">
         <label className="block text-[11px] font-medium text-ink">
           Centre
           <select
@@ -744,49 +782,61 @@ function SlotManager() {
           </ul>
         ) : null}
       </div>
-      </div>
 
-      <div className="admin-scroll admin-panel-scroll--15 relative z-0 mt-3 pr-1">
+      <div className="mt-3 border-t border-line-subtle pt-3">
+        <h3 className="text-[12px] font-semibold text-ink">Published dates</h3>
         {grouped.length === 0 ? (
-          <p className="text-[11px] text-muted">No upcoming times published yet.</p>
+          <p className="mt-2 text-[11px] text-muted">No upcoming times published yet.</p>
         ) : (
-          <div className="space-y-2 pb-1">
-            {grouped.map(([label, groupSlots]) => (
-              <div key={label} className="panel-inset px-3 py-2">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-semibold text-ink">{label}</p>
-                  <button
-                    type="button"
-                    className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-red-600 hover:bg-red-50"
-                    onClick={() => void removeDay(groupSlots)}
-                  >
-                    Remove day
-                  </button>
+          <PaginatedScroll
+            showing={daysPage.showing}
+            total={daysPage.total}
+            hasMore={daysPage.hasMore}
+            onLoadMore={daysPage.loadMore}
+            scroll={false}
+            className="admin-panel-scroll--slot-days admin-scroll mt-2 pr-1"
+            label="days"
+          >
+            <div className="space-y-2 pb-1">
+              {daysPage.visible.map(([label, groupSlots]) => (
+                <div key={label} className="panel-inset px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-semibold text-ink">{label}</p>
+                    <button
+                      type="button"
+                      className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-red-600 hover:bg-red-50"
+                      onClick={() => void removeDay(groupSlots)}
+                    >
+                      Remove day
+                    </button>
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {groupSlots.map((slot) => (
+                      <span key={slot.id} className="panel inline-flex items-center gap-1 px-2 py-0.5 text-[11px] text-ink shadow-none">
+                        {new Date(slot.slotAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                        <button
+                          type="button"
+                          aria-label="Remove time"
+                          className="relative z-10 rounded p-1 text-muted hover:bg-red-50 hover:text-red-600"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            void removeSlot(slot.id);
+                          }}
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {groupSlots.map((slot) => (
-                    <span key={slot.id} className="panel inline-flex items-center gap-1 px-2 py-0.5 text-[11px] text-ink shadow-none">
-                      {new Date(slot.slotAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                      <button
-                        type="button"
-                        aria-label="Remove time"
-                        className="relative z-10 rounded p-1 text-muted hover:bg-red-50 hover:text-red-600"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          void removeSlot(slot.id);
-                        }}
-                      >
-                        <X className="size-3.5" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </PaginatedScroll>
         )}
       </div>
-    </section>
+        </div>
+      </section>
+    </div>
   );
 }

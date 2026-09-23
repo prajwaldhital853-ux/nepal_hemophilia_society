@@ -224,6 +224,13 @@ body {
     max-height: min(24rem, calc(100dvh - var(--topbar-h) - 16rem));
   }
 
+  .admin-panel-scroll--slot-days {
+    overflow-y: auto;
+    max-height: 17.5rem;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .admin-page--fill .admin-list-panel .admin-table-scroll {
     min-height: min(28rem, calc(100dvh - var(--topbar-h) - 20rem));
   }
