@@ -38,6 +38,18 @@ async function applyDeviceHeaders(headers: Headers) {
   headers.set("X-Device-Signals", encodeDeviceSignalsHeader(deviceSignals));
 }
 
+async function redirectForMustChangePassword(path: string) {
+  if (typeof window === "undefined" || path.startsWith("/auth/change-password")) return;
+  try {
+    const me = await apiFetch("/auth/me/", { skipAuthRedirect: true });
+    const { persistUser } = await import("@/lib/auth");
+    persistUser(me as import("@/lib/auth").AuthUser);
+  } catch {
+    // change-password screen can recover via /auth/me/
+  }
+  window.location.href = "/change-password";
+}
+
 export function resolveMediaUrl(url?: string | null): string {
   if (!url) return "";
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
@@ -183,6 +195,15 @@ export async function apiFetch(path: string, init: ApiInit = {}) {
 
   if (!res.ok) {
     const record = data as Record<string, unknown>;
+    if (
+      res.status === 403 &&
+      record.code === "must_change_password" &&
+      typeof window !== "undefined" &&
+      !skipAuthRedirect
+    ) {
+      await redirectForMustChangePassword(path);
+      return Promise.reject(new ApiClientError("Password change required", 403, { code: "must_change_password" }));
+    }
     throw new ApiClientError(formatApiError(data), res.status, {
       code: typeof record.code === "string" ? record.code : undefined,
       attemptsRemaining: typeof record.attemptsRemaining === "number" ? record.attemptsRemaining : undefined,
@@ -278,6 +299,14 @@ export async function apiForm<T = Record<string, unknown>>(
   }
 
   if (!res.ok) {
+    if (
+      res.status === 403 &&
+      data.code === "must_change_password" &&
+      typeof window !== "undefined"
+    ) {
+      await redirectForMustChangePassword(path);
+      throw new ApiClientError("Password change required", 403, { code: "must_change_password" });
+    }
     const message = formatApiError(data, raw.trim().startsWith("<") ? `Server error (${res.status})` : "Request failed");
     throw new Error(message);
   }

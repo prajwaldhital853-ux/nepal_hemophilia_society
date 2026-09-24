@@ -479,6 +479,59 @@ body {
   background: rgb(255 255 255 / 0.15);
 }
 
+.nhs-confirm {
+  pointer-events: auto;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+  background-color: var(--card);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.nhs-confirm__message {
+  margin: 0;
+  font-weight: 500;
+}
+
+.nhs-confirm__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.875rem;
+}
+
+.nhs-confirm__cancel,
+.nhs-confirm__confirm {
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.nhs-confirm__cancel {
+  color: var(--muted);
+  background: var(--elevated);
+}
+
+.nhs-confirm__cancel:hover {
+  background: var(--line-subtle);
+}
+
+.nhs-confirm__confirm {
+  color: #fff;
+  background-color: var(--red);
+}
+
+.nhs-confirm__confirm:hover {
+  filter: brightness(0.95);
+}
+
 .field-has-error input,
 .field-has-error select,
 .field-has-error textarea {

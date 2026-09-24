@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
 
 import { useLocale } from "@/core/i18n";
 import { servicesColors, servicesRadii } from "@/features/services/theme/servicesTheme";
@@ -21,7 +21,15 @@ export function ServicesSearchBar({ value, onChangeText }: Props) {
         value={value}
         onChangeText={onChangeText}
       />
-      <Ionicons name="options-outline" size={20} color={servicesColors.primary} />
+      <Pressable
+        onPress={onFilterPress}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Filter services by category"
+        style={[styles.filterBtn, filterActive && styles.filterBtnActive]}
+      >
+        <Ionicons name="options-outline" size={20} color={servicesColors.primary} />
+      </Pressable>
     </View>
   );
 }
@@ -48,5 +56,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: servicesColors.text,
     padding: 0,
+  },
+  filterBtn: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+  },
+  filterBtnActive: {
+    backgroundColor: "#FEE2E2",
   },
 });

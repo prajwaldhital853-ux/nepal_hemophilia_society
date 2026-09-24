@@ -3,9 +3,12 @@ import { Platform } from "react-native";
 const ACCESS = "nhms-patient-access";
 const REFRESH = "nhms-patient-refresh";
 const DEVICE_FP = "nhms-patient-device-fp";
+const REMEMBER = "nhms-patient-remember";
 
 let memoryFingerprint = "";
 let memorySignals: Record<string, string | number> | null = null;
+let memoryAccess = "";
+let memoryRefresh = "";
 
 export type PatientDeviceSignals = {
   brand: string;
@@ -130,17 +133,55 @@ export async function getDeviceId() {
   return deviceId;
 }
 
-export async function saveSession(access: string, refresh: string) {
+export async function getRememberMePreference(): Promise<boolean> {
   try {
     const SecureStore = await secureStore();
-    await SecureStore.setItemAsync(ACCESS, access);
-    await SecureStore.setItemAsync(REFRESH, refresh);
+    const value = await SecureStore.getItemAsync(REMEMBER);
+    return value !== "0";
   } catch {
-    // Session still works for this app session via in-memory token in AuthContext.
+    return true;
+  }
+}
+
+export async function setRememberMePreference(remember: boolean) {
+  try {
+    const SecureStore = await secureStore();
+    await SecureStore.setItemAsync(REMEMBER, remember ? "1" : "0");
+  } catch {
+    // ignore
+  }
+}
+
+export async function saveSession(access: string, refresh: string, remember = true) {
+  await setRememberMePreference(remember);
+  if (remember) {
+    memoryAccess = "";
+    memoryRefresh = "";
+    try {
+      const SecureStore = await secureStore();
+      await SecureStore.setItemAsync(ACCESS, access);
+      await SecureStore.setItemAsync(REFRESH, refresh);
+    } catch {
+      // Session still works for this app session via in-memory token in AuthContext.
+    }
+    return;
+  }
+  memoryAccess = access;
+  memoryRefresh = refresh;
+  try {
+    const SecureStore = await secureStore();
+    await SecureStore.deleteItemAsync(ACCESS);
+    await SecureStore.deleteItemAsync(REFRESH);
+  } catch {
+    // ignore
   }
 }
 
 export async function loadSession() {
+  const remember = await getRememberMePreference();
+  if (!remember) {
+    return { access: memoryAccess, refresh: memoryRefresh };
+  }
   try {
     const SecureStore = await secureStore();
     const access = (await SecureStore.getItemAsync(ACCESS)) ?? "";
@@ -152,6 +193,8 @@ export async function loadSession() {
 }
 
 export async function clearSession() {
+  memoryAccess = "";
+  memoryRefresh = "";
   try {
     const SecureStore = await secureStore();
     await SecureStore.deleteItemAsync(ACCESS);

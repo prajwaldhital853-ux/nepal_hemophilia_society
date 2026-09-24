@@ -4,10 +4,10 @@
     "slug": "nhms-patient-app",
     "version": "1.0.4",
     "orientation": "portrait",
-    "icon": "./assets/images/nhs-logo-icon-clear.png",
+    "icon": "./assets/images/nhs-app-icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/images/nhs-logo-icon-clear.png",
+      "image": "./assets/images/nhs-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
@@ -23,12 +23,12 @@
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./assets/images/nhs-logo-icon-clear.png"
+        "foregroundImage": "./assets/images/nhs-app-icon.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/images/favicon.png"
     },
     "owner": "bulkipo",
     "plugins": [

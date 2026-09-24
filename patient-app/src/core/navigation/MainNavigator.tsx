@@ -1,6 +1,7 @@
 import { createStackNavigator } from "@react-navigation/stack";
 
 import { useLocale } from "@/core/i18n";
+import { DrawerProvider } from "@/features/home/context/DrawerContext";
 
 import {
   BleedingScreen,
@@ -42,6 +43,7 @@ export function MainNavigator() {
   const { t } = useLocale();
 
   return (
+    <DrawerProvider>
     <Stack.Navigator screenOptions={headerOptions}>
       <Stack.Screen name="Home" component={HomeScreen} options={mainTabOptions} />
       <Stack.Screen name="Services" component={ServicesScreen} options={mainTabOptions} />
@@ -61,5 +63,6 @@ export function MainNavigator() {
       <Stack.Screen name="ServiceContentList" component={ServiceContentListScreen} options={{ title: "Updates" }} />
       <Stack.Screen name="ServiceContentDetail" component={ServiceContentDetailScreen} options={{ title: "Details" }} />
     </Stack.Navigator>
+    </DrawerProvider>
   );
 }

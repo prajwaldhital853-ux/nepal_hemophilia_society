@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   CalendarRange,
   ChevronDown,
@@ -36,6 +37,7 @@ import {
   type InjectionStatus,
 } from "@/features/injections/api";
 import LogInjectionDialog from "@/features/injections/components/LogInjectionDialog";
+import { useShortcutAction } from "@/hooks/useShortcutAction";
 import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 import { InjectionsSummarySkeleton, TableBodySkeleton } from "@/components/ui/Skeleton";
 import { formatNumber } from "@/lib/format";
@@ -74,6 +76,7 @@ function typeClass(type: string) {
 }
 
 export default function InjectionsModule() {
+  const searchParams = useSearchParams();
   const c = useChartColors();
   const { can } = useAuth();
   const canAdd = can(Perm.injectionsAdd);
@@ -137,6 +140,16 @@ export default function InjectionsModule() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useShortcutAction("page-refresh", () => {
+    void load();
+  });
+
+  useEffect(() => {
+    if (searchParams.get("openLog") === "1" && canAdd) {
+      setShowLog(true);
+    }
+  }, [searchParams, canAdd]);
 
   useEffect(() => {
     if (!openMonth) return;
@@ -291,6 +304,7 @@ export default function InjectionsModule() {
           {canAdd ? (
             <button
               type="button"
+              data-shortcut-target="page-new injections-log"
               onClick={() => setShowLog(true)}
               className="flex items-center gap-1.5 rounded bg-brand px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-blueDark"
             >
@@ -530,6 +544,7 @@ export default function InjectionsModule() {
             <label className="panel-inset flex h-8 min-w-[180px] flex-1 items-center gap-2 px-2.5 shadow-none">
               <Search className="size-3.5 text-faint" />
               <input
+                data-shortcut-target="page-search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
@@ -617,6 +632,7 @@ export default function InjectionsModule() {
             <button
               type="button"
               className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
+              data-shortcut-target="page-export"
               onClick={() =>
                 downloadCsv(
                   stampFilename("injections"),

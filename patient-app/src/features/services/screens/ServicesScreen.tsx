@@ -16,8 +16,10 @@ import { useLocale } from "@/core/i18n";
 import type { RootStackParamList } from "@/core/navigation/types";
 import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
 import { HomeHeader } from "@/features/home/components/HomeHeader";
+import { useAppDrawer } from "@/features/home/context/DrawerContext";
 import { fetchPatientServices } from "@/features/services/api";
 import { ServiceCategorySection } from "@/features/services/components/ServiceCategorySection";
+import { ServicesCategoryFilter } from "@/features/services/components/ServicesCategoryFilter";
 import { ServicesHeroBanner } from "@/features/services/components/ServicesHeroBanner";
 import { ServicesQuoteBanner } from "@/features/services/components/ServicesQuoteBanner";
 import { ServicesSearchBar } from "@/features/services/components/ServicesSearchBar";
@@ -31,8 +33,10 @@ export default function ServicesScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const { t } = useLocale();
+  const { openDrawer } = useAppDrawer();
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
   const [categories, setCategories] = useState<ServiceCategoryGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -72,19 +76,36 @@ export default function ServicesScreen({ navigation }: Props) {
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="dark-content" backgroundColor={servicesColors.white} />
-      <View style={{ paddingTop: insets.top, backgroundColor: servicesColors.white }}>
+      <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
         <HomeHeader
+          onMenuPress={openDrawer}
           onProfilePress={() => navigation.navigate("Profile")}
           onNotificationPress={() => navigation.navigate("Notifications")}
         />
         <View style={styles.searchWrap}>
-          <ServicesSearchBar value={search} onChangeText={setSearch} />
+          <ServicesSearchBar
+            value={search}
+            onChangeText={setSearch}
+            filterActive={Boolean(filterCategory) || showFilters}
+            onFilterPress={() => setShowFilters((current) => !current)}
+          />
         </View>
-        {filterCategory ? (
+        {showFilters ? (
+          <ServicesCategoryFilter
+            categories={categories}
+            activeId={filterCategory}
+            onSelect={(id) => {
+              setFilterCategory(id);
+              if (id) setShowFilters(true);
+            }}
+          />
+        ) : null}
+        {filterCategory && !showFilters ? (
           <Text style={styles.filterHint} onPress={() => setFilterCategory(null)}>
             {t("services.categoryHint")}
           </Text>
         ) : null}
+        <ServicesHeroBanner />
       </View>
 
       <ScrollView
@@ -93,7 +114,6 @@ export default function ServicesScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} tintColor={servicesColors.primary} />}
       >
-        <ServicesHeroBanner />
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {loading && categories.length === 0 ? (
           <ActivityIndicator color={servicesColors.primary} style={{ marginTop: 24 }} />
@@ -105,7 +125,10 @@ export default function ServicesScreen({ navigation }: Props) {
               key={category.id}
               category={category}
               onPressService={(service) => openPatientService(navigation, service)}
-              onViewAll={(row) => setFilterCategory(row.id)}
+              onViewAll={(row) => {
+                setFilterCategory(row.id);
+                setShowFilters(true);
+              }}
             />
           ))
         )}
@@ -131,6 +154,10 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: servicesColors.pageBg,
+  },
+  stickyHeader: {
+    backgroundColor: servicesColors.white,
+    zIndex: 2,
   },
   scroll: {
     flex: 1,

@@ -230,6 +230,30 @@ class PatientAppAuthTests(APITestCase):
         fresh = post_patient_login(self.client, self.patient_id, "NewPass#2026", signals=MOBILE_SIGNALS_A)
         self.assertEqual(fresh.status_code, 200, fresh.data)
 
+    def test_admin_reset_patient_password_invalidates_old_login(self):
+        admin = User.objects.get(username="superadmin")
+        self.client.force_authenticate(admin)
+        updated = self.client.patch(
+            f"/api/v1/patients/{self.patient_id}/",
+            {"resetTemporaryPassword": "TempPass#4567"},
+            format="json",
+        )
+        self.assertEqual(updated.status_code, 200, updated.data)
+        self.assertTrue(updated.data["patient"]["mustChangePassword"])
+        self.client.force_authenticate(user=None)
+
+        stale = post_patient_login(self.client, self.patient_id, "TempPass#2026", signals=MOBILE_SIGNALS_A)
+        self.assertEqual(stale.status_code, 401, stale.data)
+
+        forced = post_patient_login(self.client, self.patient_id, "TempPass#4567", signals=MOBILE_SIGNALS_A)
+        self.assertEqual(forced.status_code, 200, forced.data)
+        self.assertTrue(forced.data["mustChangePassword"])
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {forced.data['access']}")
+        blocked = self.client.get("/api/v1/me/patient/")
+        self.assertEqual(blocked.status_code, 403, blocked.data)
+        self.assertEqual(blocked.data.get("code"), "must_change_password")
+
     def test_device_lock_is_scoped_to_one_device(self):
         for _ in range(3):
             res = post_patient_login(

@@ -15,7 +15,9 @@ import { fetchStockMovements, type StockMovementRow } from "@/features/stock/api
 import { apiFetch, resolveMediaUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
+import { showConfirm } from "@/lib/confirmBus";
 import { Perm } from "@/lib/permissions";
+import { showToast } from "@/lib/toastBus";
 
 const tabs = ["Overview", "Treatment History", "Injections", "Bleeding Episodes", "Medicines / Stock", "Documents", "Notes"];
 
@@ -150,10 +152,17 @@ export default function PatientProfileView({ id }: { id: string }) {
               type="button"
               className="panel flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium text-red-600 shadow-none"
               onClick={() => {
-                if (!window.confirm(`Delete patient ${record.id}? This cannot be undone if they have no clinical records.`)) return;
-                void apiFetch(`/patients/${encodeURIComponent(record.id)}/`, { method: "DELETE" })
-                  .then(() => router.push("/dashboard/patients"))
-                  .catch((err: Error) => setActionError(err.message));
+                void showConfirm({
+                  message: `Delete patient ${record.id}? This cannot be undone if they have no clinical records.`,
+                }).then((confirmed) => {
+                  if (!confirmed) return;
+                  void apiFetch(`/patients/${encodeURIComponent(record.id)}/`, { method: "DELETE" })
+                    .then(() => {
+                      showToast("Patient deleted successfully");
+                      router.push("/dashboard/patients");
+                    })
+                    .catch((err: Error) => setActionError(err.message));
+                });
               }}
             >
               <Trash2 className="size-3" />
@@ -199,10 +208,17 @@ export default function PatientProfileView({ id }: { id: string }) {
                 destructive: true,
                 hidden: !record.canDelete,
                 onClick: () => {
-                  if (!window.confirm(`Delete patient ${record.id}? This cannot be undone if they have no clinical records.`)) return;
-                  void apiFetch(`/patients/${encodeURIComponent(record.id)}/`, { method: "DELETE" })
-                    .then(() => router.push("/dashboard/patients"))
-                    .catch((err: Error) => setActionError(err.message));
+                  void showConfirm({
+                    message: `Delete patient ${record.id}? This cannot be undone if they have no clinical records.`,
+                  }).then((confirmed) => {
+                    if (!confirmed) return;
+                    void apiFetch(`/patients/${encodeURIComponent(record.id)}/`, { method: "DELETE" })
+                      .then(() => {
+                        showToast("Patient deleted successfully");
+                        router.push("/dashboard/patients");
+                      })
+                      .catch((err: Error) => setActionError(err.message));
+                  });
                 },
               },
             ]}

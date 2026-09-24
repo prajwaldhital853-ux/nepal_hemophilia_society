@@ -13,7 +13,9 @@ import {
 } from "@/lib/browserNotifications";
 import { useAuth } from "@/lib/auth";
 import { hrefForNotification } from "@/components/layout/notificationHref";
+import { useHeaderPanel } from "@/components/layout/useHeaderPanel";
 import { UnreadBadge } from "@/components/ui/UnreadBadge";
+import { SHORTCUT_EVENT } from "@/lib/keyboardShortcuts";
 
 type AdminNote = {
   id: number;
@@ -35,6 +37,7 @@ export function NotificationBell() {
   const { user } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const { rootRef, toggle } = useHeaderPanel("notifications", open, setOpen);
   const [items, setItems] = useState<AdminNote[]>([]);
   const [unread, setUnread] = useState(0);
   const [browserAlerts, setBrowserAlerts] = useState<NotificationPermission | "unsupported">("default");
@@ -68,6 +71,18 @@ export function NotificationBell() {
     setBrowserAlerts(notificationPermission());
   }, [user]);
 
+  useEffect(() => {
+    function onShortcut(event: Event) {
+      const action = (event as CustomEvent<{ action: string }>).detail?.action;
+      if (action === "toggle-notifications") {
+        setOpen((value) => !value);
+        void load();
+      }
+    }
+    window.addEventListener(SHORTCUT_EVENT, onShortcut);
+    return () => window.removeEventListener(SHORTCUT_EVENT, onShortcut);
+  }, [load]);
+
   async function enableBrowserAlerts() {
     const permission = await requestBrowserNotificationPermission();
     setBrowserAlerts(permission);
@@ -100,14 +115,15 @@ export function NotificationBell() {
   }
 
   return (
-    <div className="relative overflow-visible">
+    <div ref={rootRef} className="relative overflow-visible">
       <span className="relative inline-flex align-middle">
         <button
           type="button"
           className="panel p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink"
           aria-label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
+          aria-expanded={open}
           onClick={() => {
-            setOpen((value) => !value);
+            toggle();
             void load();
           }}
         >
@@ -167,4 +183,3 @@ export function NotificationBell() {
     </div>
   );
 }
-

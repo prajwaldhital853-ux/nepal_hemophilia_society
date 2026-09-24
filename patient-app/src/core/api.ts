@@ -85,6 +85,10 @@ export async function patientApi(path: string, init: ApiOptions = {}) {
       }
     }
     if (!res.ok) {
+      if (res.status === 403 && data.code === "must_change_password") {
+        const { notifyMustChangePassword } = await import("@/core/auth/passwordChangeEvents");
+        notifyMustChangePassword();
+      }
       throw new ApiError(
         typeof data.error === "string" ? data.error : "Request failed",
         res.status,

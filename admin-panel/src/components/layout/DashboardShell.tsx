@@ -4,6 +4,7 @@ import { AdminNotificationAlerts } from "@/components/layout/AdminNotificationAl
 import { BackupAutoDownload } from "@/components/layout/BackupAutoDownload";
 import { NotificationPageSync } from "@/components/layout/NotificationPageSync";
 import { Header } from "@/components/layout/Header";
+import { KeyboardShortcutsProvider } from "@/components/layout/KeyboardShortcutsProvider";
 import { MobileNavProvider, useMobileNav } from "@/components/layout/MobileNavContext";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { ViewOnlyBar } from "@/components/rbac/ReadOnlyBanner";
@@ -43,7 +44,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <RouteGuard>
       <MobileNavProvider>
-        <DashboardFrame>{children}</DashboardFrame>
+        <KeyboardShortcutsProvider>
+          <DashboardFrame>{children}</DashboardFrame>
+        </KeyboardShortcutsProvider>
       </MobileNavProvider>
     </RouteGuard>
   );

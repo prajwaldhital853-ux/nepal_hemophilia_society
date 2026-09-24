@@ -104,7 +104,7 @@ def lockout_payload(lock: LoginDeviceLock) -> dict:
     return {
         "error": (
             f"This device is locked after {MAX_FAILED_ATTEMPTS} failed login attempts. "
-            f"Try again in {max(1, seconds // 60)} minute(s). Other devices are not affected."
+            f"Try again in {max(1, seconds // 60)} minute(s)."
         ),
         "code": "device_locked",
         "lockedUntil": lock.locked_until.isoformat() if lock.locked_until else None,

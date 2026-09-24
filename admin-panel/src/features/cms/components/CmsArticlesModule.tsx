@@ -9,6 +9,7 @@ import { deleteAdminArticle, fetchAdminArticles, saveAdminArticle } from "@/feat
 import type { CmsArticle, ContentKind } from "@/features/cms/types";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
+import { showConfirm } from "@/lib/confirmBus";
 import { showToast } from "@/lib/toastBus";
 import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
@@ -181,10 +182,13 @@ export default function CmsArticlesModule({ kind }: Props) {
   }
 
   async function onDelete(row: CmsArticle) {
-    if (!window.confirm(`Delete “${row.title}”?`)) return;
+    const confirmed = await showConfirm({
+      message: `Delete “${row.title}”?`,
+    });
+    if (!confirmed) return;
     try {
       await deleteAdminArticle(row.id);
-      showToast("Content deleted");
+      showToast("Content deleted successfully");
       await load();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Could not delete");

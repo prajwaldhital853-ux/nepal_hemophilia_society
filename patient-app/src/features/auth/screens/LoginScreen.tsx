@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ApiError, checkApiReachable } from "@/core/api";
 import { AppConfig, isRemoteApiUrl, networkHelpForApi } from "@/core/config";
 import { useAuth } from "@/core/auth/AuthContext";
+import { getRememberMePreference } from "@/core/auth/storage";
 import { KeyboardFormScroll, type KeyboardFormScrollRef } from "@/features/auth/components/KeyboardFormScroll";
 import { LoginFooter } from "@/features/auth/components/LoginFooter";
 import { LoginFormCard } from "@/features/auth/components/LoginFormCard";
@@ -77,6 +78,12 @@ export default function LoginScreen() {
   }, [lockedUntil]);
 
   useEffect(() => {
+    void getRememberMePreference().then((remember) => {
+      setRememberMe(remember);
+    });
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     const healthTimeout = isRemoteApiUrl() ? 45000 : 5000;
     void checkApiReachable(healthTimeout)
@@ -109,7 +116,7 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      await login(userId.trim(), password.trim());
+      await login(userId.trim(), password.trim(), rememberMe);
     } catch (err) {
       if (err instanceof ApiError && (err.code === "device_locked" || err.status === 423)) {
         setLockedUntil(err.lockedUntil || new Date(Date.now() + (err.retryAfterSeconds || 300) * 1000).toISOString());

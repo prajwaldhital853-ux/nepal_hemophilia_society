@@ -19,10 +19,12 @@ import { NEPAL_PROVINCES } from "@/lib/constants/provinces";
 import { useAuth } from "@/lib/auth";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { formatNumber } from "@/lib/format";
+import { useShortcutAction } from "@/hooks/useShortcutAction";
 import { Perm } from "@/lib/permissions";
 import { usePageRbac } from "@/components/rbac/ReadOnlyBanner";
 import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 import { TableBodySkeleton } from "@/components/ui/Skeleton";
+import { showConfirm } from "@/lib/confirmBus";
 import { showToast } from "@/lib/toastBus";
 import { useLocale } from "@/lib/i18n";
 
@@ -121,6 +123,10 @@ export default function AdminsModule() {
     void load();
   }, [kind, province, debounced]);
 
+  useShortcutAction("page-refresh", () => {
+    void load();
+  });
+
   const visible = rows;
 
   return (
@@ -136,6 +142,7 @@ export default function AdminsModule() {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            data-shortcut-target="page-export"
             className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-muted"
             onClick={() =>
               downloadCsv(
@@ -161,6 +168,7 @@ export default function AdminsModule() {
           {canManage && !readOnly ? (
             <button
               type="button"
+              data-shortcut-target="page-new"
               className="flex items-center gap-1.5 rounded bg-brand px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-blueDark"
               onClick={() => setShowForm(true)}
             >
@@ -190,6 +198,7 @@ export default function AdminsModule() {
           <label className="panel-inset flex h-8 min-w-[200px] flex-1 items-center gap-2 px-2.5 shadow-none">
             <Search className="size-3.5 text-faint" />
             <input
+              data-shortcut-target="page-search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
@@ -328,10 +337,17 @@ export default function AdminsModule() {
                             className="rounded-lg p-1.5 text-red-600 hover:bg-red-50"
                             aria-label={`Delete ${row.fullName}`}
                             onClick={() => {
-                              if (!window.confirm(`Delete admin ${row.id} (${row.fullName})? This cannot be undone.`)) return;
-                              void deleteStaffAccount(row.id)
-                                .then(() => setRows((current) => current.filter((item) => item.id !== row.id)))
-                                .catch((err: Error) => showToast(err.message || "Could not delete admin"));
+                              void showConfirm({
+                                message: `Delete admin ${row.id} (${row.fullName})? This cannot be undone.`,
+                              }).then((confirmed) => {
+                                if (!confirmed) return;
+                                void deleteStaffAccount(row.id)
+                                  .then(() => {
+                                    setRows((current) => current.filter((item) => item.id !== row.id));
+                                    showToast("Admin deleted successfully");
+                                  })
+                                  .catch((err: Error) => showToast(err.message || "Could not delete admin"));
+                              });
                             }}
                           >
                             <Trash2 className="size-[15px]" />
@@ -380,10 +396,17 @@ export default function AdminsModule() {
                               destructive: true,
                               hidden: !row.canDelete,
                               onClick: () => {
-                                if (!window.confirm(`Delete admin ${row.id} (${row.fullName})? This cannot be undone.`)) return;
-                                void deleteStaffAccount(row.id)
-                                  .then(() => setRows((current) => current.filter((item) => item.id !== row.id)))
-                                  .catch((err: Error) => showToast(err.message || "Could not delete admin"));
+                                void showConfirm({
+                                  message: `Delete admin ${row.id} (${row.fullName})? This cannot be undone.`,
+                                }).then((confirmed) => {
+                                  if (!confirmed) return;
+                                  void deleteStaffAccount(row.id)
+                                    .then(() => {
+                                      setRows((current) => current.filter((item) => item.id !== row.id));
+                                      showToast("Admin deleted successfully");
+                                    })
+                                    .catch((err: Error) => showToast(err.message || "Could not delete admin"));
+                                });
                               },
                             },
                           ]}

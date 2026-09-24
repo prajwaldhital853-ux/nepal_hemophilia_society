@@ -7,7 +7,7 @@ export type AuthState = {
   token: string;
   mustChangePassword: boolean;
   patient: PatientRecord | null;
-  login: (identifier: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string, rememberMe?: boolean) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshPatient: () => Promise<void>;

@@ -16,10 +16,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { APP_LOGO } from "@/core/assets";
 import { useAuth } from "@/core/auth/AuthContext";
 import { homeColors, homeRadii } from "@/features/home/theme/homeTheme";
-
-const LOGO = require("../../../../assets/images/nhs-logo-icon.png");
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.84, 320);
 
@@ -62,6 +61,7 @@ export function HomeDrawer({ visible, onClose, onNavigate }: Props) {
   const insets = useSafeAreaInsets();
   const { patient, logout } = useAuth();
   const slideX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+  const dragStartX = useRef(0);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -90,13 +90,18 @@ export function HomeDrawer({ visible, onClose, onNavigate }: Props) {
 
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => g.dx < -8 && Math.abs(g.dx) > Math.abs(g.dy),
-      onMoveShouldSetPanResponderCapture: (_, g) => g.dx < -12 && Math.abs(g.dx) > Math.abs(g.dy) * 1.15,
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, g) => g.dx < -4 && Math.abs(g.dx) > Math.abs(g.dy) * 0.5,
+      onMoveShouldSetPanResponderCapture: (_, g) => g.dx < -6 && Math.abs(g.dx) > Math.abs(g.dy) * 0.65,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        dragStartX.current = (slideX as Animated.Value & { _value?: number })._value ?? 0;
+      },
       onPanResponderMove: (_, g) => {
-        slideX.setValue(Math.max(-DRAWER_WIDTH, Math.min(0, g.dx)));
+        slideX.setValue(Math.max(-DRAWER_WIDTH, Math.min(0, dragStartX.current + g.dx)));
       },
       onPanResponderRelease: (_, g) => {
-        const shouldClose = g.dx < -24 || g.vx < -0.08;
+        const shouldClose = g.dx < -16 || g.vx < -0.04;
         if (shouldClose) {
           Animated.timing(slideX, {
             toValue: -DRAWER_WIDTH,
@@ -145,11 +150,12 @@ export function HomeDrawer({ visible, onClose, onNavigate }: Props) {
               transform: [{ translateX: slideX }],
             },
           ]}
-          {...panResponder.panHandlers}
         >
+          <View style={styles.swipeZone} {...panResponder.panHandlers} />
+          <View {...panResponder.panHandlers}>
           <View style={styles.topBar}>
             <View style={styles.logoBlock}>
-              <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+              <Image source={APP_LOGO} style={styles.logo} resizeMode="contain" />
               <View style={styles.logoTextWrap}>
                 <Text style={styles.logoNepal}>NEPAL</Text>
                 <Text style={styles.logoSociety}>HEMOPHILIA</Text>
@@ -195,6 +201,7 @@ export function HomeDrawer({ visible, onClose, onNavigate }: Props) {
               <DetailRow label="Phone" value={patient?.mobile ?? "—"} />
               <DetailRow label="Treatment Center" value={patient?.primaryHospital ?? "—"} />
             </View>
+          </View>
           </View>
 
           <ScrollView
@@ -267,6 +274,14 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     zIndex: 2,
     height: "100%",
+  },
+  swipeZone: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: 28,
+    zIndex: 3,
   },
   topBar: {
     flexDirection: "row",

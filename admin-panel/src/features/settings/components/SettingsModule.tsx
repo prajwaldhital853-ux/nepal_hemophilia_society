@@ -96,6 +96,7 @@ export default function SettingsModule() {
         {canSave ? (
         <button
           type="button"
+          data-shortcut-target="page-save"
           onClick={save}
           className="flex items-center gap-1.5 rounded bg-brand px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-blueDark"
         >

@@ -77,6 +77,25 @@ class PasswordHistory(models.Model):
         ordering = ["-created_at"]
 
 
+class AdminPasswordResetOTP(models.Model):
+    """Email OTP for self-service admin password reset."""
+
+    user = models.ForeignKey("User", on_delete=models.CASCADE, related_name="password_reset_otps")
+    email = models.EmailField()
+    otp_hash = models.CharField(max_length=128)
+    reset_token = models.CharField(max_length=64, unique=True, null=True, blank=True)
+    expires_at = models.DateTimeField()
+    verified_at = models.DateTimeField(null=True, blank=True)
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "admin_password_reset_otps"
+        ordering = ["-created_at"]
+
+
 class LoginDeviceLock(models.Model):
     """Failed-password lock scoped to one device. Never keyed by IP."""
 

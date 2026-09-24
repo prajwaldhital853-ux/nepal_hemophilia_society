@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
+import { AuthShell } from "@/components/auth/AuthShell";
+import { PasswordField } from "@/components/ui/PasswordField";
 import { homeForUser, type AuthUser, useAuth } from "@/lib/auth";
 import { ApiClientError, apiFetch, setAuthTokens } from "@/lib/api";
+import { REMEMBER_KEY, readRememberedUsername, setRememberMe } from "@/lib/authStorage";
 import { showToast } from "@/lib/toastBus";
 import { ensureAdminDeviceId, getAdminDeviceAuth } from "@/lib/deviceId";
 
@@ -22,6 +25,7 @@ export default function LoginPage() {
   const [passwordChanged, setPasswordChanged] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMeChecked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lockedUntil, setLockedUntil] = useState("");
   const [lockLabel, setLockLabel] = useState("");
@@ -29,6 +33,8 @@ export default function LoginPage() {
   useEffect(() => {
     setPassword("");
     ensureAdminDeviceId();
+    setRememberMeChecked(localStorage.getItem(REMEMBER_KEY) === "1");
+    setUsername(readRememberedUsername());
     if (window.location.search.includes("password-changed")) {
       setPasswordChanged(true);
     }
@@ -62,6 +68,7 @@ export default function LoginPage() {
       if (data.user?.role === "patient") {
         throw new Error("Patient accounts cannot use the admin panel");
       }
+      setRememberMe(rememberMe, username.trim());
       setAuthTokens(data.access, data.refresh);
       if (data.user) setSession(data.user as AuthUser);
       if (data.mustChangePassword || data.passwordExpired || data.user?.must_change_password || data.user?.passwordExpired) {
@@ -90,53 +97,58 @@ export default function LoginPage() {
   const locked = Boolean(lockedUntil);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-page p-6">
-      <div className="w-full max-w-md rounded border border-line bg-card p-6">
-        <h1 className="text-[18px] font-semibold text-ink">Admin Login</h1>
-        <p className="mt-1 text-[11px] text-muted">
-          Sign in with your username, official email, or Admin ID. This physical device (all browsers on this PC) is
-          locked for 5 minutes after 3 failed
-          attempts. Unused attempts reset after 1 hour.
+    <AuthShell title="Admin sign in" subtitle="Use your username, official email, or Admin ID.">
+      {passwordChanged ? (
+        <p className="mb-4 rounded-xl bg-brand-soft px-3 py-2.5 text-[11px] text-brand">
+          Password updated successfully. Sign in with your new password.
         </p>
-        {passwordChanged ? (
-          <p className="mt-2 rounded bg-brand-soft px-2.5 py-2 text-[11px] text-brand">
-            Password updated. Sign in again with your new password.
+      ) : null}
+      <form className="space-y-3.5" onSubmit={onSubmit}>
+        <div>
+          <label className="mb-1 block text-[11px] font-medium text-ink">Username, email, or Admin ID</label>
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full rounded-xl border border-line bg-elevated px-3 py-2 text-[12px] text-ink outline-none ring-brand/30 transition focus:ring-2"
+            autoComplete="username"
+            disabled={locked}
+          />
+        </div>
+        <PasswordField
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          autoComplete="current-password"
+          disabled={locked}
+        />
+        <div className="flex items-center justify-between gap-2">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMeChecked(e.target.checked)}
+              className="size-3.5 rounded border border-line accent-brand"
+              disabled={locked}
+            />
+            <span className="text-[11px] text-ink">Remember me</span>
+          </label>
+          <Link href="/forgot-password" className="text-[11px] font-semibold text-brand hover:underline">
+            Forgot password?
+          </Link>
+        </div>
+        {locked ? (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+            Device locked. Try again in {lockLabel}.
           </p>
         ) : null}
-        <form className="mt-4 space-y-3" onSubmit={onSubmit}>
-          <div>
-            <label className="mb-1 block text-[11px] font-medium text-ink">Username, email, or Admin ID</label>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded border border-line bg-elevated px-2.5 py-1.5 text-[11px] text-ink outline-none"
-              autoComplete="username"
-              disabled={locked}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-[11px] font-medium text-ink">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded border border-line bg-elevated px-2.5 py-1.5 text-[11px] text-ink outline-none"
-              autoComplete="current-password"
-              disabled={locked}
-            />
-          </div>
-          {locked ? (
-            <p className="text-[11px] font-semibold text-amber-700">Device locked. Try again in {lockLabel}.</p>
-          ) : null}
-          <button
-            type="submit"
-            disabled={loading || locked}
-            className="w-full rounded bg-brand py-2 text-[11px] font-semibold text-white hover:bg-brand-blueDark disabled:opacity-60"
-          >
-            {loading ? "Signing in…" : locked ? `Locked (${lockLabel})` : "Sign In"}
-          </button>
-        </form>
-      </div>
-    </main>
+        <button
+          type="submit"
+          disabled={loading || locked}
+          className="w-full rounded-xl bg-brand py-2.5 text-[12px] font-semibold text-white shadow-sm transition hover:bg-brand-blueDark disabled:opacity-60"
+        >
+          {loading ? "Signing in…" : locked ? `Locked (${lockLabel})` : "Sign in"}
+        </button>
+      </form>
+    </AuthShell>
   );
 }

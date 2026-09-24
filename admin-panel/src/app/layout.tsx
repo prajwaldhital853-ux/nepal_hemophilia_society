@@ -17,8 +17,8 @@ export const metadata: Metadata = {
   title: "Nepal Hemophilia Digital Management System",
   description: "Super Admin panel for Nepal Hemophilia Society",
   icons: {
-    icon: "/nhs-logo.png",
-    apple: "/nhs-logo.png",
+    icon: "/favicon.png",
+    apple: "/nhs-app-icon.png",
   },
 };
 
@@ -42,7 +42,7 @@ export default function RootLayout({
             </ToastProvider>
           </LocaleProvider>
         </ThemeProvider>
-        <div id="nhs-toast-host" />
+        <div id="nhs-toast-host" aria-live="polite" />
       </body>
     </html>
   );

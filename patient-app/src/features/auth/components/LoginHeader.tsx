@@ -1,13 +1,17 @@
 import { Image, ImageBackground, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { APP_LOGO } from "@/core/assets";
 import { useLoginLayout } from "@/features/auth/hooks/useLoginLayout";
 import { LOGO_ASPECT_RATIO, nhmsColors } from "@/features/auth/theme/nhmsTheme";
 
 const HEADER_BG = require("../../../../assets/images/login-header-bg.png");
-const LOGO = require("../../../../assets/images/nhs-logo-overlay.png");
 
 export function LoginHeader() {
+  const insets = useSafeAreaInsets();
   const layout = useLoginLayout();
+  const logoWidth = layout.loginLogoWidth;
+  const logoHeight = logoWidth / LOGO_ASPECT_RATIO;
 
   return (
     <ImageBackground
@@ -18,7 +22,7 @@ export function LoginHeader() {
       <View
         style={[
           styles.topBadgeBlock,
-          { top: layout.badgeTop, right: layout.badgeRight },
+          { top: Math.max(insets.top, layout.badgeTop), right: layout.badgeRight },
         ]}
       >
         <Text style={[styles.badgeLine, { fontSize: layout.badgeFontSize, lineHeight: layout.badgeFontSize + 3 }]}>
@@ -35,11 +39,8 @@ export function LoginHeader() {
 
       <View style={styles.logoWrap}>
         <Image
-          source={LOGO}
-          style={{
-            width: layout.logoWidth,
-            height: layout.logoWidth / LOGO_ASPECT_RATIO,
-          }}
+          source={APP_LOGO}
+          style={{ width: logoWidth, height: logoHeight }}
           resizeMode="contain"
         />
       </View>

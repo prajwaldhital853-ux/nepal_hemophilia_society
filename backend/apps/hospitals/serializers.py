@@ -7,6 +7,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.accounts.models import UserRole
+from apps.accounts.password_policy import record_password_history
 from apps.accounts.rbac import KIND_CENTER, KIND_TREATMENT, PERMISSION_LABELS, permissions_for
 from apps.accounts.staffing import apply_assigned_access, parse_bool, photo_url_for
 from apps.hospitals.models import Hospital, HospitalAdmin, HospitalStaffType
@@ -363,6 +364,7 @@ class HospitalStaffUpdateSerializer(HospitalStaffSerializer):
             except Exception as exc:
                 messages = getattr(exc, "messages", [str(exc)])
                 raise serializers.ValidationError({"resetTemporaryPassword": " ".join(messages)})
+            record_password_history(user)
             user.set_password(str(reset_temp))
             user.must_change_password = True
             user.password_changed_at = None

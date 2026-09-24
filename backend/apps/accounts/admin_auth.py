@@ -9,6 +9,8 @@ from apps.accounts.jwt import issue_admin_tokens
 from apps.accounts.password_policy import password_expires_at, password_is_expired, password_reuse_error, record_password_history
 from apps.accounts.permissions import IsAdminRole
 from apps.accounts.serializers import UserSerializer
+from apps.audit.models import AuditLog
+from apps.patients.views import client_ip
 
 User = get_user_model()
 
@@ -54,6 +56,16 @@ class AdminChangePasswordView(APIView):
         user.refresh_from_db()
         if not user.check_password(new_password):
             return Response({"error": "Password could not be saved. Please try again."}, status=500)
+
+        when = timezone.localtime().strftime("%d %b %Y at %H:%M")
+        AuditLog.objects.create(
+            actor=user.get_username(),
+            action="Admin password changed",
+            module="Auth",
+            object_id=str(user.pk),
+            ip=client_ip(request),
+            detail=f"Password changed on {when}",
+        )
 
         payload = UserSerializer(user, context={"request": request}).data
         expires = password_expires_at(user)

@@ -3,7 +3,14 @@ import { InteractionManager } from "react-native";
 
 import { ApiError, AUTH_TIMEOUT_MS, patientApi } from "@/core/api";
 import { AuthContext, type AuthState } from "@/core/auth/context";
-import { clearSession, getPatientDeviceAuth, loadSession, saveSession } from "@/core/auth/storage";
+import { onMustChangePassword } from "@/core/auth/passwordChangeEvents";
+import {
+  clearSession,
+  getPatientDeviceAuth,
+  getRememberMePreference,
+  loadSession,
+  saveSession,
+} from "@/core/auth/storage";
 import type { PatientRecord } from "@/core/auth/types";
 
 export type { PatientRecord } from "@/core/auth/types";
@@ -32,6 +39,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error;
     }
   }, [token]);
+
+  useEffect(() => onMustChangePassword(() => {
+    setMustChangePassword(true);
+    setPatient(null);
+  }), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,7 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   timeoutMs: AUTH_TIMEOUT_MS,
                 });
                 if (refreshed?.access) {
-                  await saveSession(refreshed.access, refreshed.refresh ?? stored.refresh);
+                  const remember = await getRememberMePreference();
+                  await saveSession(refreshed.access, refreshed.refresh ?? stored.refresh, remember);
                   setToken(refreshed.access);
                   const retry = await patientApi("/me/patient/", {
                     token: refreshed.access,
@@ -93,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(async (identifier: string, password: string) => {
+  const login = useCallback(async (identifier: string, password: string, rememberMe = true) => {
     const { deviceId, deviceSignals } = await getPatientDeviceAuth();
     const data = await patientApi("/auth/patient/login/", {
       method: "POST",
@@ -108,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!data?.access || !data?.refresh) {
       throw new ApiError("Invalid login response from server.", 0);
     }
-    await saveSession(data.access, data.refresh);
+    await saveSession(data.access, data.refresh, rememberMe);
     setToken(data.access);
     setMustChangePassword(Boolean(data.mustChangePassword || data.passwordExpired));
     if (!data.mustChangePassword && !data.passwordExpired) {
@@ -128,7 +141,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!data?.access || !data?.refresh) {
         throw new ApiError("Invalid password change response from server.", 0);
       }
-      await saveSession(data.access, data.refresh);
+      const remember = await getRememberMePreference();
+      await saveSession(data.access, data.refresh, remember);
       setToken(data.access);
       setMustChangePassword(false);
       await refreshPatient(data.access, true);

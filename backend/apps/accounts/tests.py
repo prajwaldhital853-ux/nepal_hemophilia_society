@@ -656,6 +656,10 @@ class RbacMatrixTests(APITestCase):
         forced = post_admin_login(self.client, "reset.pending@hemophilia.org.np", "TempPass#456")
         self.assertEqual(forced.status_code, 200, forced.data)
         self.assertTrue(forced.data["mustChangePassword"])
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {changed.data['access']}")
+        blocked = self.client.get("/api/v1/patients/")
+        self.assertEqual(blocked.status_code, 403, blocked.data)
+        self.assertEqual(blocked.data.get("code"), "must_change_password")
 
     def test_super_marks_pending_admin_active_without_first_login(self):
         self.client.force_authenticate(self.super)

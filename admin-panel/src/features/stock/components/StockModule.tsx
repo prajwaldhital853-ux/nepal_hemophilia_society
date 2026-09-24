@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Package, Plus } from "lucide-react";
 
 import { fetchHospitals } from "@/features/hospitals/api";
@@ -24,7 +25,9 @@ import { StatCardsSkeleton, TablePanelSkeleton } from "@/components/ui/Skeleton"
 import { isNationalScope, useAuth } from "@/lib/auth";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { Perm } from "@/lib/permissions";
+import { showConfirm } from "@/lib/confirmBus";
 import { showToast } from "@/lib/toastBus";
+import { useShortcutAction } from "@/hooks/useShortcutAction";
 import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
 const fieldClass =
@@ -59,6 +62,7 @@ function movementTypeClass(type: string) {
 }
 
 export default function StockModule() {
+  const searchParams = useSearchParams();
   const { can, user } = useAuth();
   const canManage = can(Perm.stockManage) && !user?.viewOnly;
   const canDeleteLot = can(Perm.stockDelete) && !user?.viewOnly;
@@ -138,6 +142,16 @@ export default function StockModule() {
     if (canPickCenter) void fetchHospitals().then(setHospitals).catch(() => setHospitals([]));
   }, [load, canPickCenter]);
 
+  useShortcutAction("page-refresh", () => {
+    void load();
+  });
+
+  useEffect(() => {
+    if (searchParams.get("openStockIn") === "1" && canManage) {
+      setShowAdd(true);
+    }
+  }, [searchParams, canManage]);
+
   const inventoryPage = useVisibleSlice(lots, 10);
   const historyPage = useVisibleSlice(movements, 10);
 
@@ -159,6 +173,7 @@ export default function StockModule() {
         {canManage ? (
           <button
             type="button"
+            data-shortcut-target="page-new stock-in"
             onClick={() => setShowAdd(true)}
             className="flex items-center gap-1 rounded bg-brand px-3 py-1.5 text-[11px] font-semibold text-white"
           >
@@ -208,6 +223,7 @@ export default function StockModule() {
               </select>
             ) : null}
             <input
+              data-shortcut-target="page-search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search product"
@@ -283,10 +299,17 @@ export default function StockModule() {
                             type="button"
                             className="rounded border border-red-200 px-1.5 py-0.5 text-red-600"
                             onClick={() => {
-                              if (!window.confirm("Delete this lot? Lots with remaining quantity can only be deleted by Super Admin.")) return;
-                              void deleteStockLot(lot.id)
-                                .then(load)
-                                .catch((err: Error) => showToast(err.message));
+                              void showConfirm({
+                                message: "Delete this lot? Lots with remaining quantity can only be deleted by Super Admin.",
+                              }).then((confirmed) => {
+                                if (!confirmed) return;
+                                void deleteStockLot(lot.id)
+                                  .then(() => {
+                                    void load();
+                                    showToast("Stock lot deleted successfully");
+                                  })
+                                  .catch((err: Error) => showToast(err.message));
+                              });
                             }}
                           >
                             Delete
@@ -335,6 +358,7 @@ export default function StockModule() {
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
           <button
             type="button"
+            data-shortcut-target="page-export"
             className="rounded border border-line px-2 py-1 text-[10px] font-semibold"
             onClick={() =>
               downloadCsv(

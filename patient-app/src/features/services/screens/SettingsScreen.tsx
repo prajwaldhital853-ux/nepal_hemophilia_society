@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useAuth } from "@/core/auth/AuthContext";
+import { AuthTextField } from "@/features/auth/components/AuthTextField";
 import { servicesColors } from "@/features/services/theme/servicesTheme";
 
 export default function SettingsScreen() {
@@ -9,6 +10,9 @@ export default function SettingsScreen() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
   const [saving, setSaving] = useState(false);
@@ -53,30 +57,41 @@ export default function SettingsScreen() {
       </View>
       <View style={styles.card}>
         <Text style={styles.section}>Change password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Current password"
-          placeholderTextColor={servicesColors.textMuted}
-          secureTextEntry
-          value={currentPassword}
-          onChangeText={setCurrentPassword}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="New password"
-          placeholderTextColor={servicesColors.textMuted}
-          secureTextEntry
-          value={newPassword}
-          onChangeText={setNewPassword}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm new password"
-          placeholderTextColor={servicesColors.textMuted}
-          secureTextEntry
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-        />
+        <View style={styles.form}>
+          <AuthTextField
+            icon="lock-closed-outline"
+            placeholder="Current password"
+            secureTextEntry={!showCurrentPassword}
+            showToggle
+            onToggleSecure={() => setShowCurrentPassword((value) => !value)}
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            textContentType="password"
+            autoComplete="password"
+          />
+          <AuthTextField
+            icon="lock-closed-outline"
+            placeholder="New password"
+            secureTextEntry={!showNewPassword}
+            showToggle
+            onToggleSecure={() => setShowNewPassword((value) => !value)}
+            value={newPassword}
+            onChangeText={setNewPassword}
+            textContentType="newPassword"
+            autoComplete="password-new"
+          />
+          <AuthTextField
+            icon="lock-closed-outline"
+            placeholder="Confirm new password"
+            secureTextEntry={!showConfirmPassword}
+            showToggle
+            onToggleSecure={() => setShowConfirmPassword((value) => !value)}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            textContentType="newPassword"
+            autoComplete="password-new"
+          />
+        </View>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {ok ? <Text style={styles.ok}>{ok}</Text> : null}
         <Pressable style={styles.btn} onPress={() => void onSubmit()} disabled={saving}>
@@ -97,15 +112,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: "#fff", borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: servicesColors.border },
   section: { fontWeight: "800", color: servicesColors.navy, marginBottom: 10 },
   line: { fontSize: 13, color: servicesColors.text, marginBottom: 4 },
-  input: {
-    borderWidth: 1,
-    borderColor: servicesColors.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 10,
-    color: servicesColors.text,
-  },
+  form: { gap: 10 },
   error: { color: servicesColors.primary, marginBottom: 8 },
   ok: { color: "#15803D", marginBottom: 8, fontWeight: "600" },
   btn: { backgroundColor: servicesColors.primary, borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: 8 },

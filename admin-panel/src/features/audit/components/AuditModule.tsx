@@ -143,6 +143,7 @@ export default function AuditModule() {
             <label className="panel-inset flex h-8 min-w-[180px] flex-1 items-center gap-2 px-2.5 shadow-none">
               <Search className="size-3.5 text-faint" />
               <input
+                data-shortcut-target="page-search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
@@ -182,6 +183,7 @@ export default function AuditModule() {
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]" />
             <button
               type="button"
+              data-shortcut-target="page-export"
               className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
               onClick={() =>
                 downloadCsv(

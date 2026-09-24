@@ -12,7 +12,9 @@ import StaffAccountForm from "@/features/admins/components/StaffAccountForm";
 import { isOwnStaffAccount } from "@/features/admins/identity";
 import { useAuth } from "@/lib/auth";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
+import { showConfirm } from "@/lib/confirmBus";
 import { PERM_LABELS } from "@/lib/permissions";
+import { showToast } from "@/lib/toastBus";
 
 const tabs = ["Overview", "Roles & Permissions"];
 
@@ -134,10 +136,17 @@ export default function AdminProfileView({ id }: { id: string }) {
                   type="button"
                   className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-red-600 shadow-none"
                   onClick={() => {
-                    if (!window.confirm(`Delete admin ${admin.id}? This cannot be undone.`)) return;
-                    void deleteStaffAccount(admin.id)
-                      .then(() => router.push("/dashboard/admins"))
-                      .catch((err: Error) => setError(err.message || "Could not delete admin"));
+                    void showConfirm({
+                      message: `Delete admin ${admin.id}? This cannot be undone.`,
+                    }).then((confirmed) => {
+                      if (!confirmed) return;
+                      void deleteStaffAccount(admin.id)
+                        .then(() => {
+                          showToast("Admin deleted successfully");
+                          router.push("/dashboard/admins");
+                        })
+                        .catch((err: Error) => setError(err.message || "Could not delete admin"));
+                    });
                   }}
                 >
                   <Trash2 className="size-3.5" />

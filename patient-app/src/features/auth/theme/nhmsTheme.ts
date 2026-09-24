@@ -44,5 +44,5 @@ export const nhmsSpacing = {
   buttonHeight: 50,
 };
 
-/** Provided logo PNG (1080 x 1456) with transparent background */
-export const LOGO_ASPECT_RATIO = 1080 / 1456;
+/** NHS logo asset (396 x 630 source). */
+export const LOGO_ASPECT_RATIO = 396 / 630;

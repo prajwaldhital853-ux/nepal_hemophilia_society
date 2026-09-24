@@ -25,7 +25,9 @@ export function useLoginLayout() {
 
   /** Full width-proportional header so the red/gray curve always shows */
   const headerHeight = Math.round(width * HEADER_BG_ASPECT);
-  const logoWidth = Math.round(Math.min(width * 0.56, 236 * scale));
+  /** Compact NHS logo on the login header (uploaded transparent asset). */
+  const loginLogoWidth = Math.round(Math.min(width * 0.28, 108 * scale));
+  const logoWidth = loginLogoWidth;
 
   return {
     width,
@@ -36,6 +38,7 @@ export function useLoginLayout() {
     veryCompact,
     headerHeight,
     logoWidth,
+    loginLogoWidth,
     badgeTop: Math.round(34 * scale),
     badgeRight: Math.round(36 * scale),
     badgeFontSize: Math.round(11 * scale),

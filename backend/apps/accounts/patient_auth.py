@@ -52,10 +52,12 @@ def issue_patient_tokens(user):
     access["must_change_password"] = user.must_change_password
     access.set_exp(lifetime=timedelta(days=int(os.getenv("JWT_PATIENT_ACCESS_DAYS", "7"))))
     patient = getattr(user, "patient_profile", None)
+    requires_change = user.must_change_password or password_is_expired(user)
     return {
         "access": str(access),
         "refresh": str(refresh),
-        "mustChangePassword": user.must_change_password,
+        "mustChangePassword": requires_change,
+        "passwordExpired": password_is_expired(user),
         "user": UserSerializer(user).data,
         "patientId": patient.unique_patient_id if patient else user.username,
     }

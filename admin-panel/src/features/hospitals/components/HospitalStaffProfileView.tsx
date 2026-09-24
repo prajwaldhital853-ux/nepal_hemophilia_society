@@ -14,7 +14,9 @@ import { isOwnStaffAccount } from "@/features/admins/identity";
 import { staffLabels, type HospitalStaffProfile, type HospitalStaffType } from "@/features/hospitals/types";
 import { useAuth } from "@/lib/auth";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
+import { showConfirm } from "@/lib/confirmBus";
 import { PERM_LABELS } from "@/lib/permissions";
+import { showToast } from "@/lib/toastBus";
 
 const tabs = ["Overview", "Activity Log", "Permissions", "Documents"];
 
@@ -338,10 +340,17 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
               type="button"
               className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-red-600 shadow-none"
               onClick={() => {
-                if (!window.confirm(`Delete ${labels.singular} ${profile.id}? This cannot be undone.`)) return;
-                void deleteStaffAccount(profile.id)
-                  .then(() => router.push(labels.profilePath))
-                  .catch((err: Error) => setError(err.message || "Could not delete admin"));
+                void showConfirm({
+                  message: `Delete ${labels.singular} ${profile.id}? This cannot be undone.`,
+                }).then((confirmed) => {
+                  if (!confirmed) return;
+                  void deleteStaffAccount(profile.id)
+                    .then(() => {
+                      showToast(`${labels.singular} deleted successfully`);
+                      router.push(labels.profilePath);
+                    })
+                    .catch((err: Error) => setError(err.message || "Could not delete admin"));
+                });
               }}
             >
               <Trash2 className="size-3.5" />

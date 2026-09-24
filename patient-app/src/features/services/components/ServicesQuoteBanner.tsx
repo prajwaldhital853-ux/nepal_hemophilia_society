@@ -1,7 +1,7 @@
 import { Image, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
-const LOGO = require("../../../../assets/images/nhs-logo-icon-clear.png");
+import { APP_LOGO } from "@/core/assets";
 
 const QUOTE_RED = "#C1121F";
 
@@ -29,7 +29,7 @@ export function ServicesQuoteBanner() {
       </View>
 
       <View style={styles.brandCol}>
-        <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+        <Image source={APP_LOGO} style={styles.logo} resizeMode="contain" />
         <View style={styles.brandText}>
           <Text style={styles.nepal}>NEPAL</Text>
           <Text style={styles.society}>HEMOPHILIA{"\n"}SOCIETY</Text>

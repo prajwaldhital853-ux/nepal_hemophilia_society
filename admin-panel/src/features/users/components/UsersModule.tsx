@@ -182,6 +182,7 @@ export default function UsersModule() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
+            data-shortcut-target="page-export"
             className="panel flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
             onClick={() =>
               downloadCsv(
@@ -245,6 +246,7 @@ export default function UsersModule() {
         <label className="panel-inset flex h-8 min-w-[180px] flex-1 items-center gap-2 px-2.5 shadow-none">
           <Search className="size-3.5 text-faint" />
           <input
+            data-shortcut-target="page-search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"

@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { Check, Mail } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
+import { useHeaderPanel } from "@/components/layout/useHeaderPanel";
 import { UnreadBadge } from "@/components/ui/UnreadBadge";
 import { useAuth } from "@/lib/auth";
+import { SHORTCUT_EVENT } from "@/lib/keyboardShortcuts";
 
 type AdminNote = {
   id: number;
@@ -21,6 +23,7 @@ export function AppointmentInbox() {
   const { user } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const { rootRef, toggle } = useHeaderPanel("messages", open, setOpen);
   const [items, setItems] = useState<AdminNote[]>([]);
   const [unread, setUnread] = useState(0);
 
@@ -43,6 +46,18 @@ export function AppointmentInbox() {
       setUnread(0);
     }
   }, [user]);
+
+  useEffect(() => {
+    function onShortcut(event: Event) {
+      const action = (event as CustomEvent<{ action: string }>).detail?.action;
+      if (action === "toggle-messages") {
+        setOpen((value) => !value);
+        void load();
+      }
+    }
+    window.addEventListener(SHORTCUT_EVENT, onShortcut);
+    return () => window.removeEventListener(SHORTCUT_EVENT, onShortcut);
+  }, [load]);
 
   useEffect(() => {
     void load();
@@ -70,14 +85,15 @@ export function AppointmentInbox() {
   }
 
   return (
-    <div className="relative hidden overflow-visible sm:block">
+    <div ref={rootRef} className="relative hidden overflow-visible sm:block">
       <span className="relative inline-flex align-middle">
         <button
           type="button"
           className="panel p-1.5 text-muted shadow-none hover:bg-elevated hover:text-ink"
           aria-label={unread > 0 ? `Appointment messages (${unread} unread)` : "Appointment messages"}
+          aria-expanded={open}
           onClick={() => {
-            setOpen((value) => !value);
+            toggle();
             void load();
           }}
         >

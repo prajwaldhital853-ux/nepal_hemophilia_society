@@ -1,12 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { createPortal } from "react-dom";
 import { CalendarPlus, Search, Trash2, X } from "lucide-react";
 
 import { PaginatedScroll } from "@/components/ui/PaginatedScroll";
 import { TableBodySkeleton } from "@/components/ui/Skeleton";
 import { apiFetch } from "@/lib/api";
+import { showConfirm } from "@/lib/confirmBus";
 import { showToast } from "@/lib/toastBus";
+import { useShortcutAction } from "@/hooks/useShortcutAction";
 import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
 type Appointment = {
@@ -68,6 +72,7 @@ function statusClass(status: string) {
 }
 
 export default function AppointmentsModule() {
+  const searchParams = useSearchParams();
   const [rows, setRows] = useState<Appointment[]>([]);
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
@@ -110,6 +115,16 @@ export default function AppointmentsModule() {
     void load().catch((err: Error) => showToast(err.message));
   }, [load]);
 
+  useShortcutAction("page-refresh", () => {
+    void load().catch((err: Error) => showToast(err.message));
+  });
+
+  useEffect(() => {
+    if (searchParams.get("openSlots") === "1" && canUpdate) {
+      setShowSlots(true);
+    }
+  }, [searchParams, canUpdate]);
+
   function open(row: Appointment) {
     setSelected(row);
     setDoctorName(row.doctorName || "");
@@ -149,7 +164,7 @@ export default function AppointmentsModule() {
     setSaving(true);
     try {
       await apiFetch(`/appointments/${selected.id}/`, { method: "DELETE" });
-      showToast("Appointment deleted");
+      showToast("Appointment deleted successfully");
       closeDetail();
       await load();
     } catch (err) {
@@ -172,6 +187,7 @@ export default function AppointmentsModule() {
         {canUpdate ? (
           <button
             type="button"
+            data-shortcut-target="page-new appointments-slots"
             className="flex items-center gap-1.5 rounded bg-brand px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-blueDark"
             onClick={() => setShowSlots(true)}
           >
@@ -185,6 +201,7 @@ export default function AppointmentsModule() {
           <label className="panel-inset flex h-8 min-w-[200px] flex-1 items-center gap-2 px-2.5 shadow-none">
             <Search className="size-3.5 text-faint" />
             <input
+              data-shortcut-target="page-search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
@@ -552,7 +569,11 @@ function SlotManager({ onClose }: { onClose: () => void }) {
   }
 
   async function removeDay(groupSlots: Slot[]) {
-    if (!window.confirm(`Remove all ${groupSlots.length} published times for this day?`)) return;
+    const confirmed = await showConfirm({
+      message: `Remove all ${groupSlots.length} published times for this day?`,
+      confirmLabel: "Remove",
+    });
+    if (!confirmed) return;
     try {
       await Promise.all(groupSlots.map((slot) => apiFetch(`/appointments/slots/${slot.id}/`, { method: "DELETE" })));
       setSlots((rows) => rows.filter((row) => !groupSlots.some((slot) => slot.id === row.id)));
@@ -597,7 +618,11 @@ function SlotManager({ onClose }: { onClose: () => void }) {
   }
 
   async function removeSchedule(id: number) {
-    if (!window.confirm("Remove this recurring schedule and all matching future times?")) return;
+    const confirmed = await showConfirm({
+      message: "Remove this recurring schedule and all matching future times?",
+      confirmLabel: "Remove",
+    });
+    if (!confirmed) return;
     try {
       await apiFetch(`/appointments/slots/schedules/${id}/`, { method: "DELETE" });
       await load();
@@ -632,13 +657,15 @@ function SlotManager({ onClose }: { onClose: () => void }) {
 
   const daysPage = useVisibleSlice(grouped, 5);
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-[calc(var(--topbar-h,3.5rem)+1rem)] sm:items-center sm:pt-4"
       onClick={onClose}
     >
       <section
-        className="panel flex max-h-[min(92vh,calc(100dvh-3rem))] w-full max-w-3xl flex-col overflow-hidden"
+        className="panel flex max-h-[min(88vh,calc(100dvh-var(--topbar-h,3.5rem)-2rem))] w-full max-w-3xl flex-col overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby="slot-manager-title"
@@ -837,6 +864,7 @@ function SlotManager({ onClose }: { onClose: () => void }) {
       </div>
         </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

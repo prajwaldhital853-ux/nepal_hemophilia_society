@@ -21,7 +21,9 @@ import { apiFetch } from "@/lib/api";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 import { TableBodySkeleton } from "@/components/ui/Skeleton";
+import { showConfirm } from "@/lib/confirmBus";
 import { showToast } from "@/lib/toastBus";
+import { useShortcutAction } from "@/hooks/useShortcutAction";
 import { Perm } from "@/lib/permissions";
 
 function ageFromDob(dob: string) {
@@ -74,6 +76,9 @@ export default function PatientsModule() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useShortcutAction("page-refresh", () => setRefreshKey((value) => value + 1));
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebounced(query), 300);
@@ -104,7 +109,7 @@ export default function PatientsModule() {
         showToast(err.message || "Failed to load patients");
       })
       .finally(() => setLoading(false));
-  }, [debounced, from, to]);
+  }, [debounced, from, to, refreshKey]);
 
   async function loadMore() {
     if (!nextCursor || loadingMore) return;
@@ -165,6 +170,7 @@ export default function PatientsModule() {
           {canCreate ? (
             <button
               type="button"
+              data-shortcut-target="page-new"
               className="flex items-center gap-1.5 rounded bg-brand px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-blueDark"
               onClick={() => router.push("/dashboard/patients/new")}
             >
@@ -179,6 +185,7 @@ export default function PatientsModule() {
           <label className="panel-inset flex h-8 min-w-[200px] flex-1 items-center gap-2 px-2.5 shadow-none">
             <Search className="size-3.5 text-faint" />
             <input
+              data-shortcut-target="page-search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
@@ -251,6 +258,7 @@ export default function PatientsModule() {
 
           <button
             type="button"
+            data-shortcut-target="page-export"
             className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
             onClick={() =>
               downloadCsv(
@@ -333,10 +341,17 @@ export default function PatientsModule() {
                             className="rounded-lg p-1.5 text-red-600 hover:bg-red-50"
                             aria-label={`Delete ${row.name}`}
                             onClick={() => {
-                              if (!window.confirm(`Delete patient ${row.id}? This cannot be undone if they have no clinical records.`)) return;
-                              void apiFetch(`/patients/${encodeURIComponent(row.id)}/`, { method: "DELETE" })
-                                .then(() => setRows((current) => current.filter((item) => item.id !== row.id)))
-                                .catch((err: Error) => showToast(err.message || "Could not delete patient"));
+                              void showConfirm({
+                                message: `Delete patient ${row.id}? This cannot be undone if they have no clinical records.`,
+                              }).then((confirmed) => {
+                                if (!confirmed) return;
+                                void apiFetch(`/patients/${encodeURIComponent(row.id)}/`, { method: "DELETE" })
+                                  .then(() => {
+                                    setRows((current) => current.filter((item) => item.id !== row.id));
+                                    showToast("Patient deleted successfully");
+                                  })
+                                  .catch((err: Error) => showToast(err.message || "Could not delete patient"));
+                              });
                             }}
                           >
                             <Trash2 className="size-[15px]" />
@@ -381,10 +396,17 @@ export default function PatientsModule() {
                               destructive: true,
                               hidden: !row.canDelete || user?.viewOnly,
                               onClick: () => {
-                                if (!window.confirm(`Delete patient ${row.id}? This cannot be undone if they have no clinical records.`)) return;
-                                void apiFetch(`/patients/${encodeURIComponent(row.id)}/`, { method: "DELETE" })
-                                  .then(() => setRows((current) => current.filter((item) => item.id !== row.id)))
-                                  .catch((err: Error) => showToast(err.message || "Could not delete patient"));
+                                void showConfirm({
+                                  message: `Delete patient ${row.id}? This cannot be undone if they have no clinical records.`,
+                                }).then((confirmed) => {
+                                  if (!confirmed) return;
+                                  void apiFetch(`/patients/${encodeURIComponent(row.id)}/`, { method: "DELETE" })
+                                    .then(() => {
+                                      setRows((current) => current.filter((item) => item.id !== row.id));
+                                      showToast("Patient deleted successfully");
+                                    })
+                                    .catch((err: Error) => showToast(err.message || "Could not delete patient"));
+                                });
                               },
                             },
                           ]}

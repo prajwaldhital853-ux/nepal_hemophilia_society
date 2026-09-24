@@ -23,6 +23,9 @@ export default function ChangePasswordScreen({}: Props) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -99,7 +102,9 @@ export default function ChangePasswordScreen({}: Props) {
             <AuthTextField
               icon="lock-closed-outline"
               placeholder="Temporary password"
-              secureTextEntry
+              secureTextEntry={!showCurrentPassword}
+              showToggle
+              onToggleSecure={() => setShowCurrentPassword((value) => !value)}
               value={currentPassword}
               onChangeText={setCurrentPassword}
               onFocus={() => focusField(currentWrapRef)}
@@ -115,7 +120,9 @@ export default function ChangePasswordScreen({}: Props) {
               ref={newPasswordRef}
               icon="lock-closed-outline"
               placeholder="New password"
-              secureTextEntry
+              secureTextEntry={!showNewPassword}
+              showToggle
+              onToggleSecure={() => setShowNewPassword((value) => !value)}
               value={newPassword}
               onChangeText={setNewPassword}
               onFocus={() => focusField(newWrapRef)}
@@ -131,7 +138,9 @@ export default function ChangePasswordScreen({}: Props) {
               ref={confirmPasswordRef}
               icon="lock-closed-outline"
               placeholder="Confirm new password"
-              secureTextEntry
+              secureTextEntry={!showConfirmPassword}
+              showToggle
+              onToggleSecure={() => setShowConfirmPassword((value) => !value)}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               onFocus={() => focusField(confirmWrapRef)}

@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/api";
 import { registerAdminWebPush } from "@/lib/adminPush";
 import { loadAdminAlertSeenIds, saveAdminAlertSeenIds, shouldShowAdminAlertPopup } from "@/lib/adminNotificationSeen";
 import { showBrowserNotification, type AlertNote } from "@/lib/browserNotifications";
+import { playNotificationSound } from "@/lib/notificationSound";
 import { useAuth } from "@/lib/auth";
 
 type AdminNote = AlertNote & { isRead?: boolean };
@@ -59,6 +60,7 @@ export function AdminNotificationAlerts() {
       }
       saveAdminAlertSeenIds(seenIds.current);
       if (hasNew) {
+        playNotificationSound();
         window.dispatchEvent(new Event("nhms-notifications-refresh"));
       }
     } catch {

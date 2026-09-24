@@ -3,9 +3,8 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useAuth } from "@/core/auth/AuthContext";
+import { APP_LOGO } from "@/core/assets";
 import { homeColors } from "@/features/home/theme/homeTheme";
-
-const LOGO = require("../../../../assets/images/nhs-logo-icon.png");
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -32,12 +31,12 @@ export function HomeHeader({
 
   return (
     <View style={styles.wrapper}>
-      <Pressable style={styles.menuBtn} onPress={onMenuPress} hitSlop={8}>
+      <Pressable style={styles.menuBtn} onPress={onMenuPress} hitSlop={16} accessibilityRole="button" accessibilityLabel="Open menu">
         <Ionicons name="menu" size={28} color={homeColors.primary} />
       </Pressable>
 
       <View style={styles.logoBlock}>
-        <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+        <Image source={APP_LOGO} style={styles.logo} resizeMode="contain" />
         <View style={styles.logoTextWrap}>
           <Text style={styles.logoNepal}>NEPAL</Text>
           <Text style={styles.logoSociety}>HEMOPHILIA SOCIETY</Text>

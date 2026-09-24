@@ -138,7 +138,7 @@ export function Sidebar() {
       }`}
     >
       <div className="flex h-[var(--topbar-h)] shrink-0 items-center gap-2 border-b border-sidebar-line px-3">
-        <Image src="/nhs-logo.png" alt="NHS logo" width={32} height={38} className="h-9 w-8 object-contain" />
+        <Image src="/nhs-logo.png" alt="NHS logo" width={36} height={48} className="h-10 w-9 object-contain" quality={100} unoptimized />
         <p className="min-w-0 flex-1 text-[9px] font-extrabold leading-[11px] tracking-[0.2px]">
           NEPAL HEMOPHILIA
           <br />

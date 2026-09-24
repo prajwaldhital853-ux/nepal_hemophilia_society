@@ -7,6 +7,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from apps.accounts.models import UserRole
+from apps.accounts.password_policy import record_password_history
 from apps.core.clinical import can_delete_patient, can_edit_patient, can_log_clinical_for_patient
 from apps.factors.models import FactorMedicine, FactorType
 from apps.hospitals.models import Hospital
@@ -413,12 +414,16 @@ class PatientSerializer(serializers.ModelSerializer):
         user.mobile = patient.mobile
         user.first_name = first
         user.last_name = last
-        fields = ["email", "mobile", "first_name", "last_name"]
-        if reset_password:
-            password_validation.validate_password(reset_password, user)
-            user.set_password(reset_password)
+        user.username = patient.unique_patient_id
+        fields = ["email", "mobile", "first_name", "last_name", "username"]
+        reset_value = str(reset_password or "").strip()
+        if reset_value:
+            password_validation.validate_password(reset_value, user)
+            record_password_history(user)
+            user.set_password(reset_value)
             user.must_change_password = True
-            fields += ["password", "must_change_password"]
+            user.password_changed_at = None
+            fields += ["password", "must_change_password", "password_changed_at"]
         user.save(update_fields=fields)
 
     @transaction.atomic

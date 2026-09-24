@@ -6,6 +6,7 @@ import Svg, { Line, Text as SvgText } from "react-native-svg";
 
 import { usePatientClinicalStats } from "@/features/home/hooks/usePatientClinicalStats";
 import { buildBleedingProfile } from "@/features/home/utils/buildBleedingProfile";
+import { calloutsForBleedSites } from "@/features/home/utils/bleedingSiteMap";
 import { homeColors, homeRadii, homeSpacing } from "@/features/home/theme/homeTheme";
 
 const BLEEDING_BODY_MAP = require("../../../../assets/images/bleeding-body-map.png");
@@ -22,19 +23,8 @@ type Callout = {
   fontSize?: number;
 };
 
-/**
- * White glow dots measured from the PNG pixels (682x1024, contain-fit in 178x168):
- *   right elbow dot  (394,361) -> (98, 59)   — at blood-drop height, line angles UP over the drop
- *   right knee dot   (307,676) -> (83, 111)
- *   left foot dot    (146,913) -> (57, 150)
- * Blood drop ring occupies roughly x 105-145, y 54-100 — lines/labels avoid it.
- */
 function BodyMapWithCallouts({ joints }: { joints: string[] }) {
-  const callouts: Callout[] = [
-    { label: joints[2] ?? "Elbow", jx: 98, jy: 59, ex: 146, ey: 40 },
-    { label: joints[0] ?? "Right Knee", jx: 83, jy: 111, ex: 100, ey: 111 },
-    { label: joints[1] ?? "Left Ankle", jx: 57, jy: 150, ex: 100, ey: 150 },
-  ];
+  const callouts: Callout[] = calloutsForBleedSites(joints);
 
   return (
     <View style={styles.mapWrap}>

@@ -7,6 +7,7 @@ import type { RootStackParamList } from "@/core/navigation/types";
 import { useAuth } from "@/core/auth/AuthContext";
 import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
 import { HomeHeader } from "@/features/home/components/HomeHeader";
+import { useAppDrawer } from "@/features/home/context/DrawerContext";
 import { ProfileSummaryCard } from "@/features/home/components/ProfileSummaryCard";
 import { ProfileMenuList } from "@/features/profile/components/ProfileMenuList";
 import type { ProfileMenuItem } from "@/features/profile/data/profileMenu";
@@ -17,6 +18,7 @@ type Props = StackScreenProps<RootStackParamList, "Profile">;
 export default function ProfileScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { logout, patient } = useAuth();
+  const { openDrawer } = useAppDrawer();
 
   function handleMenuPress(item: ProfileMenuItem) {
     if (item.action === "notifications") {
@@ -59,11 +61,20 @@ export default function ProfileScreen({ navigation }: Props) {
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="dark-content" backgroundColor={homeColors.white} />
-      <View style={{ paddingTop: insets.top, backgroundColor: homeColors.white }}>
+      <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
         <HomeHeader
+          onMenuPress={openDrawer}
           onProfilePress={() => undefined}
           onNotificationPress={() => navigation.navigate("Notifications")}
         />
+        <ProfileSummaryCard />
+        <View style={styles.sectionHead}>
+          <Text style={styles.sectionTitle}>Person with Hemophilia</Text>
+          <View style={styles.chip}>
+            <Ionicons name="water" size={13} color="#FFFFFF" />
+            <Text style={styles.chipText}>Stay Strong Stay Informed</Text>
+          </View>
+        </View>
       </View>
 
       <ScrollView
@@ -71,7 +82,6 @@ export default function ProfileScreen({ navigation }: Props) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <ProfileSummaryCard />
         {(patient?.documents?.length ?? 0) > 0 ? (
           <View style={{ marginHorizontal: 16, marginTop: 12, backgroundColor: "#fff", borderRadius: 12, padding: 12 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
@@ -87,14 +97,6 @@ export default function ProfileScreen({ navigation }: Props) {
             ))}
           </View>
         ) : null}
-
-        <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Person with Hemophilia</Text>
-          <View style={styles.chip}>
-            <Ionicons name="water" size={13} color="#FFFFFF" />
-            <Text style={styles.chipText}>Stay Strong Stay Informed</Text>
-          </View>
-        </View>
 
         <View style={styles.menuWrap}>
           <ProfileMenuList onPressItem={handleMenuPress} />
@@ -121,19 +123,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F4F5F7",
   },
+  stickyHeader: {
+    backgroundColor: homeColors.white,
+    zIndex: 2,
+  },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 12,
+    paddingTop: 4,
     paddingBottom: 72,
   },
   sectionHead: {
-    marginTop: 16,
+    marginTop: 4,
     marginBottom: 12,
     paddingHorizontal: homeSpacing.screen,
     alignItems: "flex-start",
     gap: 8,
+    backgroundColor: homeColors.white,
+    paddingBottom: 8,
   },
   sectionTitle: {
     fontSize: 16,

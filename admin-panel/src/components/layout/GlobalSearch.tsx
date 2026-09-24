@@ -64,6 +64,7 @@ export function GlobalSearch() {
       <label className="panel-inset flex h-7 max-w-lg items-center gap-2 px-2 shadow-none">
         <Search className="size-3.5 shrink-0 text-faint" />
         <input
+          data-shortcut-target="global-search"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);

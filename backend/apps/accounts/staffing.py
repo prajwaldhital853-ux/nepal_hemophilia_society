@@ -484,6 +484,9 @@ def update_staff_account(actor, user, data: dict):
     if pending_reset:
         reset_temp = data.get("resetTemporaryPassword") or data.get("temporaryPassword")
         issued = validate_password(reset_temp, field="resetTemporaryPassword")
+        from apps.accounts.password_policy import record_password_history
+
+        record_password_history(user)
         user.set_password(issued)
         user.must_change_password = True
         user.password_changed_at = None

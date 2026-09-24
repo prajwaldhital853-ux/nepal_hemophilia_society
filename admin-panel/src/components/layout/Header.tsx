@@ -5,6 +5,7 @@ import { ChevronDown, Menu, Moon, Sun } from "lucide-react";
 
 import { AppointmentInbox } from "@/components/layout/AppointmentInbox";
 import { GlobalSearch } from "@/components/layout/GlobalSearch";
+import { KeyboardShortcutsButton } from "@/components/layout/KeyboardShortcutsProvider";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { useMobileNav } from "@/components/layout/MobileNavContext";
 import { OwnAvatar } from "@/components/ui/UserAvatar";
@@ -45,6 +46,7 @@ export function Header() {
       <GlobalSearch />
 
       <div className="ml-auto flex items-center gap-1.5 overflow-visible">
+        <KeyboardShortcutsButton />
         <NotificationBell />
         <AppointmentInbox />
 

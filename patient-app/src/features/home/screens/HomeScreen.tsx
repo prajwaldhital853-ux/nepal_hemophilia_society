@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from "react";
-import { PanResponder, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { useCallback } from "react";
+import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { StackScreenProps } from "@react-navigation/stack";
@@ -11,9 +11,9 @@ import type { RootStackParamList } from "@/core/navigation/types";
 import { BleedingProfileCard } from "@/features/home/components/BleedingProfileCard";
 import { FactorStockCard } from "@/features/home/components/FactorStockCard";
 import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
-import { HomeDrawer } from "@/features/home/components/HomeDrawer";
 import { HomeHeader } from "@/features/home/components/HomeHeader";
 import { ScheduledInjectionCard } from "@/features/home/components/ScheduledInjectionCard";
+import { useAppDrawer } from "@/features/home/context/DrawerContext";
 import { usePatientNotifications } from "@/features/notifications/hooks/usePatientNotifications";
 import { InjectionTrendsChart } from "@/features/home/components/InjectionTrendsChart";
 import { OverviewSection } from "@/features/home/components/OverviewSection";
@@ -28,19 +28,7 @@ export default function HomeScreen({ navigation }: Props) {
   const { refreshPatient, patient } = useAuth();
   const { t } = useLocale();
   const { unreadCount } = usePatientNotifications();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
-  const edgePan = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gesture) =>
-        gesture.x0 < 40 && gesture.dx > 8 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 0.6,
-      onMoveShouldSetPanResponderCapture: (_, gesture) =>
-        gesture.x0 < 40 && gesture.dx > 10 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 0.6,
-      onPanResponderRelease: (_, gesture) => {
-        if (gesture.dx > 12 || gesture.vx > 0.05) setDrawerOpen(true);
-      },
-    }),
-  ).current;
+  const { openDrawer } = useAppDrawer();
 
   useFocusEffect(
     useCallback(() => {
@@ -50,12 +38,11 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.edgeSwipe} pointerEvents={drawerOpen ? "none" : "auto"} {...edgePan.panHandlers} />
       <StatusBar barStyle="dark-content" backgroundColor={homeColors.white} />
       <View style={{ paddingTop: insets.top }}>
         <HomeHeader
           notificationCount={unreadCount}
-          onMenuPress={() => setDrawerOpen(true)}
+          onMenuPress={openDrawer}
           onProfilePress={() => navigation.navigate("Profile")}
           onNotificationPress={() => navigation.navigate("Notifications")}
         />
@@ -102,20 +89,6 @@ export default function HomeScreen({ navigation }: Props) {
         />
       </ScrollView>
 
-      <HomeDrawer
-        visible={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onNavigate={(tab) => {
-          if (tab === "home") navigation.navigate("Home");
-          if (tab === "services") navigation.navigate("Services");
-          if (tab === "factor") navigation.navigate("Factor");
-          if (tab === "notifications") navigation.navigate("Notifications");
-          if (tab === "profile") navigation.navigate("Profile");
-          if (tab === "injections") navigation.navigate("Injections");
-          if (tab === "documents") navigation.navigate("Documents");
-        }}
-      />
-
       <HomeBottomNav
         variant="light"
         activeTab="home"
@@ -136,14 +109,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: homeColors.screenBg,
-  },
-  edgeSwipe: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 72,
-    width: 40,
-    zIndex: 20,
   },
   scroll: {
     flex: 1,

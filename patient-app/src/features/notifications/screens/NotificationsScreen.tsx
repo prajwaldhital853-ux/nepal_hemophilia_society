@@ -8,6 +8,7 @@ import { useLocale } from "@/core/i18n";
 import type { RootStackParamList } from "@/core/navigation/types";
 import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
 import { HomeHeader } from "@/features/home/components/HomeHeader";
+import { useAppDrawer } from "@/features/home/context/DrawerContext";
 import { NotificationFilters } from "@/features/notifications/components/NotificationFilters";
 import { NotificationsHeroBanner } from "@/features/notifications/components/NotificationsHeroBanner";
 import type { NotificationFilterId } from "@/features/notifications/data/notificationsTypes";
@@ -40,21 +41,24 @@ function formatWhen(iso: string) {
 export default function NotificationsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { t } = useLocale();
+  const { openDrawer } = useAppDrawer();
   const [filter, setFilter] = useState<NotificationFilterId>("all");
   const { notifications, unreadCount, loading, markRead } = usePatientNotifications(FILTER_TO_CATEGORY[filter]);
 
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="dark-content" backgroundColor={notificationsColors.white} />
-      <View style={{ paddingTop: insets.top, backgroundColor: notificationsColors.white }}>
+      <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
         <HomeHeader
           notificationCount={unreadCount}
+          onMenuPress={openDrawer}
           onProfilePress={() => navigation.navigate("Profile")}
           onNotificationPress={() => navigation.navigate("Notifications")}
         />
         <View style={styles.filtersWrap}>
           <NotificationFilters active={filter} onChange={setFilter} />
         </View>
+        <NotificationsHeroBanner />
       </View>
 
       <ScrollView
@@ -62,7 +66,6 @@ export default function NotificationsScreen({ navigation }: Props) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <NotificationsHeroBanner />
         {loading ? (
           <ActivityIndicator style={styles.loader} color={notificationsColors.primary} />
         ) : notifications.length === 0 ? (
@@ -122,6 +125,10 @@ export default function NotificationsScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: notificationsColors.pageBg },
+  stickyHeader: {
+    backgroundColor: notificationsColors.white,
+    zIndex: 2,
+  },
   filtersWrap: {
     paddingHorizontal: notificationsSpacing.screen,
     paddingBottom: 4,

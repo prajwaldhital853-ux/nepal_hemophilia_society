@@ -16,6 +16,7 @@ import {
 } from "@/features/cms/types";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
+import { showConfirm } from "@/lib/confirmBus";
 import { showToast } from "@/lib/toastBus";
 import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
@@ -157,10 +158,13 @@ export default function AppServicesModule() {
   }
 
   async function onDelete(row: AppService) {
-    if (!window.confirm(`Delete “${row.title}” from the patient app?`)) return;
+    const confirmed = await showConfirm({
+      message: `Delete “${row.title}” from the patient app?`,
+    });
+    if (!confirmed) return;
     try {
       await deleteAdminService(row.id);
-      showToast("Service deleted");
+      showToast("Service deleted successfully");
       await load();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Could not delete service");
