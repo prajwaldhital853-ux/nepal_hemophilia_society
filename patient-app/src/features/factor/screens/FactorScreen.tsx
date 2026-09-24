@@ -3,6 +3,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { StackScreenProps } from "@react-navigation/stack";
 
 import type { RootStackParamList } from "@/core/navigation/types";
+import { useAuth } from "@/core/auth/AuthContext";
+import { usePullRefresh } from "@/core/hooks/usePullRefresh";
+import { usePatientClinicalStats } from "@/features/home/hooks/usePatientClinicalStats";
+import { usePatientNotifications } from "@/features/notifications/hooks/usePatientNotifications";
 import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
 import { HomeHeader } from "@/features/home/components/HomeHeader";
 import { useAppDrawer } from "@/features/home/context/DrawerContext";

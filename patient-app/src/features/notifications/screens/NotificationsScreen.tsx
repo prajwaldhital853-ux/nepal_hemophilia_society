@@ -46,7 +46,15 @@ export default function NotificationsScreen({ navigation }: Props) {
   const { t } = useLocale();
   const { openDrawer } = useAppDrawer();
   const [filter, setFilter] = useState<NotificationFilterId>("all");
-  const { notifications, unreadCount, loading, markRead } = usePatientNotifications(FILTER_TO_CATEGORY[filter]);
+  const { refreshPatient } = useAuth();
+  const { refresh: refreshClinical } = usePatientClinicalStats();
+  const { notifications, unreadCount, loading, markRead, refresh: refreshNotifications } =
+    usePatientNotifications(FILTER_TO_CATEGORY[filter]);
+  const { refreshing, onRefresh } = usePullRefresh(
+    () => refreshPatient(),
+    () => refreshClinical(),
+    () => refreshNotifications(),
+  );
 
   return (
     <View style={styles.screen}>
