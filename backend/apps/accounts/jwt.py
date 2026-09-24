@@ -20,6 +20,7 @@ from apps.accounts.device_lock import (
 )
 from apps.accounts.models import UserRole
 from apps.accounts.password_policy import password_is_expired
+from apps.accounts.presence import mark_login, mark_seen
 from apps.accounts.serializers import UserSerializer
 from apps.accounts.throttles import DeviceLoginThrottle
 from apps.audit.models import AuditLog
@@ -141,6 +142,7 @@ class NhmsTokenObtainPairView(TokenObtainPairView):
 
         user = serializer.user
         register_success(device_id, identifier, user)
+        mark_login(user)
         try:
             AuditLog.objects.create(
                 actor=user.get_username(),
@@ -180,6 +182,11 @@ class NhmsTokenRefreshSerializer(TokenRefreshSerializer):
         data["access"] = str(access)
         next_refresh.set_exp(lifetime=refresh_lifetime)
         data["refresh"] = str(next_refresh)
+        if user:
+            try:
+                mark_seen(user)
+            except Exception:
+                pass
         return data
 
 

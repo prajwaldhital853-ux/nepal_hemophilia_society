@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import { fetchStock } from "@/features/stock/api";
 
 export type InjectionStatus = "Pending" | "Scheduled" | "Completed" | "Cancelled";
 export type InjectionIndication = "Prophylaxis" | "On-demand" | "ITI" | "Surgery" | "Trauma" | "Emergency" | "Other";
@@ -74,6 +75,35 @@ export async function fetchFactors(patientId?: string, hemophiliaType?: string) 
   const suffix = q.toString() ? `?${q.toString()}` : "";
   const data = await apiFetch(`/factors/${suffix}`);
   return (Array.isArray(data.factors) ? data.factors : []) as FactorOption[];
+}
+
+/** Returns an error message when the centre cannot fulfil the dose, or null when stock is OK. */
+export async function verifyInjectionStock(params: {
+  factorMedicineId: number;
+  dose: string | number;
+  hospitalName?: string;
+  factorName?: string;
+}): Promise<string | null> {
+  const needed = parseFloat(String(params.dose));
+  if (!params.factorMedicineId || Number.isNaN(needed) || needed <= 0) return null;
+  try {
+    const data = await fetchStock({
+      hospitalName: params.hospitalName || undefined,
+      factorMedicineId: params.factorMedicineId,
+      limit: 100,
+    });
+    const available = Number(data.totalQuantity) || 0;
+    if (available >= needed) return null;
+    const product = params.factorName || "This factor";
+    const centre = params.hospitalName ? ` at ${params.hospitalName}` : " at the logging centre";
+    return `Out of stock: ${product}${centre}. Only ${available.toLocaleString()} available for a ${needed.toLocaleString()} dose.`;
+  } catch {
+    return null;
+  }
+}
+
+export function isOutOfStockError(message: string) {
+  return /out of stock|insufficient_stock/i.test(message);
 }
 
 export async function createInjection(payload: Record<string, unknown>) {

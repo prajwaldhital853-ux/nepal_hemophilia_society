@@ -93,6 +93,17 @@ class InjectionRecordSerializer(serializers.ModelSerializer):
         return f"{obj.factor_type} — {obj.dose:g} {obj.unit} — {obj.get_indication_display()} — {obj.hospital.name} — {when}"
 
 
+def _injection_update_needs_stock_check(record, new_status, attrs):
+    """True when a status/dose change should verify stock before saving."""
+    if new_status not in (InjectionStatus.SCHEDULED, InjectionStatus.COMPLETED):
+        return False
+    if new_status == InjectionStatus.COMPLETED:
+        return record.status != InjectionStatus.COMPLETED
+    if record.status == InjectionStatus.SCHEDULED and new_status == InjectionStatus.SCHEDULED:
+        return "dose" in attrs or "batchNumber" in attrs
+    return True
+
+
 class InjectionCreateSerializer(serializers.Serializer):
     patientId = serializers.CharField()
     factorMedicineId = serializers.IntegerField()
@@ -162,7 +173,15 @@ class InjectionCreateSerializer(serializers.Serializer):
             else:
                 status = InjectionStatus.COMPLETED
         from django.db import transaction
-        from apps.stock.services import consume_for_injection
+        from apps.stock.services import consume_for_injection, ensure_stock_available
+
+        if status in (InjectionStatus.SCHEDULED, InjectionStatus.COMPLETED):
+            ensure_stock_available(
+                validated_data["hospital"],
+                validated_data["factor"],
+                validated_data["dose"],
+                validated_data.get("batchNumber", ""),
+            )
 
         with transaction.atomic():
             record = InjectionRecord.objects.create(
@@ -216,6 +235,13 @@ class InjectionUpdateSerializer(serializers.Serializer):
             raise serializers.ValidationError("You can only update records created at your own hospital.")
         if attrs.get("dose") is not None and attrs["dose"] <= 0:
             raise serializers.ValidationError({"dose": "Dose must be greater than zero."})
+        new_status = attrs.get("status", record.status)
+        new_dose = attrs.get("dose", record.dose)
+        new_batch = attrs.get("batchNumber", record.batch_number)
+        if _injection_update_needs_stock_check(record, new_status, attrs):
+            from apps.stock.services import ensure_stock_available
+
+            ensure_stock_available(record.hospital, record.factor_medicine, new_dose, new_batch)
         return attrs
 
     def update(self, instance, validated_data):

@@ -1,11 +1,30 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import { patientApi } from "@/core/api";
 import { useAuth } from "@/core/auth/AuthContext";
 import { InteractiveChart } from "@/features/services/components/charts";
+import {
+  MonthHeader,
+  TimelineEntry,
+  monthKey,
+  monthTitle,
+  parseRecordDate,
+  shortDate,
+} from "@/features/services/components/RecordTimeline";
+import {
+  EmptyNote,
+  ErrorNote,
+  LoadingScreen,
+  Panel,
+  ScreenIntro,
+  StatStrip,
+  StatusTag,
+  TabStrip,
+  useBottomPadding,
+} from "@/features/services/components/ui";
 import { useClearTopics } from "@/features/notifications/useClearTopics";
-import { servicesColors } from "@/features/services/theme/servicesTheme";
+import { servicesColors, servicesSpacing, servicesType } from "@/features/services/theme/servicesTheme";
 
 type TreatmentItem = {
   id: number;
@@ -18,11 +37,22 @@ type TreatmentItem = {
   notes?: string;
 };
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+type Row = { kind: "month"; key: string; title: string } | { kind: "entry"; key: string; item: TreatmentItem; last: boolean };
+
+const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+
+function statusTone(status: string): "good" | "warn" | "alert" | "neutral" {
+  const s = status.toLowerCase();
+  if (s.includes("complete") || s.includes("done")) return "good";
+  if (s.includes("schedul") || s.includes("pending") || s.includes("progress") || s.includes("active")) return "warn";
+  if (s.includes("miss") || s.includes("fail")) return "alert";
+  return "neutral";
+}
 
 export default function TreatmentsScreen() {
   useClearTopics("Treatments");
   const { token } = useAuth();
+  const bottomPadding = useBottomPadding();
   const [items, setItems] = useState<TreatmentItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,99 +93,124 @@ export default function TreatmentsScreen() {
     () => (typeFilter === "All" ? items : items.filter((row) => row.treatmentType === typeFilter)),
     [items, typeFilter],
   );
-  const monthly = useMemo(() => {
-    const year = new Date().getFullYear();
-    return MONTHS.map((_, index) =>
-      items.filter((row) => {
-        const d = new Date(row.treatmentDate);
-        return d.getFullYear() === year && d.getMonth() === index;
-      }).length,
-    );
+  const year = new Date().getFullYear();
+  const monthly = useMemo(
+    () =>
+      MONTHS.map((_, index) =>
+        items.filter((row) => {
+          const d = parseRecordDate(row.treatmentDate);
+          return d?.getFullYear() === year && d.getMonth() === index;
+        }).length,
+      ),
+    [items, year],
+  );
+  const thisYearTotal = monthly.reduce((a, b) => a + b, 0);
+  const commonType = useMemo(() => {
+    const counts = new Map<string, number>();
+    items.forEach((row) => row.treatmentType && counts.set(row.treatmentType, (counts.get(row.treatmentType) ?? 0) + 1));
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
   }, [items]);
 
-  if (loading && items.length === 0) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={servicesColors.primary} />
-      </View>
-    );
-  }
+  const rows = useMemo(() => {
+    const out: Row[] = [];
+    let current = "";
+    visible.forEach((item, i) => {
+      const key = monthKey(item.treatmentDate);
+      if (key !== current) {
+        current = key;
+        out.push({ kind: "month", key: `m-${key}`, title: monthTitle(item.treatmentDate) });
+      }
+      const next = visible[i + 1];
+      out.push({ kind: "entry", key: String(item.id), item, last: !next || monthKey(next.treatmentDate) !== key });
+    });
+    return out;
+  }, [visible]);
+
+  if (loading && items.length === 0) return <LoadingScreen />;
 
   return (
     <View style={styles.container}>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
       <FlatList
-        data={visible}
-        keyExtractor={(item) => String(item.id)}
+        data={rows}
+        keyExtractor={(row) => row.key}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} tintColor={servicesColors.primary} />}
         onEndReached={() => {
           if (nextCursor && !loadingMore) void load(nextCursor);
         }}
         ListHeaderComponent={
           <View>
-            <Text style={styles.hero}>Treatment visits</Text>
-            <Text style={styles.lead}>Physiotherapy, admissions, ITI and other centre visits — compared across this year.</Text>
-            <View style={styles.chartCard}>
-              <Text style={styles.chartTitle}>Visits by month · {new Date().getFullYear()}</Text>
-              <InteractiveChart labels={MONTHS} series={[{ values: monthly, color: "#001D3D", label: "Treatments" }]} height={140} />
-            </View>
-            <View style={styles.filters}>
-              {types.map((item) => (
-                <Pressable key={item} onPress={() => setTypeFilter(item)} style={[styles.chip, typeFilter === item && styles.chipOn]}>
-                  <Text style={[styles.chipText, typeFilter === item && styles.chipTextOn]}>{item}</Text>
-                </Pressable>
-              ))}
-            </View>
+            <ScreenIntro
+              eyebrow="Treatment history"
+              title="Visits to your centre"
+              lead="Physiotherapy, admissions, ITI and other visits recorded by your treatment centre."
+            />
+            {error ? <ErrorNote message={error} onRetry={() => void load()} /> : null}
+            <StatStrip
+              items={[
+                { label: `Visits in ${year}`, value: String(thisYearTotal) },
+                { label: "Most common", value: commonType },
+                { label: "Last visit", value: items[0] ? shortDate(items[0].treatmentDate).replace(/ \d{4}$/, "") : "—" },
+              ]}
+            />
+            <Panel style={styles.chart}>
+              <View style={styles.chartHead}>
+                <Text style={styles.chartTitle}>Visits by month</Text>
+                <Text style={servicesType.meta}>{year}</Text>
+              </View>
+              <InteractiveChart labels={MONTHS} series={[{ values: monthly, color: servicesColors.ink, label: "Visits" }]} height={128} />
+            </Panel>
+            {types.length > 2 ? <TabStrip options={types} value={typeFilter} onChange={setTypeFilter} style={styles.tabs} /> : null}
           </View>
         }
-        ListFooterComponent={loadingMore ? <ActivityIndicator color={servicesColors.primary} /> : null}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={servicesColors.primary} style={styles.more} /> : null}
         ListEmptyComponent={
-          <Text style={styles.empty}>No treatment records yet. Your centre will add physiotherapy, dental, and other visits here.</Text>
+          <EmptyNote
+            title="No visits recorded yet"
+            body="Your centre will add physiotherapy, dental and other visits here after each appointment."
+          />
         }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardHead}>
-              <Text style={styles.label}>{item.label || item.treatmentType}</Text>
-              <Text style={styles.badge}>{item.status}</Text>
-            </View>
-            <Text style={styles.meta}>
-              {item.hospitalName} · {item.treatmentDate}
-            </Text>
-            {item.description ? <Text style={styles.body}>{item.description}</Text> : null}
-            {item.notes ? <Text style={styles.notes}>{item.notes}</Text> : null}
-          </View>
-        )}
+        renderItem={({ item: row }) =>
+          row.kind === "month" ? (
+            <MonthHeader title={row.title} />
+          ) : (
+            <TimelineEntry date={row.item.treatmentDate} last={row.last}>
+              <View style={styles.entryHead}>
+                <Text style={styles.entryTitle}>{row.item.label || row.item.treatmentType || "Visit"}</Text>
+                {row.item.status ? <StatusTag label={row.item.status} tone={statusTone(row.item.status)} /> : null}
+              </View>
+              <Text style={styles.entryMeta}>
+                {[row.item.label && row.item.treatmentType !== row.item.label ? row.item.treatmentType : "", row.item.hospitalName]
+                  .filter(Boolean)
+                  .join("  ·  ")}
+              </Text>
+              {row.item.description ? <Text style={styles.entryBody}>{row.item.description}</Text> : null}
+              {row.item.notes ? <Text style={styles.entryNotes}>{row.item.notes}</Text> : null}
+            </TimelineEntry>
+          )
+        }
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: servicesColors.pageBg, paddingHorizontal: 12, paddingTop: 8 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  hero: { fontSize: 20, fontWeight: "800", color: servicesColors.navy },
-  lead: { marginTop: 4, marginBottom: 10, fontSize: 13, color: servicesColors.textMuted, lineHeight: 18 },
-  chartCard: { backgroundColor: "#fff", borderRadius: 14, padding: 10, borderWidth: 1, borderColor: servicesColors.border, marginBottom: 10 },
-  chartTitle: { fontSize: 12, fontWeight: "700", color: servicesColors.navy, marginBottom: 4 },
-  filters: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 },
-  chip: { borderWidth: 1, borderColor: servicesColors.border, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: "#fff" },
-  chipOn: { backgroundColor: servicesColors.primary, borderColor: servicesColors.primary },
-  chipText: { fontSize: 11, fontWeight: "700", color: servicesColors.navy },
-  chipTextOn: { color: "#fff" },
-  empty: { textAlign: "center", color: servicesColors.textMuted, lineHeight: 22, marginTop: 24 },
-  error: { color: servicesColors.primary, marginBottom: 8 },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: servicesColors.border,
+  container: { flex: 1, backgroundColor: servicesColors.pageBg },
+  content: { paddingHorizontal: servicesSpacing.screen, paddingBottom: 48 },
+  chart: { marginTop: 12 },
+  chartHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 },
+  chartTitle: { ...servicesType.label, fontSize: 14 },
+  tabs: { marginTop: 20 },
+  more: { marginVertical: 16 },
+  entryHead: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
+  entryTitle: { ...servicesType.label, flex: 1, fontSize: 15 },
+  entryMeta: { ...servicesType.meta, marginTop: 3 },
+  entryBody: { fontSize: 14, lineHeight: 21, color: servicesColors.text, marginTop: 8 },
+  entryNotes: {
+    ...servicesType.meta,
+    marginTop: 8,
+    paddingLeft: 10,
+    borderLeftWidth: 2,
+    borderLeftColor: servicesColors.border,
   },
-  cardHead: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
-  label: { flex: 1, fontSize: 15, fontWeight: "700", color: servicesColors.navy },
-  badge: { fontSize: 11, fontWeight: "700", color: servicesColors.primary },
-  meta: { marginTop: 4, fontSize: 12, color: servicesColors.textMuted },
-  body: { marginTop: 8, fontSize: 13, color: servicesColors.text, lineHeight: 18 },
-  notes: { marginTop: 6, fontSize: 12, color: servicesColors.textMuted },
 });

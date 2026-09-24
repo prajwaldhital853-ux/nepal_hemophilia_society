@@ -3,17 +3,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Download, Search, Users } from "lucide-react";
+import { Download, RefreshCw, Search, Users } from "lucide-react";
 
 import { PaginatedScroll } from "@/components/ui/PaginatedScroll";
 import { StatCardsSkeleton, TableBodySkeleton, TablePanelSkeleton } from "@/components/ui/Skeleton";
+import { PresenceBadge, formatDateTime, type PresenceFields } from "@/features/users/presence";
 import { apiFetch } from "@/lib/api";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { useAuth } from "@/lib/auth";
 import { showToast } from "@/lib/toastBus";
 import { useVisibleSlice } from "@/lib/useVisibleSlice";
 
-type DirectoryUser = {
+type DirectoryUser = PresenceFields & {
   id: string;
   userId?: number | null;
   kind: string;
@@ -26,18 +27,28 @@ type DirectoryUser = {
   province: string;
   treatmentCenter: string;
   status: string;
-  lastLogin?: string;
   joinedDate?: string;
   isPatient: boolean;
 };
 
-type LoginRow = {
+type LoginRow = PresenceFields & {
+  id: number;
   name: string;
   username: string;
   role: string;
-  lastLogin: string;
   active: boolean;
 };
+
+type Counts = {
+  total: number;
+  admins: number;
+  patients: number;
+  active: number;
+  online: number;
+  signedInToday: number;
+};
+
+const EMPTY_COUNTS: Counts = { total: 0, admins: 0, patients: 0, active: 0, online: 0, signedInToday: 0 };
 
 type DeviceRow = {
   deviceId?: string;
@@ -52,13 +63,6 @@ function hrefFor(row: DirectoryUser) {
   if (row.kind === "center_admin") return `/dashboard/hospitals/center-admins/${row.id}`;
   if (row.kind === "treatment_admin") return `/dashboard/hospitals/treatment-admins/${row.id}`;
   return `/dashboard/admins/${row.id}`;
-}
-
-function when(value?: string) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
 }
 
 function statusClass(status: string) {
@@ -77,7 +81,8 @@ export default function UsersModule() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [loginTracking, setLoginTracking] = useState<LoginRow[]>([]);
   const [devices, setDevices] = useState<DeviceRow[]>([]);
-  const [counts, setCounts] = useState({ total: 0, admins: 0, patients: 0, active: 0 });
+  const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS);
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState("All");
   const [status, setStatus] = useState("All");
@@ -98,7 +103,7 @@ export default function UsersModule() {
       const data = await apiFetch(`/users/${q.toString() ? `?${q}` : ""}`);
       setRows(data.users ?? []);
       setNextCursor(data.nextCursor ?? null);
-      setCounts(data.counts ?? { total: 0, admins: 0, patients: 0, active: 0 });
+      setCounts({ ...EMPTY_COUNTS, ...(data.counts ?? {}) });
       setLoginTracking(data.loginTracking ?? []);
       setDevices(data.devices ?? []);
     } catch (err) {
@@ -130,6 +135,11 @@ export default function UsersModule() {
       setLoadingMore(false);
     }
   }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(searchInput), 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => {
     void load();
@@ -187,7 +197,7 @@ export default function UsersModule() {
             onClick={() =>
               downloadCsv(
                 stampFilename("users"),
-                ["ID", "Name", "Role", "Email", "Phone", "Province", "Center", "Status", "Last login"],
+                ["ID", "Name", "Role", "Email", "Phone", "Province", "Center", "Status", "Last login", "Last active", "Presence"],
                 rows.map((row) => [
                   row.id,
                   row.fullName,
@@ -198,6 +208,8 @@ export default function UsersModule() {
                   row.treatmentCenter,
                   row.status,
                   row.lastLogin || "",
+                  row.lastSeen || "",
+                  row.presence || "never",
                 ]),
               )
             }
@@ -211,26 +223,47 @@ export default function UsersModule() {
             onClick={() =>
               downloadCsv(
                 stampFilename("user-logins"),
-                ["Name", "Username", "Role", "Last login", "Active"],
-                loginTracking.map((row) => [row.name, row.username, row.role, row.lastLogin, row.active ? "Yes" : "No"]),
+                ["Name", "Username", "Role", "Last login", "Last active", "Last sign-out", "Presence", "Active"],
+                loginTracking.map((row) => [
+                  row.name,
+                  row.username,
+                  row.role,
+                  row.lastLogin || "",
+                  row.lastSeen || "",
+                  row.lastLogout || "",
+                  row.presence || "never",
+                  row.active ? "Yes" : "No",
+                ]),
               )
             }
           >
             <Download className="size-3.5" />
             Export logins
           </button>
+          <button
+            type="button"
+            className="panel flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none disabled:opacity-60"
+            onClick={() => void load()}
+            disabled={loading}
+            title="Reload login status"
+          >
+            <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
         </div>
       </div>
 
       {loading ? (
-        <StatCardsSkeleton count={4} />
+        <StatCardsSkeleton count={6} />
       ) : (
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {[
           ["Total in scope", counts.total],
           ["Admins / staff", counts.admins],
           ["Patients", counts.patients],
           ["Active", counts.active],
+          ["Online now", counts.online],
+          ["Signed in today", counts.signedInToday],
         ].map(([label, value]) => (
           <article key={String(label)} className="panel p-2.5">
             <p className="text-[10px] uppercase text-faint">{label}</p>
@@ -247,8 +280,8 @@ export default function UsersModule() {
           <Search className="size-3.5 text-faint" />
           <input
             data-shortcut-target="page-search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
             placeholder="Search name, email, ID…"
           />
@@ -328,7 +361,12 @@ export default function UsersModule() {
                         {row.status}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-[10px] text-muted">{when(row.lastLogin)}</td>
+                    <td className="px-3 py-2 text-[10px] text-muted">
+                      {formatDateTime(row.lastLogin)}
+                      <span className="mt-0.5 block">
+                        <PresenceBadge row={row} />
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -351,7 +389,7 @@ export default function UsersModule() {
             <table className="inner-table w-full text-left">
               <thead className="sticky top-0 z-10 bg-card text-[10px] uppercase text-faint">
                 <tr>
-                  {["User", "Role", "Last login", "Active"].map((h) => (
+                  {["User", "Role", "Last login", "Status"].map((h) => (
                     <th key={h} className="px-2 py-2">
                       {h}
                     </th>
@@ -369,14 +407,17 @@ export default function UsersModule() {
                   </tr>
                 ) : (
                   loginPage.visible.map((row) => (
-                    <tr key={row.username}>
+                    <tr key={row.id ?? row.username}>
                       <td className="px-2 py-2 text-[11px]">
                         {row.name}
                         <span className="block text-[10px] text-muted">{row.username}</span>
                       </td>
                       <td className="px-2 py-2 text-[11px]">{row.role}</td>
-                      <td className="px-2 py-2 text-[10px]">{when(row.lastLogin)}</td>
-                      <td className="px-2 py-2 text-[11px]">{row.active ? "Yes" : "No"}</td>
+                      <td className="px-2 py-2 text-[10px]">{formatDateTime(row.lastLogin)}</td>
+                      <td className="px-2 py-2 text-[11px]">
+                        <PresenceBadge row={row} />
+                        {!row.active ? <span className="block text-[10px] text-red-600">Account disabled</span> : null}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -419,7 +460,7 @@ export default function UsersModule() {
                       <td className="px-2 py-2 text-[11px]">{row.identifier}</td>
                       <td className="px-2 py-2 text-[11px]">{row.user || "—"}</td>
                       <td className="px-2 py-2 text-[11px]">{row.failedAttempts}</td>
-                      <td className="px-2 py-2 text-[10px]">{when(row.lockedUntil)}</td>
+                      <td className="px-2 py-2 text-[10px]">{formatDateTime(row.lockedUntil)}</td>
                     </tr>
                   ))
                 )}

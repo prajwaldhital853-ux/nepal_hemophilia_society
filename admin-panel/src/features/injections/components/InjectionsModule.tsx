@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Download,
   Eye,
+  MessageSquareText,
   Plus,
   Search,
   Syringe,
@@ -32,11 +33,15 @@ import {
   fetchInjections,
   fetchPatientInjections,
   statusClass,
+  isOutOfStockError,
   updateInjection,
+  verifyInjectionStock,
   type ApiInjection,
   type InjectionStatus,
 } from "@/features/injections/api";
 import LogInjectionDialog from "@/features/injections/components/LogInjectionDialog";
+import { NotesDrawer } from "@/features/notes/components/NotesDrawer";
+import { invalidateNoteCounts } from "@/features/notes/useNoteCounts";
 import { useShortcutAction } from "@/hooks/useShortcutAction";
 import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 import { InjectionsSummarySkeleton, TableBodySkeleton } from "@/components/ui/Skeleton";
@@ -87,6 +92,7 @@ export default function InjectionsModule() {
   const [openType, setOpenType] = useState(false);
   const [openStatus, setOpenStatus] = useState(false);
   const [selected, setSelected] = useState<ApiInjection | null>(null);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [rows, setRows] = useState<ApiInjection[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -238,9 +244,26 @@ export default function InjectionsModule() {
   }, [rows]);
 
   async function changeStatus(row: ApiInjection, next: InjectionStatus) {
-    await updateInjection(row.id, { status: next });
-    void load();
-    if (selected?.patientId === row.patientId) void loadRelated(row.patientId);
+    if (next === "Scheduled" || next === "Completed") {
+      const stockError = await verifyInjectionStock({
+        factorMedicineId: row.factorMedicineId,
+        dose: row.dose,
+        hospitalName: row.hospitalName,
+        factorName: row.factorMedicineName,
+      });
+      if (stockError) {
+        showToast(stockError);
+        return;
+      }
+    }
+    try {
+      await updateInjection(row.id, { status: next });
+      void load();
+      if (selected?.patientId === row.patientId) void loadRelated(row.patientId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not update status";
+      if (isOutOfStockError(message)) showToast(message);
+    }
   }
 
   const patient = selected
@@ -443,9 +466,19 @@ export default function InjectionsModule() {
           </div>
 
           <div className="mt-3 rounded-md border border-line-subtle px-3 py-2.5">
-            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-ink">
-              <Syringe className="size-3.5 text-brand" />
-              Selected injection · {selected.displayCode}
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink">
+                <Syringe className="size-3.5 text-brand" />
+                Selected injection · {selected.displayCode}
+              </div>
+              <button
+                type="button"
+                onClick={() => setNotesOpen(true)}
+                className="inline-flex items-center gap-1 rounded border border-line-subtle px-2 py-0.5 text-[10px] font-medium text-muted hover:text-ink"
+              >
+                <MessageSquareText className="size-3" />
+                Notes
+              </button>
             </div>
             <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-[11px]">
               {[
@@ -466,6 +499,17 @@ export default function InjectionsModule() {
               <p className="mt-2 rounded bg-elevated px-2 py-1.5 text-[10px] text-muted">{selected.notes}</p>
             ) : null}
           </div>
+          {notesOpen ? (
+            <NotesDrawer
+              targetType="injection"
+              targetId={selected.id}
+              title={`${selected.displayCode} · ${selected.factorType} ${selected.dose} ${selected.unit}`}
+              subtitle={`${patient.name} · ${selected.date}`}
+              legacyNote={selected.notes ? { label: "Note recorded with injection", body: selected.notes } : null}
+              onClose={() => setNotesOpen(false)}
+              onChanged={() => invalidateNoteCounts(selected.patientId)}
+            />
+          ) : null}
 
           <div className="mt-3">
             <div className="mb-2 flex items-center justify-between gap-2">

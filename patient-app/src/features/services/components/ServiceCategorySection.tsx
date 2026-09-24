@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { ServiceCard } from "@/features/services/components/ServiceCard";
-import { servicesColors, servicesSpacing } from "@/features/services/theme/servicesTheme";
+import { servicesColors, servicesSpacing } from "@/features/services/theme/servicesHubTheme";
 import { toCardItem, type AppService, type ServiceCategoryGroup } from "@/features/services/types";
 
 type ServiceCategorySectionProps = {

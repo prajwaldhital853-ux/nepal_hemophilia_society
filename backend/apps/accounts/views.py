@@ -6,12 +6,24 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.password_policy import password_expires_at, password_is_expired
+from apps.accounts.presence import mark_logout
 from apps.accounts.rbac import is_active_admin
 from apps.accounts.serializers import UserSerializer
 from apps.accounts.staffing import save_admin_photo, serialize_staff
 from apps.patients.views import _flatten_errors
 
 User = get_user_model()
+
+
+class LogoutView(APIView):
+    """Records sign-out so the admin panel can show the account as signed out rather than idle."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    allow_must_change_password = True
+
+    def post(self, request):
+        mark_logout(request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class MeView(APIView):

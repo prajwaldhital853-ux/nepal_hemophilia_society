@@ -78,6 +78,14 @@ class ClinicalWorkflowTests(APITestCase):
             unit="IU",
             created_by=self.treatment_admin,
         )
+        FactorStock.objects.create(
+            hospital=self.other_hospital,
+            factor_medicine=self.factor_a,
+            batch_number="LOT-A2",
+            quantity=Decimal("50000"),
+            unit="IU",
+            created_by=self.treatment_admin,
+        )
 
         self.patient_user = User.objects.create_user(
             username=self.patient_a.unique_patient_id,
@@ -282,6 +290,25 @@ class ClinicalWorkflowTests(APITestCase):
             format="json",
         )
         self.assertEqual(bleeding.status_code, 201, bleeding.data)
+
+    def test_scheduled_injection_rejected_without_center_stock(self):
+        from apps.stock.models import FactorStock
+
+        FactorStock.objects.filter(hospital=self.hospital, factor_medicine=self.factor_a).delete()
+        self.client.force_authenticate(self.treatment_admin)
+        res = self.client.post(
+            "/api/v1/injections/",
+            {
+                "patientId": self.patient_a.unique_patient_id,
+                "factorMedicineId": self.factor_a.id,
+                "dose": "1000",
+                "indication": "On-demand",
+                "status": "Scheduled",
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400, res.data)
+        self.assertIn("Out of stock", str(res.data))
 
     def test_super_admin_adds_treatment_with_hospital(self):
         self.client.force_authenticate(self.super)

@@ -39,9 +39,16 @@ export type StockMovementRow = {
   injectionId?: number | null;
 };
 
-export async function fetchStock(params: { hospitalName?: string; search?: string; cursor?: string; limit?: number } = {}) {
+export async function fetchStock(params: {
+  hospitalName?: string;
+  factorMedicineId?: number;
+  search?: string;
+  cursor?: string;
+  limit?: number;
+} = {}) {
   const q = new URLSearchParams();
   if (params.hospitalName) q.set("hospitalName", params.hospitalName);
+  if (params.factorMedicineId) q.set("factorMedicineId", String(params.factorMedicineId));
   if (params.search) q.set("search", params.search);
   if (params.cursor) q.set("cursor", params.cursor);
   if (params.limit) q.set("limit", String(params.limit));

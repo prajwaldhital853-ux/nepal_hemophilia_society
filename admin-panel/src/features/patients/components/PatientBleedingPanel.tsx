@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 
+import { NotesButton, NotesDrawer } from "@/features/notes/components/NotesDrawer";
+import { invalidateNoteCounts, useNoteCounts } from "@/features/notes/useNoteCounts";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -73,6 +75,8 @@ export function PatientBleedingPanel({
   const [severity, setSeverity] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  const [notesFor, setNotesFor] = useState<BleedingEpisode | null>(null);
+  const { countFor } = useNoteCounts(patientId);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -176,7 +180,12 @@ export function PatientBleedingPanel({
                     </span>
                   </td>
                   <td className="px-2 py-2 text-[11px]">{row.hospitalName || "—"}</td>
-                  <td className="max-w-[280px] px-2 py-2 text-[11px] text-muted">{row.notes || "—"}</td>
+                  <td className="max-w-[280px] px-2 py-2 text-[11px] text-muted">
+                    <div className="flex items-start gap-1.5">
+                      <span className="line-clamp-2 flex-1">{row.notes || "—"}</span>
+                      <NotesButton count={countFor("bleeding", row.id)} onClick={() => setNotesFor(row)} />
+                    </div>
+                  </td>
                   <td className="px-2 py-2 text-[11px]">{row.recordedBy || "—"}</td>
                   <td className="px-2 py-2 text-[11px] text-muted whitespace-nowrap">{formatDateTime(row.createdAt)}</td>
                 </tr>
@@ -185,6 +194,18 @@ export function PatientBleedingPanel({
           </tbody>
         </table>
       </div>
+
+      {notesFor ? (
+        <NotesDrawer
+          targetType="bleeding"
+          targetId={notesFor.id}
+          title={`Bleed · ${formatDate(notesFor.episodeDate)}`}
+          subtitle={[notesFor.site, notesFor.severity, notesFor.hospitalName].filter(Boolean).join(" · ")}
+          legacyNote={notesFor.notes ? { label: "Note recorded with episode", body: notesFor.notes } : null}
+          onClose={() => setNotesFor(null)}
+          onChanged={() => invalidateNoteCounts(patientId)}
+        />
+      ) : null}
 
       {showForm ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

@@ -1,19 +1,30 @@
-import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Fragment, useCallback, useEffect, useState } from "react";
+import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { StackScreenProps } from "@react-navigation/stack";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/core/auth/AuthContext";
 import type { RootStackParamList } from "@/core/navigation/types";
 import { fetchPatientService } from "@/features/services/api";
+import {
+  Divider,
+  EmptyNote,
+  ErrorNote,
+  LinkRow,
+  LoadingScreen,
+  Panel,
+  ServicesStatusBar,
+  useBottomPadding,
+} from "@/features/services/components/ui";
 import { openPatientService } from "@/features/services/navigateService";
 import type { AppService } from "@/features/services/types";
-import { servicesColors } from "@/features/services/theme/servicesTheme";
+import { accentFor, servicesColors, servicesSpacing, servicesType } from "@/features/services/theme/servicesTheme";
 
 type Props = StackScreenProps<RootStackParamList, "ServiceDetail">;
 
 export default function ServiceDetailScreen({ navigation, route }: Props) {
   const { token } = useAuth();
+  const bottomPadding = useBottomPadding();
   const { slug } = route.params;
   const [service, setService] = useState<AppService | null>(null);
   const [error, setError] = useState("");
@@ -41,74 +52,105 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
     if (service?.title) navigation.setOptions({ title: service.title });
   }, [navigation, service?.title]);
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={servicesColors.primary} />
-      </View>
-    );
-  }
+  if (loading && !service) return <LoadingScreen />;
 
   if (!service) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.error}>{error || "Service not found."}</Text>
+      <View style={styles.screen}>
+        <View style={styles.content}>
+          {error ? <ErrorNote message={error} onRetry={() => void load()} /> : null}
+          <EmptyNote title="This service isn't available" body="It may have been moved or unpublished by NHS staff." />
+        </View>
       </View>
     );
   }
 
+  const accent = accentFor(service.category);
   const hasShortcut =
     service.actionType !== "content" &&
     (Boolean(service.actionValue) || ["news", "events", "resources", "gallery"].includes(service.actionType));
+  const paragraphs = (service.body || "").split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
 
-  const paragraphs = (service.body || "").split(/\n{2,}/).filter(Boolean);
+  const contacts: { icon: keyof typeof Ionicons.glyphMap; label: string; detail?: string; onPress: () => void }[] = [];
+  if (service.phone) {
+    contacts.push({ icon: "call-outline", label: "Call", detail: service.phone, onPress: () => void Linking.openURL(`tel:${service.phone}`) });
+  }
+  if (service.email) {
+    contacts.push({ icon: "mail-outline", label: "Email", detail: service.email, onPress: () => void Linking.openURL(`mailto:${service.email}`) });
+  }
+  if (service.websiteUrl) {
+    const url = service.websiteUrl;
+    contacts.push({
+      icon: "globe-outline",
+      label: "Website",
+      detail: url.replace(/^https?:\/\//, "").replace(/\/$/, ""),
+      onPress: () => void Linking.openURL(url),
+    });
+  }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.hero}>
-        <Text style={styles.kicker}>{service.categoryLabel || service.category}</Text>
-        <Text style={styles.title}>{service.title}</Text>
-        <Text style={styles.summary}>{service.description}</Text>
-        <Text style={styles.adminNote}>Copy on this page is published from the NHS admin panel.</Text>
-      </View>
-
-      {paragraphs.map((block, index) => (
-        <View key={index} style={styles.block}>
-          <Text style={styles.body}>{block}</Text>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} tintColor={servicesColors.primary} />}
+    >
+      <ServicesStatusBar />
+      <View style={styles.header}>
+        <View style={styles.kickerRow}>
+          <View style={[styles.kickerMark, { backgroundColor: accent.fg }]} />
+          <Text style={[servicesType.eyebrow, { color: accent.fg }]}>{service.categoryLabel || service.category}</Text>
         </View>
-      ))}
-
-      <View style={styles.actions}>
-        {service.phone ? (
-          <Pressable style={styles.action} onPress={() => void Linking.openURL(`tel:${service.phone}`)}>
-            <Ionicons name="call" size={18} color="#fff" />
-            <Text style={styles.actionText}>Call {service.phone}</Text>
-          </Pressable>
-        ) : null}
-        {service.email ? (
-          <Pressable style={[styles.action, styles.actionAlt]} onPress={() => void Linking.openURL(`mailto:${service.email}`)}>
-            <Ionicons name="mail" size={18} color={servicesColors.primary} />
-            <Text style={styles.actionAltText}>{service.email}</Text>
-          </Pressable>
-        ) : null}
-        {service.websiteUrl ? (
-          <Pressable style={[styles.action, styles.actionAlt]} onPress={() => void Linking.openURL(service.websiteUrl!)}>
-            <Ionicons name="open-outline" size={18} color={servicesColors.primary} />
-            <Text style={styles.actionAltText}>Open website</Text>
-          </Pressable>
-        ) : null}
+        <Text style={styles.title}>{service.title}</Text>
+        {service.description ? <Text style={styles.standfirst}>{service.description}</Text> : null}
       </View>
-      {service.address ? (
-        <View style={styles.block}>
-          <Text style={styles.addrLabel}>Address</Text>
-          <Text style={styles.body}>{service.address}</Text>
+
+      {paragraphs.length ? (
+        <View style={styles.article}>
+          {paragraphs.map((block, index) => (
+            <Text key={index} style={styles.paragraph}>
+              {block}
+            </Text>
+          ))}
         </View>
       ) : null}
 
       {hasShortcut ? (
-        <Pressable style={styles.cta} onPress={() => openPatientService(navigation, service)}>
-          <Text style={styles.ctaText}>Open related page</Text>
+        <Pressable
+          style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}
+          onPress={() => openPatientService(navigation, service)}
+          accessibilityRole="button"
+        >
+          <Text style={styles.ctaText}>Open {service.title}</Text>
+          <Ionicons name="arrow-forward" size={18} color={servicesColors.white} />
         </Pressable>
+      ) : null}
+
+      {contacts.length || service.address ? (
+        <>
+          <Text style={styles.groupLabel}>Get in touch</Text>
+          <Panel padded={false}>
+            {contacts.map((row, i) => (
+              <Fragment key={row.label}>
+                {i > 0 ? <Divider inset={49} /> : null}
+                <LinkRow icon={row.icon} label={row.label} detail={row.detail} onPress={row.onPress} tint={accent.fg} />
+              </Fragment>
+            ))}
+            {service.address ? (
+              <>
+                {contacts.length ? <Divider inset={49} /> : null}
+                <LinkRow
+                  icon="location-outline"
+                  label="Address"
+                  detail={service.address}
+                  tint={accent.fg}
+                  onPress={() =>
+                    void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(service.address ?? "")}`)
+                  }
+                />
+              </>
+            ) : null}
+          </Panel>
+        </>
       ) : null}
     </ScrollView>
   );
@@ -116,36 +158,30 @@ export default function ServiceDetailScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: servicesColors.pageBg },
-  content: { padding: 16, paddingBottom: 40 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 16 },
-  hero: { backgroundColor: servicesColors.navy, borderRadius: 18, padding: 18, marginBottom: 12 },
-  kicker: { fontSize: 11, fontWeight: "800", color: "#FECACA", textTransform: "uppercase" },
-  title: { marginTop: 6, fontSize: 24, fontWeight: "800", color: "#fff" },
-  summary: { marginTop: 8, fontSize: 14, color: "#E5E7EB", lineHeight: 20 },
-  adminNote: { marginTop: 10, fontSize: 11, color: "#FCA5A5" },
-  block: { backgroundColor: "#fff", borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: servicesColors.border },
-  body: { fontSize: 15, color: servicesColors.text, lineHeight: 22 },
-  addrLabel: { fontSize: 11, fontWeight: "800", color: servicesColors.primary, marginBottom: 4, textTransform: "uppercase" },
-  actions: { gap: 8, marginTop: 4 },
-  action: {
-    backgroundColor: servicesColors.primary,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+  content: { paddingHorizontal: servicesSpacing.screen + 4, paddingBottom: 48 },
+  header: {
+    paddingTop: 24,
+    paddingBottom: 20,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: servicesColors.borderStrong,
+  },
+  kickerRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  kickerMark: { width: 14, height: 2, borderRadius: 1 },
+  title: { ...servicesType.display, marginTop: 10 },
+  standfirst: { ...servicesType.lead, fontSize: 16, lineHeight: 24, marginTop: 10 },
+  article: { paddingTop: 20, gap: 16 },
+  paragraph: { ...servicesType.body },
+  cta: {
+    marginTop: 28,
+    backgroundColor: servicesColors.ink,
+    borderRadius: 10,
+    paddingVertical: 15,
+    paddingHorizontal: 18,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "space-between",
   },
-  actionAlt: { backgroundColor: "#fff", borderWidth: 1, borderColor: servicesColors.border },
-  actionText: { color: "#fff", fontWeight: "700" },
-  actionAltText: { color: servicesColors.primary, fontWeight: "700", flexShrink: 1 },
-  error: { color: servicesColors.primary, textAlign: "center" },
-  cta: {
-    marginTop: 8,
-    backgroundColor: servicesColors.navy,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  ctaText: { color: "#fff", fontWeight: "800" },
+  ctaPressed: { opacity: 0.88 },
+  ctaText: { color: servicesColors.white, fontSize: 15, fontWeight: "600", flexShrink: 1 },
+  groupLabel: { ...servicesType.eyebrow, marginTop: 32, marginBottom: 10 },
 });

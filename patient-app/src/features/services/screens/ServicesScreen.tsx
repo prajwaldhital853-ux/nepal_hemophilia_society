@@ -28,7 +28,7 @@ import { ServicesQuoteBanner } from "@/features/services/components/ServicesQuot
 import { ServicesSearchBar } from "@/features/services/components/ServicesSearchBar";
 import { openPatientService } from "@/features/services/navigateService";
 import type { ServiceCategoryGroup } from "@/features/services/types";
-import { servicesColors, servicesSpacing } from "@/features/services/theme/servicesTheme";
+import { servicesColors, servicesSpacing } from "@/features/services/theme/servicesHubTheme";
 
 type Props = StackScreenProps<RootStackParamList, "Services">;
 

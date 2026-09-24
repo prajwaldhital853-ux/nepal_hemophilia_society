@@ -1,3 +1,4 @@
+import type { PresenceState } from "@/features/users/presence";
 import { apiFetch, apiForm } from "@/lib/api";
 
 export type StaffKind =
@@ -36,6 +37,11 @@ export type StaffRecord = {
   mustChangePassword: boolean;
   photoUrl?: string;
   lastLogin?: string;
+  lastLoginAt?: string;
+  lastSeenAt?: string;
+  lastLogoutAt?: string;
+  presence?: PresenceState;
+  online?: boolean;
   joinedDate?: string;
   canDelete?: boolean;
   canEdit?: boolean;

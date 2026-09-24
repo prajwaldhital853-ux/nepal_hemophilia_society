@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Image, StyleSheet, Text, View } from "react-native";
 
-import { servicesColors } from "@/features/services/theme/servicesTheme";
+import { servicesColors } from "@/features/services/theme/servicesHubTheme";
 
 const HANDS_IMAGE = require("../../../../assets/images/services-banner-hands.png");
 

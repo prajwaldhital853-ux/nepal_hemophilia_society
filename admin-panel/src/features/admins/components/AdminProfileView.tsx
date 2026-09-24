@@ -10,13 +10,15 @@ import { UserAvatar } from "@/components/ui/UserAvatar";
 import { deleteStaffAccount, fetchStaffAccount, KIND_LABELS, updateStaffAccount, type StaffRecord } from "@/features/admins/api";
 import StaffAccountForm from "@/features/admins/components/StaffAccountForm";
 import { isOwnStaffAccount } from "@/features/admins/identity";
+import { NotesThread } from "@/features/notes/components/NotesThread";
+import { PresenceBadge, formatDateTime, staffPresence } from "@/features/users/presence";
 import { useAuth } from "@/lib/auth";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { showConfirm } from "@/lib/confirmBus";
 import { PERM_LABELS } from "@/lib/permissions";
 import { showToast } from "@/lib/toastBus";
 
-const tabs = ["Overview", "Roles & Permissions"];
+const tabs = ["Overview", "Roles & Permissions", "Notes"];
 
 function InfoRows({ items }: { items: [string, string][] }) {
   return (
@@ -270,6 +272,9 @@ export default function AdminProfileView({ id }: { id: string }) {
               {admin.status}
               {admin.viewOnly ? " · View only" : ""}
             </span>
+            <div className="mt-2">
+              <PresenceBadge row={staffPresence(admin)} />
+            </div>
             <div className="profile-sidebar-divider">
               {(
                 [
@@ -308,6 +313,8 @@ export default function AdminProfileView({ id }: { id: string }) {
                           : "Yes"
                         : "No",
                     ],
+                    ["Last login", admin.lastLoginAt ? formatDateTime(admin.lastLoginAt) : "Never"],
+                    ["Last active", admin.lastSeenAt ? formatDateTime(admin.lastSeenAt) : "—"],
                   ]}
                 />
               </article>
@@ -326,6 +333,19 @@ export default function AdminProfileView({ id }: { id: string }) {
                 />
               </article>
             </div>
+          ) : tab === "Notes" ? (
+            <article className="panel p-3">
+              <h3 className="text-[12px] font-semibold text-ink">Account notes</h3>
+              <p className="mb-3 mt-0.5 text-[10px] text-muted">
+                Internal notes about {admin.fullName}&apos;s account — handovers, access requests, follow-ups.
+              </p>
+              <NotesThread
+                targetType="staff"
+                targetId={admin.userId}
+                legacyNote={admin.notes ? { label: "Note on account", body: admin.notes } : null}
+                className="max-w-3xl"
+              />
+            </article>
           ) : (
             <article className="panel p-3">
               <h3 className="text-[12px] font-semibold text-ink">Granted permissions</h3>

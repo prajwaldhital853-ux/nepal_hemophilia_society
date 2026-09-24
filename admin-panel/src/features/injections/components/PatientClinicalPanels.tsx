@@ -7,7 +7,9 @@ import {
   fetchPatientInjections,
   fetchPatientTreatments,
   statusClass,
+  isOutOfStockError,
   updateInjection,
+  verifyInjectionStock,
   updateTreatment,
   type ApiInjection,
   type ApiTreatment,
@@ -15,8 +17,11 @@ import {
 } from "@/features/injections/api";
 import LogInjectionDialog from "@/features/injections/components/LogInjectionDialog";
 import LogTreatmentDialog from "@/features/injections/components/LogTreatmentDialog";
+import { NotesButton, NotesDrawer } from "@/features/notes/components/NotesDrawer";
+import { invalidateNoteCounts, useNoteCounts } from "@/features/notes/useNoteCounts";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
+import { showToast } from "@/lib/toastBus";
 
 function StatusSelect({
   value,
@@ -64,6 +69,8 @@ export function PatientInjectionsPanel({
   const [loading, setLoading] = useState(true);
   const [showLog, setShowLog] = useState(false);
   const [error, setError] = useState("");
+  const [notesFor, setNotesFor] = useState<ApiInjection | null>(null);
+  const { countFor } = useNoteCounts(patientId);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -84,11 +91,26 @@ export function PatientInjectionsPanel({
   }, [load]);
 
   async function changeStatus(row: ApiInjection, status: string) {
+    if (status === "Scheduled" || status === "Completed") {
+      const stockError = await verifyInjectionStock({
+        factorMedicineId: row.factorMedicineId,
+        dose: row.dose,
+        hospitalName: row.hospitalName,
+        factorName: row.factorMedicineName,
+      });
+      if (stockError) {
+        showToast(stockError);
+        setError(stockError);
+        return;
+      }
+    }
     try {
       await updateInjection(row.id, { status });
       void load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update status");
+      const message = err instanceof Error ? err.message : "Could not update status";
+      if (isOutOfStockError(message)) showToast(message);
+      setError(message);
     }
   }
 
@@ -121,7 +143,7 @@ export function PatientInjectionsPanel({
         <table className="inner-table mt-2 w-full min-w-[640px] text-left text-sm">
           <thead className="text-[11px] uppercase text-faint">
             <tr>
-              {["Date", "Factor / Medicine", "Dose", "Type", "Status", "Doctor / Center"].map((h) => (
+              {["Date", "Factor / Medicine", "Dose", "Type", "Status", "Doctor / Center", "Notes"].map((h) => (
                 <th key={h} className="px-2 py-2">
                   {h}
                 </th>
@@ -131,13 +153,13 @@ export function PatientInjectionsPanel({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-2 py-4 text-[11px] text-muted">
+                <td colSpan={7} className="px-2 py-4 text-[11px] text-muted">
                   Loading…
                 </td>
               </tr>
             ) : display.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-2 py-4 text-[11px] text-muted">
+                <td colSpan={7} className="px-2 py-4 text-[11px] text-muted">
                   {canAdd
                     ? "No injections logged yet. Click Log injection to connect this patient to a record."
                     : "No injections logged yet."}
@@ -165,12 +187,26 @@ export function PatientInjectionsPanel({
                     {row.doctorName || row.administeredBy || "—"}
                     <span className="block text-[10px] text-muted">{row.hospitalName}</span>
                   </td>
+                  <td className="px-2 py-2">
+                    <NotesButton count={countFor("injection", row.id) + (row.notes ? 1 : 0)} onClick={() => setNotesFor(row)} />
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+      {notesFor ? (
+        <NotesDrawer
+          targetType="injection"
+          targetId={notesFor.id}
+          title={`${notesFor.factorMedicineName} · ${notesFor.dose} ${notesFor.unit}`}
+          subtitle={[notesFor.date, notesFor.hospitalName].filter(Boolean).join(" · ")}
+          legacyNote={notesFor.notes ? { label: "Note recorded with injection", body: notesFor.notes } : null}
+          onClose={() => setNotesFor(null)}
+          onChanged={() => invalidateNoteCounts(patientId)}
+        />
+      ) : null}
       {showLog ? (
         <LogInjectionDialog
           patientId={patientId}
@@ -204,6 +240,8 @@ export function PatientTreatmentsPanel({
   const [rows, setRows] = useState<ApiTreatment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showLog, setShowLog] = useState(false);
+  const [notesFor, setNotesFor] = useState<ApiTreatment | null>(null);
+  const { countFor } = useNoteCounts(patientId);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -244,7 +282,7 @@ export function PatientTreatmentsPanel({
       <table className="inner-table mt-2 w-full text-left text-sm">
         <thead className="text-[11px] uppercase text-faint">
           <tr>
-            {["Date", "Type", "Description", "Status", "Center"].map((h) => (
+            {["Date", "Type", "Description", "Status", "Center", "Notes"].map((h) => (
               <th key={h} className="px-2 py-2">
                 {h}
               </th>
@@ -254,13 +292,13 @@ export function PatientTreatmentsPanel({
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={5} className="px-2 py-4 text-[11px] text-muted">
+              <td colSpan={6} className="px-2 py-4 text-[11px] text-muted">
                 Loading…
               </td>
             </tr>
           ) : rows.length === 0 ? (
             <tr>
-              <td colSpan={5} className="px-2 py-4 text-[11px] text-muted">
+              <td colSpan={6} className="px-2 py-4 text-[11px] text-muted">
                 No treatment records yet.
               </td>
             </tr>
@@ -280,11 +318,25 @@ export function PatientTreatmentsPanel({
                   )}
                 </td>
                 <td className="px-2 py-2 text-[11px]">{row.hospitalName}</td>
+                <td className="px-2 py-2">
+                  <NotesButton count={countFor("treatment", row.id) + (row.notes ? 1 : 0)} onClick={() => setNotesFor(row)} />
+                </td>
               </tr>
             ))
           )}
         </tbody>
       </table>
+      {notesFor ? (
+        <NotesDrawer
+          targetType="treatment"
+          targetId={notesFor.id}
+          title={`${notesFor.treatmentType} treatment`}
+          subtitle={[notesFor.treatmentDate, notesFor.hospitalName].filter(Boolean).join(" · ")}
+          legacyNote={notesFor.notes ? { label: "Note recorded with treatment", body: notesFor.notes } : null}
+          onClose={() => setNotesFor(null)}
+          onChanged={() => invalidateNoteCounts(patientId)}
+        />
+      ) : null}
       {showLog ? (
         <LogTreatmentDialog
           patientId={patientId}

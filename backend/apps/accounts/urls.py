@@ -5,13 +5,14 @@ from apps.accounts.forgot_password import AdminForgotPasswordView, AdminResetPas
 from apps.accounts.jwt import NhmsTokenObtainPairView, NhmsTokenRefreshView
 from apps.accounts.patient_auth import PatientChangePasswordView, PatientLoginView
 from apps.accounts.staff_views import StaffCatalogView, StaffDetailView, StaffListCreateView
-from apps.accounts.views import MeProfileView, MeView
+from apps.accounts.views import LogoutView, MeProfileView, MeView
 
 app_name = "accounts"
 
 urlpatterns = [
     path("login/", NhmsTokenObtainPairView.as_view(), name="login"),
     path("refresh/", NhmsTokenRefreshView.as_view(), name="refresh"),
+    path("logout/", LogoutView.as_view(), name="logout"),
     path("me/", MeView.as_view(), name="me"),
     path("me/profile/", MeProfileView.as_view(), name="me-profile"),
     path("change-password/", AdminChangePasswordView.as_view(), name="admin-change-password"),

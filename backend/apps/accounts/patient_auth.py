@@ -23,6 +23,7 @@ from apps.accounts.throttles import DeviceLoginThrottle
 from apps.accounts.models import UserRole
 from apps.accounts.password_policy import password_expires_at, password_is_expired, password_reuse_error, record_password_history
 from apps.accounts.permissions import IsPatientRole
+from apps.accounts.presence import mark_login
 from apps.accounts.serializers import UserSerializer
 from apps.patients.models import Patient
 
@@ -120,8 +121,7 @@ class PatientLoginView(APIView):
             )
 
         register_success(device_id, identifier, user)
-        user.last_login = timezone.now()
-        user.save(update_fields=["last_login"])
+        mark_login(user)
         return Response(issue_patient_tokens(user))
 
 

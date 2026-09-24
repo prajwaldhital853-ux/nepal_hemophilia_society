@@ -6,6 +6,40 @@ from django.db import transaction
 from django.db.models import F, Sum
 from rest_framework.exceptions import ValidationError
 
+
+def available_stock_quantity(hospital, factor_medicine, batch_number=None):
+    """Total on-hand quantity for a product at a treatment center (optionally one batch)."""
+    qs = FactorStock.objects.filter(
+        hospital=hospital,
+        factor_medicine=factor_medicine,
+        quantity__gt=0,
+    )
+    batch = (batch_number or "").strip()
+    if batch:
+        qs = qs.filter(batch_number=batch)
+    return qs.aggregate(total=Sum("quantity"))["total"] or Decimal("0")
+
+
+def ensure_stock_available(hospital, factor_medicine, dose, batch_number=None):
+    """Raise ValidationError when the center cannot fulfil the requested dose."""
+    qty = Decimal(dose)
+    if qty <= 0:
+        raise ValidationError({"dose": "Dose must be greater than zero."})
+    available = available_stock_quantity(hospital, factor_medicine, batch_number)
+    if available < qty:
+        product = factor_medicine.name if factor_medicine else "Factor"
+        center = hospital.name if hospital else "this center"
+        unit = factor_medicine.unit if factor_medicine else ""
+        raise ValidationError(
+            {
+                "error": (
+                    f"Out of stock: {product} is not available at {center}. "
+                    f"Only {available:g} {unit} on hand; {qty:g} requested."
+                ),
+                "code": "insufficient_stock",
+            }
+        )
+
 from apps.injections.models import InjectionStatus
 from apps.stock.models import FactorStock, GlobalStockShipment, StockMovement, StockMovementType
 

@@ -14,6 +14,7 @@ from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from apps.accounts.models import UserRole
+from apps.accounts.presence import presence_fields
 from apps.accounts.rbac import (
     KIND_ADMIN,
     KIND_CENTER,
@@ -530,6 +531,7 @@ def serialize_staff(user, request=None) -> dict:
     last_login = ""
     if user.last_login:
         last_login = timezone.localtime(user.last_login).strftime("%b %d, %Y %I:%M %p")
+    presence = presence_fields(user)
     actor = getattr(request, "user", None) if request is not None else None
     can_delete = bool(actor and actor.is_authenticated and can_delete_user(actor, user))
     can_edit = bool(
@@ -567,6 +569,11 @@ def serialize_staff(user, request=None) -> dict:
         "mustChangePassword": bool(user.must_change_password),
         "photoUrl": photo_url_for(user, request),
         "lastLogin": last_login,
+        "lastLoginAt": presence["lastLogin"],
+        "lastSeenAt": presence["lastSeen"],
+        "lastLogoutAt": presence["lastLogout"],
+        "presence": presence["presence"],
+        "online": presence["online"],
         "joinedDate": user.date_joined.strftime("%b %d, %Y") if user.date_joined else "",
         "canDelete": can_delete,
         "canEdit": can_edit,

@@ -7,9 +7,12 @@ import {
   fetchFactors,
   INJECTION_INDICATIONS,
   INJECTION_STATUSES,
+  isOutOfStockError,
+  verifyInjectionStock,
   type InjectionIndication,
   type InjectionStatus,
 } from "@/features/injections/api";
+import { showToast } from "@/lib/toastBus";
 
 const fieldClass =
   "mt-1 w-full rounded border border-line-subtle bg-elevated px-2.5 py-1.5 text-[12px] text-ink outline-none focus:border-brand";
@@ -51,6 +54,19 @@ export default function LogInjectionDialog({
 
   async function submit(acknowledge = false) {
     setError("");
+    if (status === "Scheduled" || status === "Completed") {
+      const stockError = await verifyInjectionStock({
+        factorMedicineId: Number(factorMedicineId),
+        dose,
+        hospitalName: treatmentCenter || undefined,
+        factorName: factors.find((f) => f.id === Number(factorMedicineId))?.name,
+      });
+      if (stockError) {
+        showToast(stockError);
+        setError(stockError);
+        return;
+      }
+    }
     setLoading(true);
     try {
       await createInjection({
@@ -72,6 +88,9 @@ export default function LogInjectionDialog({
       if (message.toLowerCase().includes("inhibitor")) {
         setNeedsAck(true);
         setError("Patient has current inhibitors. Click Save again to acknowledge and continue.");
+      } else if (isOutOfStockError(message)) {
+        showToast(message);
+        setError(message);
       } else {
         setError(message);
       }

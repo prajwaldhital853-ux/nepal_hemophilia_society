@@ -151,11 +151,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    if (token) {
+      void patientApi("/auth/logout/", { method: "POST", token, timeoutMs: 4000, _retried: true }).catch(() => undefined);
+    }
     await clearSession();
     setToken("");
     setPatient(null);
     setMustChangePassword(false);
-  }, []);
+  }, [token]);
 
   const value = useMemo<AuthState>(
     () => ({

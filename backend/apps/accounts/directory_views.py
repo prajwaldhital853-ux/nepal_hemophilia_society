@@ -1,12 +1,14 @@
 """Scoped users directory for Super Admin, Admin, Province Admin, and hospital staff."""
 
-from django.db.models import Q
+from django.db.models import Count, F, Q
+from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import LoginDeviceLock, User, UserRole
 from apps.accounts.permissions import CanViewUsers, IsAdminRole
+from apps.accounts.presence import online_cutoff, presence_fields
 from apps.accounts.rbac import (
     KIND_LABELS,
     account_kind,
@@ -32,11 +34,16 @@ def _patient_queryset_for(actor):
     return qs.none()
 
 
+def _display_name(user):
+    if user.role == UserRole.PATIENT:
+        profile = getattr(user, "patient_profile", None)
+        if profile and profile.full_name:
+            return profile.full_name
+    return user.get_full_name() or user.username
+
+
 def _serialize_patient(patient, request):
     user = patient.user
-    last_login = ""
-    if user and user.last_login:
-        last_login = user.last_login.isoformat()
     return {
         "id": patient.unique_patient_id,
         "userId": user.pk if user else None,
@@ -50,7 +57,7 @@ def _serialize_patient(patient, request):
         "province": patient.province.name if patient.province_id else "",
         "treatmentCenter": patient.primary_hospital.name if patient.primary_hospital_id else "",
         "status": patient.verification_status,
-        "lastLogin": last_login,
+        **presence_fields(user),
         "joinedDate": patient.created_at.isoformat() if patient.created_at else "",
         "photoUrl": "",
         "isPatient": True,
@@ -74,7 +81,7 @@ def _serialize_staff_row(user, request):
         "province": row["province"],
         "treatmentCenter": row["treatmentCenter"],
         "status": row["status"],
-        "lastLogin": row.get("lastLogin") or "",
+        **presence_fields(user),
         "joinedDate": row.get("joinedDate") or "",
         "photoUrl": row.get("photoUrl") or photo_url_for(user, request),
         "viewOnly": row.get("viewOnly"),
@@ -167,17 +174,33 @@ class UsersDirectoryView(APIView):
             if account_kind(request.user) != "super_admin":
                 login_users = login_users.exclude(role=UserRole.SUPER_ADMIN)
 
+        now = timezone.now()
+        patient_users = _patient_queryset_for(request.user).filter(user__isnull=False).values("user_id")
+        tracked = User.objects.filter(Q(pk__in=login_users.values("pk")) | Q(pk__in=patient_users)).filter(
+            last_login__isnull=False
+        )
+        if kind == "patient":
+            tracked = tracked.filter(role=UserRole.PATIENT)
+        elif kind and kind not in ("All", "all"):
+            tracked = tracked.exclude(role=UserRole.PATIENT)
         login_tracking = [
             {
                 "id": user.pk,
-                "name": user.get_full_name() or user.username,
-                "role": KIND_LABELS.get(account_kind(user), user.role),
+                "name": _display_name(user),
+                "role": "Patient" if user.role == UserRole.PATIENT else KIND_LABELS.get(account_kind(user), user.role),
                 "username": user.username,
-                "lastLogin": user.last_login.isoformat() if user.last_login else "",
+                **presence_fields(user, now),
                 "active": user.is_active_account,
             }
-            for user in login_users.order_by("-last_login")[:80]
+            for user in tracked.select_related("patient_profile", "hospital_admin", "province_admin").order_by(
+                F("last_seen_at").desc(nulls_last=True), "-last_login"
+            )[:100]
         ]
+        cutoff = online_cutoff(now)
+        presence_counts = tracked.aggregate(
+            online=Count("pk", filter=Q(last_seen_at__gte=cutoff) & (Q(last_logout_at__isnull=True) | Q(last_logout_at__lt=F("last_seen_at")))),
+            today=Count("pk", filter=Q(last_login__date=timezone.localdate(now)) | Q(last_seen_at__date=timezone.localdate(now))),
+        )
 
         device_qs = LoginDeviceLock.objects.select_related("user").all()
         if not is_national_scope(request.user):
@@ -199,6 +222,8 @@ class UsersDirectoryView(APIView):
             "admins": sum(1 for row in rows if not row["isPatient"]),
             "patients": sum(1 for row in rows if row["isPatient"]),
             "active": sum(1 for row in rows if row["status"] == "Active"),
+            "online": presence_counts["online"] or 0,
+            "signedInToday": presence_counts["today"] or 0,
         }
         return Response(
             {

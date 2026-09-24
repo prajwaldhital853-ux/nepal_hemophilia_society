@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 
 import { useLocale } from "@/core/i18n";
-import { servicesColors, servicesRadii } from "@/features/services/theme/servicesTheme";
+import { servicesColors, servicesRadii } from "@/features/services/theme/servicesHubTheme";
 
 type Props = {
   value?: string;

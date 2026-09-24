@@ -12,13 +12,15 @@ import StaffAccountForm from "@/features/admins/components/StaffAccountForm";
 import { deleteStaffAccount, fetchStaffAccount, updateStaffAccount, type StaffRecord } from "@/features/admins/api";
 import { isOwnStaffAccount } from "@/features/admins/identity";
 import { staffLabels, type HospitalStaffProfile, type HospitalStaffType } from "@/features/hospitals/types";
+import { NotesThread } from "@/features/notes/components/NotesThread";
+import { PresenceBadge, formatDateTime, staffPresence } from "@/features/users/presence";
 import { useAuth } from "@/lib/auth";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
 import { showConfirm } from "@/lib/confirmBus";
 import { PERM_LABELS } from "@/lib/permissions";
 import { showToast } from "@/lib/toastBus";
 
-const tabs = ["Overview", "Activity Log", "Permissions", "Documents"];
+const tabs = ["Overview", "Activity Log", "Permissions", "Documents", "Notes"];
 
 function InfoRows({ items }: { items: [string, string][] }) {
   return (
@@ -94,8 +96,39 @@ function permissionRows(profile: HospitalStaffProfile) {
   }));
 }
 
-function TabContent({ tab, profile, labels }: { tab: string; profile: HospitalStaffProfile; labels: (typeof staffLabels)[HospitalStaffType] }) {
+function TabContent({
+  tab,
+  profile,
+  staff,
+  labels,
+}: {
+  tab: string;
+  profile: HospitalStaffProfile;
+  staff: StaffRecord | null;
+  labels: (typeof staffLabels)[HospitalStaffType];
+}) {
   const granted = permissionRows(profile);
+
+  if (tab === "Notes") {
+    return (
+      <article className="panel p-3">
+        <CardHeader title="Account notes" />
+        <p className="mb-3 mt-0.5 text-[10px] text-muted">
+          Internal notes about {profile.fullName}&apos;s account — handovers, access requests, follow-ups.
+        </p>
+        {staff?.userId ? (
+          <NotesThread
+            targetType="staff"
+            targetId={staff.userId}
+            legacyNote={staff.notes ? { label: "Note on account", body: staff.notes } : null}
+            className="max-w-3xl"
+          />
+        ) : (
+          <p className="text-[11px] text-muted">Notes are unavailable for this account.</p>
+        )}
+      </article>
+    );
+  }
 
   if (tab === "Overview") {
     return (
@@ -169,9 +202,18 @@ function TabContent({ tab, profile, labels }: { tab: string; profile: HospitalSt
           <InfoRows
             items={[
               ["Must change password", profile.mustChangePassword ? "Yes (first login)" : "No"],
-              ["Last login", profile.lastLogin ?? "Never"],
+              [
+                "Last login",
+                staff?.lastLoginAt ? formatDateTime(staff.lastLoginAt) : profile.lastLogin || "Never",
+              ],
+              ["Last active", staff?.lastSeenAt ? formatDateTime(staff.lastSeenAt) : "—"],
             ]}
           />
+          {staff ? (
+            <div className="mt-3">
+              <PresenceBadge row={staffPresence(staff)} />
+            </div>
+          ) : null}
         </article>
       </div>
     );
@@ -457,7 +499,7 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
         {isOverview ? <ProfileSidebar profile={profile} labels={labels} /> : null}
 
         <div className="min-w-0">
-          <TabContent tab={tab} profile={profile} labels={labels} />
+          <TabContent tab={tab} profile={profile} staff={staff} labels={labels} />
         </div>
       </div>
       </div>

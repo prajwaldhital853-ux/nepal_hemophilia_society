@@ -9,6 +9,8 @@ import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import type { PatientRecord } from "@/features/patients/types";
 import { PatientInjectionsPanel, PatientTreatmentsPanel } from "@/features/injections/components/PatientClinicalPanels";
+import { NotesThread } from "@/features/notes/components/NotesThread";
+import { invalidateNoteCounts } from "@/features/notes/useNoteCounts";
 import { PatientBleedingPanel } from "@/features/patients/components/PatientBleedingPanel";
 import PatientDocumentsPanel from "@/features/patients/components/PatientDocumentsPanel";
 import { fetchStockMovements, type StockMovementRow } from "@/features/stock/api";
@@ -437,6 +439,23 @@ export default function PatientProfileView({ id }: { id: string }) {
         />
       ) : tab === "Medicines / Stock" ? (
         <PatientDoseStockPanel patientId={id} />
+      ) : tab === "Notes" ? (
+        <article className="panel p-3">
+          <div className="mb-3">
+            <h3 className="text-[12px] font-semibold text-ink">Care notes</h3>
+            <p className="mt-0.5 text-[10px] text-muted">
+              General notes about {record.fullName}, plus notes left on their injections, treatments and bleeding episodes.
+            </p>
+          </div>
+          <NotesThread
+            targetType="patient"
+            targetId={id}
+            aggregate
+            legacyNote={record.notes ? { label: "Registration note", body: record.notes } : null}
+            onChanged={() => invalidateNoteCounts(id)}
+            className="max-w-3xl"
+          />
+        </article>
       ) : tab !== "Overview" ? (
         <article className="panel p-3 text-[11px] text-muted">
           {tab} records for {record.fullName} will appear here.

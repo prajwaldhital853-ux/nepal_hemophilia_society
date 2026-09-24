@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { apiFetch, clearAccessToken, getAccessToken, refreshAccessToken } from "@/lib/api";
+import { API_BASE, apiFetch, clearAccessToken, getAccessToken, refreshAccessToken } from "@/lib/api";
 import { adminIdleExceeded, touchAdminActivity } from "@/lib/idleSession";
 import {
   USER_KEY,
@@ -182,6 +182,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(next);
       },
       logout: () => {
+        const token = getAccessToken();
+        if (token) {
+          void fetch(`${API_BASE}/auth/logout/`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            keepalive: true,
+          }).catch(() => undefined);
+        }
         clearAccessToken();
         removeAuthValue(USER_KEY);
         setUser(null);

@@ -1,10 +1,10 @@
 import { Linking } from "react-native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { StackNavigationProp } from "@react-navigation/stack";
 
 import type { RootStackParamList } from "@/core/navigation/types";
 import type { AppService } from "@/features/services/types";
 
-type Nav = NativeStackNavigationProp<RootStackParamList>;
+type Nav = StackNavigationProp<RootStackParamList>;
 
 export function openPatientService(navigation: Nav, service: AppService) {
   if (service.actionType === "url" && service.actionValue) {
