@@ -17,18 +17,30 @@ logger = logging.getLogger(__name__)
 EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
 
 
+def _active_push_tokens(user_ids: list[int]) -> list[str]:
+    """Keep one current token per user and app (latest registration wins)."""
+    rows = PushDevice.objects.filter(user_id__in=user_ids).order_by("-updated_at", "-id")
+    chosen: dict[tuple[int, str], str] = {}
+    for row in rows:
+        key = (row.user_id, row.app)
+        if key in chosen:
+            continue
+        chosen[key] = row.token
+    return list(chosen.values())
+
+
 def send_push_now(user_ids, title: str, body: str, data: dict | None = None):
     """Send push immediately (call from inside transaction.on_commit)."""
     ids = [uid for uid in user_ids if uid]
     if not ids:
         return
-    tokens = list(PushDevice.objects.filter(user_id__in=ids))
-    if not tokens:
+    token_values = _active_push_tokens(ids)
+    if not token_values:
         logger.info("No push tokens registered for users %s", ids)
         return
     payload = data or {}
-    expo = [row.token for row in tokens if row.token.startswith("ExponentPushToken")]
-    fcm = [row.token for row in tokens if not row.token.startswith("ExponentPushToken")]
+    expo = [token for token in token_values if token.startswith("ExponentPushToken")]
+    fcm = [token for token in token_values if not token.startswith("ExponentPushToken")]
     if expo:
         _send_expo(expo, title, body, payload)
     if fcm:

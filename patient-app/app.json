@@ -2,7 +2,7 @@
   "expo": {
     "name": "NHMS Patient",
     "slug": "nhms-patient-app",
-    "version": "1.0.4",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/images/nhs-app-icon.png",
     "userInterfaceStyle": "light",
@@ -30,7 +30,7 @@
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
-    "owner": "bulkipo",
+    "owner": "ipo_ipo",
     "plugins": [
       "expo-secure-store",
       [
@@ -54,7 +54,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "5949c31a-d08d-4fd2-8889-810a877cf039"
+        "projectId": "8919ccf0-a07c-4b24-9d27-830075164e68"
       }
     }
   }

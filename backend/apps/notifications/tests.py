@@ -9,7 +9,9 @@ from apps.accounts.models import UserRole
 from apps.hospitals.models import Hospital
 from apps.injections.models import InjectionRecord, InjectionStatus
 from apps.notifications.jobs import send_injection_reminders, send_monthly_insights
-from apps.notifications.models import PatientNotification
+from apps.notifications.models import PatientNotification, PushDevice
+from apps.notifications.push import _active_push_tokens
+from apps.notifications.services import notify_patient
 from apps.patients.models import Patient
 from apps.provinces.models import District, Province
 from apps.factors.models import ApplicableType, DoseUnit, FactorMedicine, FactorType
@@ -93,3 +95,50 @@ class NotificationJobTests(TestCase):
         again = client.get("/api/v1/cron/notifications/?key=cron-test-key&job=insights")
         self.assertEqual(again.data["monthlyInsights"]["sent"], 0)
         self.assertEqual(send_monthly_insights()["sent"], 0)
+
+    def test_push_token_registration_replaces_stale_devices(self):
+        client = APIClient()
+        client.force_authenticate(self.patient_user)
+        first = client.post(
+            "/api/v1/notifications/push-token/",
+            {"token": "stale-fcm-token-1", "platform": "android", "app": "patient"},
+            format="json",
+        )
+        second = client.post(
+            "/api/v1/notifications/push-token/",
+            {"token": "current-fcm-token-2", "platform": "android", "app": "patient"},
+            format="json",
+        )
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        tokens = list(
+            PushDevice.objects.filter(user=self.patient_user, app="patient").values_list("token", flat=True)
+        )
+        self.assertEqual(tokens, ["current-fcm-token-2"])
+
+    def test_active_push_tokens_keep_latest_per_app(self):
+        PushDevice.objects.create(user=self.patient_user, token="old-expo", platform="android", app="patient")
+        PushDevice.objects.create(user=self.patient_user, token="new-fcm", platform="android", app="patient")
+        PushDevice.objects.create(user=self.admin, token="admin-web", platform="web", app="admin")
+        active = _active_push_tokens([self.patient_user.id, self.admin.id])
+        self.assertEqual(sorted(active), ["admin-web", "new-fcm"])
+
+    def test_notify_patient_dedupes_same_related_event(self):
+        first = notify_patient(
+            patient=self.patient,
+            category="injection",
+            title="Injection recorded",
+            message="First",
+            related_type="injection",
+            related_id=99,
+        )
+        second = notify_patient(
+            patient=self.patient,
+            category="injection",
+            title="Injection recorded",
+            message="Second",
+            related_type="injection",
+            related_id=99,
+        )
+        self.assertEqual(first.id, second.id)
+        self.assertEqual(PatientNotification.objects.filter(patient=self.patient, related_id=99).count(), 1)

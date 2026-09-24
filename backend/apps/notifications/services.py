@@ -1,8 +1,10 @@
 """Create in-app notifications and queue push delivery for patients and admins."""
 
 import logging
+from datetime import timedelta
 
 from django.db import transaction
+from django.utils import timezone
 
 from apps.accounts.models import User, UserRole
 from apps.notifications.models import AdminNotification, NotificationCategory, PatientNotification
@@ -30,6 +32,20 @@ def notify_patient(
     related_id: int | None = None,
 ):
     try:
+        if related_type and related_id:
+            recent = (
+                PatientNotification.objects.filter(
+                    patient=patient,
+                    related_type=related_type,
+                    related_id=related_id,
+                    title=title,
+                    created_at__gte=timezone.now() - timedelta(minutes=5),
+                )
+                .order_by("-id")
+                .first()
+            )
+            if recent:
+                return recent
         note = PatientNotification.objects.create(
             patient=patient,
             category=category,

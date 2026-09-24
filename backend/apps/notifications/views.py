@@ -157,6 +157,8 @@ class PushTokenView(APIView):
             token=token,
             defaults={"user": request.user, "platform": platform, "app": app},
         )
+        # Drop stale tokens so one login does not fan out to every old install.
+        PushDevice.objects.filter(user=request.user, app=app).exclude(token=token).delete()
         return Response({"ok": True})
 
     def delete(self, request):

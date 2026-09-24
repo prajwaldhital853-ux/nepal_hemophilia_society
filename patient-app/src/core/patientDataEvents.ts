@@ -1,6 +1,8 @@
 type InvalidateListener = (topics: string[]) => void;
+type RefreshListener = () => void;
 
 const listeners = new Set<InvalidateListener>();
+const notificationRefreshListeners = new Set<RefreshListener>();
 
 export function onPatientDataInvalidate(listener: InvalidateListener) {
   listeners.add(listener);
@@ -9,6 +11,15 @@ export function onPatientDataInvalidate(listener: InvalidateListener) {
 
 export function invalidatePatientData(topics: string[] = ["all"]) {
   listeners.forEach((listener) => listener(topics));
+}
+
+export function onPatientNotificationRefresh(listener: RefreshListener) {
+  notificationRefreshListeners.add(listener);
+  return () => notificationRefreshListeners.delete(listener);
+}
+
+export function requestPatientNotificationRefresh() {
+  notificationRefreshListeners.forEach((listener) => listener());
 }
 
 const refreshedAt = new Map<string, number>();

@@ -1,13 +1,14 @@
-import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
 
 import { patientApi } from "@/core/api";
-import { invalidatePatientData } from "@/core/patientDataEvents";
-import { playPatientAlertSound } from "@/features/notifications/alertSound";
+import { invalidatePatientData, requestPatientNotificationRefresh } from "@/core/patientDataEvents";
 import { isExpoGo } from "@/features/notifications/expoGo";
 
 export { isExpoGo };
+
+let pushReady = false;
+let receivedListener: { remove: () => void } | null = null;
 
 async function saveToken(authToken: string, pushToken: string) {
   await patientApi("/notifications/push-token/", {
@@ -15,6 +16,19 @@ async function saveToken(authToken: string, pushToken: string) {
     token: authToken,
     body: JSON.stringify({ token: pushToken, platform: Platform.OS, app: "patient" }),
   });
+}
+
+async function registerNativeToken(authToken: string) {
+  const Notifications = await import("expo-notifications");
+  try {
+    const device = await Notifications.getDevicePushTokenAsync();
+    const native = typeof device.data === "string" ? device.data : "";
+    if (native && !native.startsWith("ExponentPushToken")) {
+      await saveToken(authToken, native);
+    }
+  } catch {
+    // Native FCM token appears after google-services.json is added.
+  }
 }
 
 /**
@@ -28,60 +42,47 @@ export async function registerPatientPush(authToken: string) {
   try {
     const Notifications = await import("expo-notifications");
 
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      }),
-    });
-
-    const existing = await Notifications.getPermissionsAsync();
-    let status = existing.status;
-    if (status !== "granted") {
-      status = (await Notifications.requestPermissionsAsync()).status;
-    }
-    if (status !== "granted") return;
-
-    if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync("default", {
-        name: "NHMS alerts",
-        importance: Notifications.AndroidImportance.HIGH,
-        sound: "default",
-        vibrationPattern: [0, 250, 120, 250],
-        enableVibrate: true,
+    if (!pushReady) {
+      Notifications.setNotificationHandler({
+        // App is open: update the in-app bell via polling/refresh — do not flood the tray.
+        handleNotification: async () => ({
+          shouldShowAlert: false,
+          shouldPlaySound: false,
+          shouldSetBadge: true,
+          shouldShowBanner: false,
+          shouldShowList: false,
+        }),
       });
-    }
 
-    Notifications.addNotificationReceivedListener((notification) => {
-      const data = notification.request.content.data as Record<string, unknown> | undefined;
-      const category = String(data?.category || data?.relatedType || "all");
-      void playPatientAlertSound();
-      invalidatePatientData([category]);
-    });
-
-    const projectId =
-      Constants.expoConfig?.extra?.eas?.projectId ??
-      (Constants as { easConfig?: { projectId?: string } }).easConfig?.projectId;
-
-    try {
-      const expoToken = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
-      if (expoToken.data) await saveToken(authToken, expoToken.data);
-    } catch {
-      // EAS project or FCM may not be configured yet.
-    }
-
-    try {
-      const device = await Notifications.getDevicePushTokenAsync();
-      const native = typeof device.data === "string" ? device.data : "";
-      if (native && !native.startsWith("ExponentPushToken")) {
-        await saveToken(authToken, native);
+      const existing = await Notifications.getPermissionsAsync();
+      let status = existing.status;
+      if (status !== "granted") {
+        status = (await Notifications.requestPermissionsAsync()).status;
       }
-    } catch {
-      // Native FCM token appears after google-services.json is added.
+      if (status !== "granted") return;
+
+      if (Platform.OS === "android") {
+        await Notifications.setNotificationChannelAsync("default", {
+          name: "NHMS alerts",
+          importance: Notifications.AndroidImportance.HIGH,
+          sound: "default",
+          vibrationPattern: [0, 250, 120, 250],
+          enableVibrate: true,
+        });
+      }
+
+      receivedListener?.remove();
+      receivedListener = Notifications.addNotificationReceivedListener((notification) => {
+        const data = notification.request.content.data as Record<string, unknown> | undefined;
+        const category = String(data?.category || data?.relatedType || "all");
+        invalidatePatientData([category]);
+        requestPatientNotificationRefresh();
+      });
+
+      pushReady = true;
     }
+
+    await registerNativeToken(authToken);
   } catch {
     // Push module unavailable — in-app alerts still work.
   }

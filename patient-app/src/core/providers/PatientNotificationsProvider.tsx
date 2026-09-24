@@ -11,7 +11,7 @@ import {
 
 import { patientApi } from "@/core/api";
 import { useAuth } from "@/core/auth/AuthContext";
-import { invalidatePatientData } from "@/core/patientDataEvents";
+import { invalidatePatientData, onPatientNotificationRefresh } from "@/core/patientDataEvents";
 import { playPatientAlertSound } from "@/features/notifications/alertSound";
 import { isExpoGo } from "@/features/notifications/expoGo";
 
@@ -49,7 +49,7 @@ export function PatientNotificationsProvider({ children }: { children: ReactNode
   const seenIdsRef = useRef<Set<number>>(new Set());
   const bootstrappedRef = useRef(false);
 
-  const load = useCallback(async (silent = false) => {
+  const load = useCallback(async (silent = false, options?: { alert?: boolean }) => {
     if (!token) {
       setNotifications([]);
       setUnreadCount(0);
@@ -68,7 +68,9 @@ export function PatientNotificationsProvider({ children }: { children: ReactNode
         : [];
       if (fresh.length > 0) {
         const topics = fresh.flatMap((row) => [row.category, row.relatedType || ""]).filter(Boolean);
-        void playPatientAlertSound();
+        if (options?.alert !== false) {
+          void playPatientAlertSound();
+        }
         const clinical = new Set(["injection", "schedule", "treatment", "bleeding", "bleeding_episode"]);
         const clinicalTopics = topics.filter((topic) => clinical.has(topic));
         if (clinicalTopics.length) invalidatePatientData(clinicalTopics);
@@ -94,10 +96,16 @@ export function PatientNotificationsProvider({ children }: { children: ReactNode
     void load().catch(() => undefined);
     if (!token) return;
     const timer = setInterval(() => {
-      void load(true).catch(() => undefined);
+      void load(true, { alert: false }).catch(() => undefined);
     }, 10000);
     return () => clearInterval(timer);
   }, [load, token]);
+
+  useEffect(() => {
+    return onPatientNotificationRefresh(() => {
+      void load(true, { alert: false }).catch(() => undefined);
+    });
+  }, [load]);
 
   const markRead = useCallback(
     async (id: number) => {
