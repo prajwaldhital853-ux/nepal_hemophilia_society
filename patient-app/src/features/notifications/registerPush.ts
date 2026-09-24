@@ -3,6 +3,8 @@ import * as Device from "expo-device";
 import { Platform } from "react-native";
 
 import { patientApi } from "@/core/api";
+import { invalidatePatientData } from "@/core/patientDataEvents";
+import { playPatientAlertSound } from "@/features/notifications/alertSound";
 import { isExpoGo } from "@/features/notifications/expoGo";
 
 export { isExpoGo };
@@ -47,8 +49,18 @@ export async function registerPatientPush(authToken: string) {
       await Notifications.setNotificationChannelAsync("default", {
         name: "NHMS alerts",
         importance: Notifications.AndroidImportance.HIGH,
+        sound: "default",
+        vibrationPattern: [0, 250, 120, 250],
+        enableVibrate: true,
       });
     }
+
+    Notifications.addNotificationReceivedListener((notification) => {
+      const data = notification.request.content.data as Record<string, unknown> | undefined;
+      const category = String(data?.category || data?.relatedType || "all");
+      void playPatientAlertSound();
+      invalidatePatientData([category]);
+    });
 
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId ??

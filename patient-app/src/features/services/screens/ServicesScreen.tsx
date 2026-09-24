@@ -12,7 +12,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { StackScreenProps } from "@react-navigation/stack";
 
 import { useAuth } from "@/core/auth/AuthContext";
+import { usePullRefresh } from "@/core/hooks/usePullRefresh";
 import { useLocale } from "@/core/i18n";
+import { usePatientClinicalStats } from "@/features/home/hooks/usePatientClinicalStats";
+import { usePatientNotifications } from "@/features/notifications/hooks/usePatientNotifications";
 import type { RootStackParamList } from "@/core/navigation/types";
 import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
 import { HomeHeader } from "@/features/home/components/HomeHeader";
@@ -31,9 +34,11 @@ type Props = StackScreenProps<RootStackParamList, "Services">;
 
 export default function ServicesScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const { token } = useAuth();
+  const { token, refreshPatient } = useAuth();
   const { t } = useLocale();
   const { openDrawer } = useAppDrawer();
+  const { refresh: refreshClinical } = usePatientClinicalStats();
+  const { refresh: refreshNotifications } = usePatientNotifications();
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -62,6 +67,13 @@ export default function ServicesScreen({ navigation }: Props) {
       if (id === requestId.current) setLoading(false);
     }
   }, [token, search]);
+
+  const { refreshing: pageRefreshing, onRefresh: refreshPage } = usePullRefresh(
+    () => refreshPatient(),
+    () => refreshClinical(),
+    () => refreshNotifications(),
+    () => load(),
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), search ? 250 : 0);
@@ -112,7 +124,13 @@ export default function ServicesScreen({ navigation }: Props) {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} tintColor={servicesColors.primary} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading || pageRefreshing}
+            onRefresh={() => void refreshPage()}
+            tintColor={servicesColors.primary}
+          />
+        }
       >
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {loading && categories.length === 0 ? (

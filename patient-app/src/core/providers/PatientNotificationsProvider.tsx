@@ -4,12 +4,15 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 
 import { patientApi } from "@/core/api";
 import { useAuth } from "@/core/auth/AuthContext";
+import { invalidatePatientData } from "@/core/patientDataEvents";
+import { playPatientAlertSound } from "@/features/notifications/alertSound";
 import { isExpoGo } from "@/features/notifications/expoGo";
 
 export type PatientNotification = {
@@ -43,18 +46,34 @@ export function PatientNotificationsProvider({ children }: { children: ReactNode
   const [notifications, setNotifications] = useState<PatientNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const seenIdsRef = useRef<Set<number>>(new Set());
+  const bootstrappedRef = useRef(false);
 
   const load = useCallback(async (silent = false) => {
     if (!token) {
       setNotifications([]);
       setUnreadCount(0);
       setLoading(false);
+      seenIdsRef.current = new Set();
+      bootstrappedRef.current = false;
       return;
     }
     if (!silent) setLoading(true);
     try {
       const data = await patientApi("/notifications/", { token });
-      setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
+      const rows = Array.isArray(data.notifications) ? data.notifications : [];
+      const previous = seenIdsRef.current;
+      const fresh = bootstrappedRef.current
+        ? rows.filter((row) => !previous.has(row.id) && !row.isRead)
+        : [];
+      if (fresh.length > 0) {
+        const topics = fresh.flatMap((row) => [row.category, row.relatedType || ""]).filter(Boolean);
+        void playPatientAlertSound();
+        invalidatePatientData(topics.length ? topics : ["all"]);
+      }
+      seenIdsRef.current = new Set(rows.map((row) => row.id));
+      bootstrappedRef.current = true;
+      setNotifications(rows);
       setUnreadCount(Number(data.unreadCount ?? 0));
     } catch {
       setNotifications([]);

@@ -1,17 +1,35 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { usePatientClinicalStats } from "@/features/home/hooks/usePatientClinicalStats";
+import { useMemo } from "react";
+
+import { usePatientInjections } from "@/features/factor/hooks/usePatientInjections";
 import { SectionTitle } from "@/features/factor/components/SectionTitle";
 import { factorColors, factorSpacing } from "@/features/factor/theme/factorTheme";
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 export function MonthlyFactorUsageChart() {
-  const { monthlyTrends, totalInjections } = usePatientClinicalStats();
+  const { injections, loading } = usePatientInjections();
+  const monthlyTrends = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const values = MONTHS.map(() => 0);
+    injections.forEach((row) => {
+      const stamp = new Date(row.administeredAt || row.date || "");
+      if (Number.isNaN(stamp.getTime()) || stamp.getFullYear() !== year) return;
+      values[stamp.getMonth()] += 1;
+    });
+    return { year, months: MONTHS, values };
+  }, [injections]);
+  const totalInjections = injections.length;
 
   return (
     <View style={styles.section}>
       <SectionTitle title="Monthly Injections" />
       <View style={styles.card}>
-        {totalInjections === 0 ? (
+        {loading ? (
+          <Text style={styles.empty}>Loading…</Text>
+        ) : totalInjections === 0 ? (
           <Text style={styles.empty}>No monthly data yet.</Text>
         ) : (
           <View style={styles.row}>

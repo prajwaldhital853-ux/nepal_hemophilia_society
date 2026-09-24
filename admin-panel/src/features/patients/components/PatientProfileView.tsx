@@ -285,7 +285,7 @@ export default function PatientProfileView({ id }: { id: string }) {
 
       {tab === "Overview" ? (
         <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
-          <article className="panel flex h-full flex-col p-3">
+          <article className="panel profile-sidebar--patient flex h-full flex-col p-3">
             <div className="flex flex-col items-center text-center">
               {resolveMediaUrl(record.photoUrl) ? (
                 // eslint-disable-next-line @next/next/no-img-element

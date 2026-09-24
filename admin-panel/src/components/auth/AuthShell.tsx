@@ -29,36 +29,8 @@ export function AuthShell({ title, subtitle, children, footer, backHref, backLab
         aria-hidden
       />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-stretch gap-6 p-4 py-8 sm:p-6 lg:flex-row lg:items-center lg:gap-10 lg:py-12">
-        <section className="flex flex-1 flex-col items-center text-center lg:items-start lg:text-left">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/nhs-logo.png"
-              alt="Nepal Hemophilia Society"
-              width={72}
-              height={96}
-              className="h-20 w-[72px] object-contain"
-              priority
-              quality={100}
-              unoptimized
-            />
-            <div className="hidden text-left sm:block">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-brand">Nepal Hemophilia Society</p>
-              <p className="mt-1 max-w-[220px] text-[11px] font-bold leading-4 text-ink">
-                Digital Management System
-              </p>
-            </div>
-          </div>
-
-          <h1 className="mt-6 text-[26px] font-bold leading-tight text-ink sm:text-[30px]">
-            Secure admin access for hemophilia care coordination
-          </h1>
-          <p className="mt-3 max-w-md text-[13px] leading-6 text-muted">
-            Manage patients, treatment centers, stock, appointments, and national reporting from one protected workspace.
-          </p>
-        </section>
-
-        <section className="w-full max-w-md flex-shrink-0 lg:max-w-[400px]">
+      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-stretch gap-4 p-4 py-6 sm:gap-6 sm:p-6 lg:flex-row lg:items-center lg:gap-10 lg:py-12">
+        <section className="order-1 w-full max-w-md flex-shrink-0 lg:order-2 lg:max-w-[400px]">
           <div className="overflow-hidden rounded-2xl border border-line/80 bg-card/95 shadow-xl backdrop-blur-sm">
             <div className="border-b border-line-subtle bg-gradient-to-r from-brand/8 via-transparent to-brand-blueDark/8 px-6 py-5">
               {backHref ? (
@@ -72,6 +44,35 @@ export function AuthShell({ title, subtitle, children, footer, backHref, backLab
             <div className="px-6 py-5">{children}</div>
             {footer ? <div className="border-t border-line-subtle px-6 py-4 text-center">{footer}</div> : null}
           </div>
+        </section>
+
+        <section className="order-2 flex flex-col items-center text-center lg:order-1 lg:flex-1 lg:items-start lg:text-left">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/nhs-logo.png"
+              alt="Nepal Hemophilia Society"
+              width={72}
+              height={96}
+              className="h-14 w-[50px] object-contain sm:h-20 sm:w-[72px]"
+              priority
+              quality={100}
+              unoptimized
+            />
+            <div className="text-left">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-brand">Nepal Hemophilia Society</p>
+              <p className="mt-0.5 max-w-[220px] text-[11px] font-bold leading-4 text-ink">
+                Digital Management System
+              </p>
+            </div>
+          </div>
+
+          <h1 className="mt-4 hidden text-[26px] font-bold leading-tight text-ink sm:mt-6 sm:block sm:text-[30px] lg:block">
+            Secure admin access for hemophilia care coordination
+          </h1>
+          <p className="mt-2 hidden max-w-md text-[13px] leading-6 text-muted sm:mt-3 sm:block">
+            Manage patients, treatment centers, stock, appointments, and national reporting from one protected workspace.
+          </p>
+          <p className="mt-3 text-[12px] font-medium text-muted sm:hidden">Protected admin workspace</p>
         </section>
       </div>
     </main>

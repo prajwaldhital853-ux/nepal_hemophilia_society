@@ -1,11 +1,14 @@
 import { useCallback } from "react";
-import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { StackScreenProps } from "@react-navigation/stack";
 
 import { useAuth } from "@/core/auth/AuthContext";
+import { usePullRefresh } from "@/core/hooks/usePullRefresh";
 import { useLocale } from "@/core/i18n";
+import { usePatientClinicalStats } from "@/features/home/hooks/usePatientClinicalStats";
+import { usePatientNotifications } from "@/features/notifications/hooks/usePatientNotifications";
 
 import type { RootStackParamList } from "@/core/navigation/types";
 import { BleedingProfileCard } from "@/features/home/components/BleedingProfileCard";
@@ -14,7 +17,6 @@ import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
 import { HomeHeader } from "@/features/home/components/HomeHeader";
 import { ScheduledInjectionCard } from "@/features/home/components/ScheduledInjectionCard";
 import { useAppDrawer } from "@/features/home/context/DrawerContext";
-import { usePatientNotifications } from "@/features/notifications/hooks/usePatientNotifications";
 import { InjectionTrendsChart } from "@/features/home/components/InjectionTrendsChart";
 import { OverviewSection } from "@/features/home/components/OverviewSection";
 import { ProfileSummaryCard } from "@/features/home/components/ProfileSummaryCard";
@@ -27,13 +29,20 @@ export default function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { refreshPatient, patient } = useAuth();
   const { t } = useLocale();
-  const { unreadCount } = usePatientNotifications();
+  const { unreadCount, refresh: refreshNotifications } = usePatientNotifications();
+  const { refresh: refreshClinical } = usePatientClinicalStats();
   const { openDrawer } = useAppDrawer();
+  const { refreshing, onRefresh } = usePullRefresh(
+    () => refreshPatient(),
+    () => refreshClinical(),
+    () => refreshNotifications(),
+  );
 
   useFocusEffect(
     useCallback(() => {
       void refreshPatient().catch(() => undefined);
-    }, [refreshPatient]),
+      void refreshClinical().catch(() => undefined);
+    }, [refreshPatient, refreshClinical]),
   );
 
   return (
@@ -52,6 +61,9 @@ export default function HomeScreen({ navigation }: Props) {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={homeColors.primary} />
+        }
       >
         <ProfileSummaryCard />
         <ScheduledInjectionCard />

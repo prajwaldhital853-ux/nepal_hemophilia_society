@@ -1,4 +1,5 @@
 import { AppConfig, isRemoteApiUrl, networkHelpForApi } from "@/core/config";
+import { encodePatientSignalsHeader, getPatientDeviceAuth } from "@/core/auth/storage";
 
 /** Render free tier can cold-start 30–60s; allow extra time for remote API. */
 export const API_TIMEOUT_MS = isRemoteApiUrl() ? 45000 : 12000;
@@ -61,7 +62,6 @@ export async function patientApi(path: string, init: ApiOptions = {}) {
     headers.set("Content-Type", "application/json");
   }
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  const { encodePatientSignalsHeader, getPatientDeviceAuth } = await import("@/core/auth/storage");
   const { deviceId, deviceSignals } = await getPatientDeviceAuth();
   headers.set("X-Device-Id", deviceId);
   headers.set("X-Device-Signals", encodePatientSignalsHeader(deviceSignals));

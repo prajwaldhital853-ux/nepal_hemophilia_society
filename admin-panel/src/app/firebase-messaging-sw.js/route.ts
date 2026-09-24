@@ -34,8 +34,8 @@ messaging.onBackgroundMessage((payload) => {
   const href = hrefFor(category, relatedType);
   self.registration.showNotification(title, {
     body: bodyText,
-    icon: "/nhs-app-icon.png",
-    badge: "/nhs-app-icon.png",
+    icon: "/notification-icon.png",
+    badge: "/notification-icon.png",
     tag: payload.data && payload.data.id ? "nhms-" + payload.data.id : undefined,
     data: { href },
   });

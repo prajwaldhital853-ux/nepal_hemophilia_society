@@ -7,7 +7,7 @@ import { factorColors, factorSpacing } from "@/features/factor/theme/factorTheme
 import { SectionTitle } from "@/features/factor/components/SectionTitle";
 
 export function FactorUsageSummary() {
-  const { injections, loading, totalIu } = usePatientInjections();
+  const { injections, loading, totalIu, dateLabel } = usePatientInjections();
 
   if (loading) return <FactorLoading />;
   if (!injections.length) {
@@ -24,7 +24,7 @@ export function FactorUsageSummary() {
 
   const items = [
     { id: "injections", icon: "needle" as const, value: String(injections.length), label: "Total Injections", trend: "From your records" },
-    { id: "iu", icon: "water" as const, value: `${totalIu.toLocaleString()} IU`, label: "Total IU Used", trend: "All time" },
+    { id: "iu", icon: "water" as const, value: `${totalIu.toLocaleString()} IU`, label: "Total IU Used", trend: dateLabel },
     { id: "last", icon: "target" as const, value: injections[0]?.date ?? "—", label: "Last Injection", trend: injections[0]?.factorType ?? "—" },
   ];
 

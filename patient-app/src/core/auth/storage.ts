@@ -153,19 +153,22 @@ export async function setRememberMePreference(remember: boolean) {
 }
 
 export async function saveSession(access: string, refresh: string, remember = true) {
-  await setRememberMePreference(remember);
   if (remember) {
     memoryAccess = "";
     memoryRefresh = "";
     try {
       const SecureStore = await secureStore();
-      await SecureStore.setItemAsync(ACCESS, access);
-      await SecureStore.setItemAsync(REFRESH, refresh);
+      await Promise.all([
+        setRememberMePreference(remember),
+        SecureStore.setItemAsync(ACCESS, access),
+        SecureStore.setItemAsync(REFRESH, refresh),
+      ]);
     } catch {
       // Session still works for this app session via in-memory token in AuthContext.
     }
     return;
   }
+  await setRememberMePreference(remember);
   memoryAccess = access;
   memoryRefresh = refresh;
   try {

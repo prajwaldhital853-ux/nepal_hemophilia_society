@@ -1,10 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
-import { ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { StackScreenProps } from "@react-navigation/stack";
 
 import type { RootStackParamList } from "@/core/navigation/types";
 import { useAuth } from "@/core/auth/AuthContext";
+import { usePullRefresh } from "@/core/hooks/usePullRefresh";
+import { usePatientClinicalStats } from "@/features/home/hooks/usePatientClinicalStats";
+import { usePatientNotifications } from "@/features/notifications/hooks/usePatientNotifications";
 import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
 import { HomeHeader } from "@/features/home/components/HomeHeader";
 import { useAppDrawer } from "@/features/home/context/DrawerContext";
@@ -17,8 +20,15 @@ type Props = StackScreenProps<RootStackParamList, "Profile">;
 
 export default function ProfileScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const { logout, patient } = useAuth();
+  const { logout, patient, refreshPatient } = useAuth();
+  const { refresh: refreshClinical } = usePatientClinicalStats();
+  const { refresh: refreshNotifications } = usePatientNotifications();
   const { openDrawer } = useAppDrawer();
+  const { refreshing, onRefresh } = usePullRefresh(
+    () => refreshPatient(),
+    () => refreshClinical(),
+    () => refreshNotifications(),
+  );
 
   function handleMenuPress(item: ProfileMenuItem) {
     if (item.action === "notifications") {
@@ -81,6 +91,9 @@ export default function ProfileScreen({ navigation }: Props) {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={homeColors.primary} />
+        }
       >
         {(patient?.documents?.length ?? 0) > 0 ? (
           <View style={{ marginHorizontal: 16, marginTop: 12, backgroundColor: "#fff", borderRadius: 12, padding: 12 }}>

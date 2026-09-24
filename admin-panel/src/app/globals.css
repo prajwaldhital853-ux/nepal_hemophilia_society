@@ -331,6 +331,21 @@ body {
     background: var(--card);
     color: var(--ink);
     padding: 1rem;
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: calc(100dvh - var(--topbar-h) - 7rem);
+    overflow-y: auto;
+    z-index: 2;
+  }
+
+  .profile-sidebar--patient {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: calc(100dvh - var(--topbar-h) - 7rem);
+    overflow-y: auto;
+    z-index: 2;
   }
 
   html.dark .profile-sidebar {

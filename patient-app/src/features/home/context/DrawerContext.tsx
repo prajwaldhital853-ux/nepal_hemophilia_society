@@ -39,13 +39,11 @@ export function DrawerProvider({ children }: { children: ReactNode }) {
 
   const edgePan = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: (_, gesture) => gesture.x0 < 56,
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gesture) =>
-        gesture.x0 < 56 && gesture.dx > 4 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 0.45,
-      onMoveShouldSetPanResponderCapture: (_, gesture) =>
-        gesture.x0 < 56 && gesture.dx > 6 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 0.45,
+        gesture.x0 < 14 && gesture.dx > 6 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 0.45,
       onPanResponderRelease: (_, gesture) => {
-        if (gesture.dx > 8 || gesture.vx > 0.02) setDrawerOpen(true);
+        if (gesture.dx > 10 || gesture.vx > 0.02) setDrawerOpen(true);
       },
     }),
   ).current;
@@ -56,13 +54,14 @@ export function DrawerProvider({ children }: { children: ReactNode }) {
         {children}
         {!drawerOpen ? (
           <View
+            pointerEvents="box-none"
             style={{
               position: "absolute",
               left: 0,
               top: 0,
               bottom: 72,
-              width: 56,
-              zIndex: 20,
+              width: 14,
+              zIndex: 5,
             }}
             {...edgePan.panHandlers}
           />

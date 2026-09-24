@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 
 import { patientApi } from "@/core/api";
 import { useAuth } from "@/core/auth/AuthContext";
+import { invalidatePatientData } from "@/core/patientDataEvents";
 import { useLocale } from "@/core/i18n";
 import { InteractiveChart } from "@/features/services/components/charts";
 import { useClearTopics } from "@/features/notifications/useClearTopics";
@@ -75,6 +77,12 @@ export default function InjectionsScreen() {
     void load();
   }, [load]);
 
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
+
   const visible = useMemo(
     () => (filter === "All" ? items : items.filter((row) => (row.status || "Completed") === filter)),
     [filter, items],
@@ -121,7 +129,16 @@ export default function InjectionsScreen() {
         data={visible}
         keyExtractor={(item) => String(item.id)}
         style={styles.list}
-        refreshControl={<RefreshControl refreshing={loading && items.length === 0} onRefresh={() => void load()} tintColor={servicesColors.primary} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading && items.length === 0}
+            onRefresh={() => {
+              invalidatePatientData(["injection", "schedule", "treatment"]);
+              void load();
+            }}
+            tintColor={servicesColors.primary}
+          />
+        }
         onEndReached={() => {
           if (nextCursor && !loadingMore) void load(nextCursor);
         }}

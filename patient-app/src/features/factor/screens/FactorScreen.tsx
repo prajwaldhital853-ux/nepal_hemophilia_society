@@ -1,4 +1,4 @@
-import { ScrollView, StatusBar, StyleSheet, View } from "react-native";
+import { RefreshControl, ScrollView, StatusBar, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { StackScreenProps } from "@react-navigation/stack";
 
@@ -11,6 +11,7 @@ import { FactorHeroBanner } from "@/features/factor/components/FactorHeroBanner"
 import { FactorQuickActions } from "@/features/factor/components/FactorQuickActions";
 import { FactorStockStatus } from "@/features/factor/components/FactorStockStatus";
 import { FactorTabs } from "@/features/factor/components/FactorTabs";
+import { FactorFilterProvider, useFactorFilter } from "@/features/factor/context/FactorFilterContext";
 import { useClearTopics } from "@/features/notifications/useClearTopics";
 import { FactorUsageSummary } from "@/features/factor/components/FactorUsageSummary";
 import { MonthlyFactorUsageChart } from "@/features/factor/components/MonthlyFactorUsageChart";
@@ -19,10 +20,23 @@ import { factorColors, factorSpacing } from "@/features/factor/theme/factorTheme
 
 type Props = StackScreenProps<RootStackParamList, "Factor">;
 
-export default function FactorScreen({ navigation }: Props) {
+function FactorScreenBody({ navigation }: Props) {
   useClearTopics("Factor");
   const insets = useSafeAreaInsets();
   const { openDrawer } = useAppDrawer();
+  const { refreshPatient } = useAuth();
+  const { refresh: refreshClinical } = usePatientClinicalStats();
+  const { refresh: refreshNotifications } = usePatientNotifications();
+  const { refreshing, onRefresh } = usePullRefresh(
+    () => refreshPatient(),
+    () => refreshClinical(),
+    () => refreshNotifications(),
+  );
+  const { activeTab } = useFactorFilter();
+  const showOverview = activeTab === "Overview";
+  const showUsage = activeTab === "Overview" || activeTab === "Usage History";
+  const showReports = activeTab === "Overview" || activeTab === "Reports";
+  const showStock = activeTab === "Overview" || activeTab === "Stock Details";
 
   return (
     <View style={styles.screen}>
@@ -45,13 +59,16 @@ export default function FactorScreen({ navigation }: Props) {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={factorColors.primary} />
+        }
       >
-        <FactorStockStatus />
-        <FactorUsageSummary />
-        <MonthlyFactorUsageChart />
-        <FactorDistributionChart />
-        <RecentFactorTransactions />
-        <FactorQuickActions />
+        {showStock ? <FactorStockStatus /> : null}
+        {showReports ? <FactorUsageSummary /> : null}
+        {showUsage ? <MonthlyFactorUsageChart /> : null}
+        {showReports ? <FactorDistributionChart /> : null}
+        {showUsage ? <RecentFactorTransactions /> : null}
+        {showOverview ? <FactorQuickActions /> : null}
       </ScrollView>
 
       <HomeBottomNav
@@ -66,6 +83,14 @@ export default function FactorScreen({ navigation }: Props) {
         }}
       />
     </View>
+  );
+}
+
+export default function FactorScreen(props: Props) {
+  return (
+    <FactorFilterProvider>
+      <FactorScreenBody {...props} />
+    </FactorFilterProvider>
   );
 }
 

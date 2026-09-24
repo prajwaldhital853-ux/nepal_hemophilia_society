@@ -1,10 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { StackScreenProps } from "@react-navigation/stack";
 
+import { useAuth } from "@/core/auth/AuthContext";
+import { usePullRefresh } from "@/core/hooks/usePullRefresh";
 import { useLocale } from "@/core/i18n";
+import { usePatientClinicalStats } from "@/features/home/hooks/usePatientClinicalStats";
 import type { RootStackParamList } from "@/core/navigation/types";
 import { HomeBottomNav } from "@/features/home/components/HomeBottomNav";
 import { HomeHeader } from "@/features/home/components/HomeHeader";
@@ -65,6 +68,13 @@ export default function NotificationsScreen({ navigation }: Props) {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void onRefresh()}
+            tintColor={notificationsColors.primary}
+          />
+        }
       >
         {loading ? (
           <ActivityIndicator style={styles.loader} color={notificationsColors.primary} />

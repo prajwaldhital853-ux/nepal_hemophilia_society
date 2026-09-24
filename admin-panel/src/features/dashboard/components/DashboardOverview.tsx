@@ -374,7 +374,7 @@ export default function DashboardOverview() {
         ) : (
           <article className="panel p-3">
             <h2 className="text-[12px] font-semibold text-ink">Activity</h2>
-            <p className="mt-2 text-[11px] text-muted">National audit logs are Super Admin only (plan.md §5.5).</p>
+            <p className="mt-2 text-[11px] text-muted">National audit logs are Super Admin only.</p>
           </article>
         )}
 

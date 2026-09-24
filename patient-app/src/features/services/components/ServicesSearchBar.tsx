@@ -7,9 +7,11 @@ import { servicesColors, servicesRadii } from "@/features/services/theme/service
 type Props = {
   value?: string;
   onChangeText?: (value: string) => void;
+  filterActive?: boolean;
+  onFilterPress?: () => void;
 };
 
-export function ServicesSearchBar({ value, onChangeText }: Props) {
+export function ServicesSearchBar({ value, onChangeText, filterActive = false, onFilterPress }: Props) {
   const { t } = useLocale();
   return (
     <View style={styles.wrap}>
@@ -22,7 +24,7 @@ export function ServicesSearchBar({ value, onChangeText }: Props) {
         onChangeText={onChangeText}
       />
       <Pressable
-        onPress={onFilterPress}
+        onPress={() => onFilterPress?.()}
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel="Filter services by category"

@@ -10,6 +10,7 @@ import {
 
 import { patientApi } from "@/core/api";
 import { useAuth } from "@/core/auth/AuthContext";
+import { onPatientDataInvalidate } from "@/core/patientDataEvents";
 
 export type PatientInjection = {
   id: number;
@@ -114,6 +115,10 @@ export function PatientClinicalStatsProvider({ children }: { children: ReactNode
   useEffect(() => {
     void load().catch(() => undefined);
   }, [load]);
+
+  useEffect(() => onPatientDataInvalidate(() => {
+    void load().catch(() => undefined);
+  }), [load]);
 
   const sorted = useMemo(
     () => [...injections].sort((a, b) => new Date(b.administeredAt).getTime() - new Date(a.administeredAt).getTime()),
