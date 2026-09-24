@@ -8,6 +8,7 @@ import {
   fetchPatientTreatments,
   statusClass,
   isOutOfStockError,
+  stockToastMessage,
   updateInjection,
   verifyInjectionStock,
   updateTreatment,
@@ -100,7 +101,6 @@ export function PatientInjectionsPanel({
       });
       if (stockError) {
         showToast(stockError);
-        setError(stockError);
         return;
       }
     }
@@ -109,8 +109,8 @@ export function PatientInjectionsPanel({
       void load();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not update status";
-      if (isOutOfStockError(message)) showToast(message);
-      setError(message);
+      if (isOutOfStockError(message)) showToast(stockToastMessage(message));
+      else setError(message);
     }
   }
 

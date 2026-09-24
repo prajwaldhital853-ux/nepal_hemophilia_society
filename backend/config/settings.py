@@ -83,7 +83,12 @@ if _CLOUDINARY_CREDENTIALS:
     os.environ.pop("CLOUDINARY_API_SECRET", None)
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-dev-key-change-in-production")
-DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("true", "1", "yes")
+# Unset DJANGO_DEBUG stays on only for the local insecure key. A real secret defaults to off.
+_debug_env = os.getenv("DJANGO_DEBUG")
+if _debug_env is None:
+    DEBUG = SECRET_KEY.startswith("django-insecure")
+else:
+    DEBUG = _debug_env.lower() in ("true", "1", "yes")
 if not DEBUG and (not SECRET_KEY or SECRET_KEY.startswith("django-insecure")):
     raise ImproperlyConfigured("Set DJANGO_SECRET_KEY to a strong secret when DEBUG is False.")
 ALLOWED_HOSTS = [

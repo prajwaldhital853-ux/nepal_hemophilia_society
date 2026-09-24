@@ -79,12 +79,18 @@ export default function StockModule() {
   const [moveMode, setMoveMode] = useState<"in" | "out" | "adjust" | null>(null);
   const [typeFilter, setTypeFilter] = useState("All");
   const [hospitalFilter, setHospitalFilter] = useState("All");
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [movementCursor, setMovementCursor] = useState<string | null>(null);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(searchInput), 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -224,8 +230,8 @@ export default function StockModule() {
             ) : null}
             <input
               data-shortcut-target="page-search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search product"
               className="rounded border border-line-subtle bg-elevated px-2 py-1 text-[11px]"
             />
@@ -360,23 +366,40 @@ export default function StockModule() {
             type="button"
             data-shortcut-target="page-export"
             className="rounded border border-line px-2 py-1 text-[10px] font-semibold"
-            onClick={() =>
-              downloadCsv(
-                stampFilename("stock-history"),
-                ["When", "Type", "Product", "Batch", "Qty", "Center", "Patient", "By", "Reason"],
-                movements.map((row) => [
-                  row.recordedAt,
-                  row.movementType,
-                  row.factorMedicineName,
-                  row.batchNumber || "",
-                  row.quantityDelta,
-                  row.hospitalName,
-                  row.patientId || "",
-                  row.recordedBy?.name || "",
-                  row.reason,
-                ]),
-              )
-            }
+            onClick={() => {
+              void (async () => {
+                let exported = [...movements];
+                let cursor = movementCursor;
+                for (let page = 0; cursor && page < 80; page += 1) {
+                  const history = await fetchStockMovements({
+                    type: typeFilter,
+                    search,
+                    from,
+                    to,
+                    hospitalName: hospitalFilter,
+                    cursor,
+                    limit: 100,
+                  });
+                  exported = exported.concat(history.movements ?? []);
+                  cursor = history.nextCursor ?? null;
+                }
+                downloadCsv(
+                  stampFilename("stock-history"),
+                  ["When", "Type", "Product", "Batch", "Qty", "Center", "Patient", "By", "Reason"],
+                  exported.map((row) => [
+                    row.recordedAt,
+                    row.movementType,
+                    row.factorMedicineName,
+                    row.batchNumber || "",
+                    row.quantityDelta,
+                    row.hospitalName,
+                    row.patientId || "",
+                    row.recordedBy?.name || "",
+                    row.reason,
+                  ]),
+                );
+              })().catch((err: unknown) => showToast(err instanceof Error ? err.message : "Could not export stock history"));
+            }}
           >
             Export history
           </button>

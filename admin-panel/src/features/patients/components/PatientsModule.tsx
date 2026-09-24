@@ -260,13 +260,32 @@ export default function PatientsModule() {
             type="button"
             data-shortcut-target="page-export"
             className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
-            onClick={() =>
-              downloadCsv(
-                stampFilename("patients"),
-                ["ID", "Name", "Province", "Center", "Blood group", "Age", "Last visit", "Status"],
-                visible.map((row) => [row.id, row.name, row.province, row.center, row.bloodGroup, row.age, row.lastVisit, row.status]),
-              )
-            }
+            onClick={() => {
+              void (async () => {
+                let exported = [...visible];
+                let cursor = nextCursor;
+                for (let page = 0; cursor && page < 40; page += 1) {
+                  const params = new URLSearchParams();
+                  if (debounced.trim()) params.set("search", debounced.trim());
+                  if (from) params.set("from", from);
+                  if (to) params.set("to", to);
+                  params.set("limit", "100");
+                  params.set("cursor", cursor);
+                  const data = await apiFetch(`/patients/?${params.toString()}`);
+                  const extra = (Array.isArray(data.patients) ? data.patients.map(toRow) : []).filter((patient: PatientRow) => {
+                    if (hemIdSearch) return true;
+                    return province === "All" || patient.province === province;
+                  });
+                  exported = exported.concat(extra);
+                  cursor = data.nextCursor ?? null;
+                }
+                downloadCsv(
+                  stampFilename("patients"),
+                  ["ID", "Name", "Province", "Center", "Blood group", "Age", "Last visit", "Status"],
+                  exported.map((row) => [row.id, row.name, row.province, row.center, row.bloodGroup, row.age, row.lastVisit, row.status]),
+                );
+              })().catch((err: unknown) => showToast(err instanceof Error ? err.message : "Could not export patients"));
+            }}
           >
             <Download className="size-3.5" />
             Export

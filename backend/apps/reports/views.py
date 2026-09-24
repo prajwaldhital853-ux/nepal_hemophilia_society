@@ -1,7 +1,7 @@
-from datetime import date, timedelta
-from decimal import Decimal
+from datetime import date, datetime, timedelta
 
 from django.db.models import Case, Count, F, Max, Q, Sum, When
+from django.db.models.functions import TruncDate, TruncMonth
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -53,20 +53,31 @@ def _scoped_querysets(user):
     return patients, injections, treatments, hospitals, stock, movements, visits
 
 
+def _as_date(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if hasattr(value, "date"):
+        return value.date()
+    return value
+
+
 def _counts_by_day(queryset, field, *, date_field=False):
+    """Count rows per calendar day in the database."""
     counts = {}
     if date_field:
         rows = queryset.order_by().values(field).annotate(count=Count("id"))
-        for row in rows:
-            day = row.get(field)
-            if day:
-                counts[day] = row["count"]
-        return counts
-    for value in queryset.order_by().values_list(field, flat=True):
-        if not value:
-            continue
-        day = value.date() if hasattr(value, "date") else value
-        counts[day] = counts.get(day, 0) + 1
+        key = field
+    else:
+        rows = queryset.order_by().annotate(_day=TruncDate(field)).values("_day").annotate(count=Count("id"))
+        key = "_day"
+    for row in rows:
+        day = _as_date(row.get(key))
+        if day:
+            counts[day] = row["count"]
     return counts
 
 
@@ -83,22 +94,57 @@ def _month_starts(today, count=6):
     return months
 
 
-def _next_month(day):
-    if day.month == 12:
-        return date(day.year + 1, 1, 1)
-    return date(day.year, day.month + 1, 1)
+def _abs_expr():
+    return Sum(
+        Case(
+            When(quantity_delta__lt=0, then=-F("quantity_delta")),
+            default=F("quantity_delta"),
+        )
+    )
 
 
 def _abs_qty(queryset):
-    total = queryset.aggregate(
-        total=Sum(
-            Case(
-                When(quantity_delta__lt=0, then=-F("quantity_delta")),
-                default=F("quantity_delta"),
+    return float(queryset.aggregate(total=_abs_expr())["total"] or 0)
+
+
+def _count_map(queryset, field):
+    return {
+        row[field]: row["count"]
+        for row in queryset.order_by().values(field).annotate(count=Count("id"))
+        if row[field] is not None
+    }
+
+
+def _sum_map(queryset, field, expr):
+    return {
+        row[field]: float(row["total"] or 0)
+        for row in queryset.order_by().values(field).annotate(total=expr)
+        if row[field] is not None
+    }
+
+
+def _abs_map(queryset, field):
+    return _sum_map(queryset, field, _abs_expr())
+
+
+def _admin_role_mix(admins):
+    from apps.hospitals.models import HospitalStaffType
+
+    counts = {}
+    rows = admins.order_by().values("role", "hospital_admin__staff_type").annotate(count=Count("id"))
+    for row in rows:
+        role = row["role"]
+        if role == UserRole.HOSPITAL_ADMIN:
+            kind = (
+                "center_admin"
+                if row["hospital_admin__staff_type"] == HospitalStaffType.CENTER_ADMIN
+                else "treatment_admin"
             )
-        )
-    )["total"]
-    return float(total or 0)
+        else:
+            kind = role
+        label = KIND_LABELS.get(kind, role)
+        counts[label] = counts.get(label, 0) + row["count"]
+    return [{"name": name, "value": count} for name, count in sorted(counts.items())]
 
 
 def _scope_label(user):
@@ -199,21 +245,23 @@ class ReportFullView(APIView):
             for row in patients.order_by().values("hemophilia_type").annotate(count=Count("id"))
             if row["hemophilia_type"]
         ]
-        center_table = []
-        for hospital in hospitals.select_related("province").order_by("name"):
-            center_table.append(
-                {
-                    "hospitalName": hospital.name,
-                    "province": hospital.province.name if hospital.province_id else "",
-                    "patients": patients.filter(primary_hospital_id=hospital.id).count(),
-                    "injections": injections.filter(hospital_id=hospital.id).count(),
-                    "treatments": treatments.filter(hospital_id=hospital.id).count(),
-                    "visits": visits.filter(hospital_id=hospital.id).count(),
-                    "stockOnHand": float(
-                        stock.filter(hospital_id=hospital.id).aggregate(total=Sum("quantity"))["total"] or 0
-                    ),
-                }
-            )
+        patients_by_center = _count_map(patients, "primary_hospital_id")
+        injections_by_center = _count_map(injections, "hospital_id")
+        treatments_by_center = _count_map(treatments, "hospital_id")
+        visits_by_center = _count_map(visits, "hospital_id")
+        stock_by_center = _sum_map(stock, "hospital_id", Sum("quantity"))
+        center_table = [
+            {
+                "hospitalName": hospital.name,
+                "province": hospital.province.name if hospital.province_id else "",
+                "patients": patients_by_center.get(hospital.id, 0),
+                "injections": injections_by_center.get(hospital.id, 0),
+                "treatments": treatments_by_center.get(hospital.id, 0),
+                "visits": visits_by_center.get(hospital.id, 0),
+                "stockOnHand": stock_by_center.get(hospital.id, 0),
+            }
+            for hospital in hospitals.select_related("province").order_by("name")
+        ]
 
         admins = _scoped_admins(request.user)
         login_tracking = [
@@ -283,11 +331,7 @@ class ReportFullView(APIView):
             {"name": row["severity"] or "Unspecified", "value": row["count"]}
             for row in bleeding.order_by().values("severity").annotate(count=Count("id"))
         ]
-        role_counts = {}
-        for user in admins:
-            label = KIND_LABELS.get(account_kind(user), user.role)
-            role_counts[label] = role_counts.get(label, 0) + 1
-        admin_role_mix = [{"name": name, "value": count} for name, count in sorted(role_counts.items())]
+        admin_role_mix = _admin_role_mix(admins)
         payload.update(
             {
                 "scopeLabel": _scope_label(request.user),
@@ -359,87 +403,152 @@ def _dashboard_payload(user):
         )
 
     stock_out_types = [StockMovementType.STOCK_OUT, StockMovementType.INJECTION]
-    stock_by_hospital = []
-    for hospital in hospitals.select_related("province").order_by("name"):
-        hospital_stock = stock.filter(hospital_id=hospital.id)
-        hospital_moves = movements.filter(stock__hospital_id=hospital.id)
-        on_hand = hospital_stock.aggregate(total=Sum("quantity"))["total"] or Decimal("0")
-        stock_by_hospital.append(
-            {
-                "hospitalName": hospital.name,
-                "province": hospital.province.name if hospital.province_id else "",
-                "onHand": float(on_hand),
-                "used": _abs_qty(hospital_moves.filter(movement_type__in=stock_out_types)),
-                "stockIn": _abs_qty(hospital_moves.filter(movement_type=StockMovementType.STOCK_IN)),
-            }
-        )
+    on_hand_by_hospital = _sum_map(stock, "hospital_id", Sum("quantity"))
+    used_by_hospital = _abs_map(movements.filter(movement_type__in=stock_out_types), "stock__hospital_id")
+    stock_in_by_hospital = _abs_map(movements.filter(movement_type=StockMovementType.STOCK_IN), "stock__hospital_id")
+    stock_by_hospital = [
+        {
+            "hospitalName": hospital.name,
+            "province": hospital.province.name if hospital.province_id else "",
+            "onHand": on_hand_by_hospital.get(hospital.id, 0),
+            "used": used_by_hospital.get(hospital.id, 0),
+            "stockIn": stock_in_by_hospital.get(hospital.id, 0),
+        }
+        for hospital in hospitals.select_related("province").order_by("name")
+    ]
 
-    usage_trend = []
-    for month_start in _month_starts(today, 6):
-        month_end = _next_month(month_start)
-        month_moves = movements.filter(created_at__date__gte=month_start, created_at__date__lt=month_end)
-        usage_trend.append(
-            {
-                "month": month_start.strftime("%b"),
-                "stockIn": _abs_qty(month_moves.filter(movement_type=StockMovementType.STOCK_IN)),
-                "stockOut": _abs_qty(month_moves.filter(movement_type__in=stock_out_types)),
-            }
+    month_starts = _month_starts(today, 6)
+    usage_buckets = {}
+    if month_starts:
+        month_rows = (
+            movements.filter(created_at__date__gte=month_starts[0])
+            .annotate(month=TruncMonth("created_at"))
+            .order_by()
+            .values("month", "movement_type")
+            .annotate(total=_abs_expr())
         )
+        for row in month_rows:
+            month = _as_date(row["month"])
+            if month is None:
+                continue
+            month = month.replace(day=1)
+            bucket = usage_buckets.setdefault(month, {"stockIn": 0.0, "stockOut": 0.0})
+            amount = float(row["total"] or 0)
+            if row["movement_type"] == StockMovementType.STOCK_IN:
+                bucket["stockIn"] += amount
+            elif row["movement_type"] in stock_out_types:
+                bucket["stockOut"] += amount
+    usage_trend = [
+        {
+            "month": month_start.strftime("%b"),
+            "stockIn": usage_buckets.get(month_start, {}).get("stockIn", 0),
+            "stockOut": usage_buckets.get(month_start, {}).get("stockOut", 0),
+        }
+        for month_start in month_starts
+    ]
 
-    province_stats = []
     province_names = (
         list(Province.objects.order_by("name").values_list("name", flat=True))
         if is_national_scope(user)
-        else list(patients.values_list("province__name", flat=True).distinct())
+        else list(patients.order_by().values_list("province__name", flat=True).distinct())
     )
+    patient_by_province = {
+        row["province__name"]: row
+        for row in patients.order_by()
+        .values("province__name")
+        .annotate(
+            patients=Count("id"),
+            activePatients=Count("id", filter=Q(verification_status="Active")),
+            pendingPatients=Count("id", filter=Q(verification_status="Pending")),
+            hemophiliaA=Count("id", filter=Q(hemophilia_type="A")),
+            hemophiliaB=Count("id", filter=Q(hemophilia_type="B")),
+            severe=Count("id", filter=Q(severity="Severe")),
+        )
+        if row["province__name"]
+    }
+    hospitals_by_province = _count_map(hospitals, "province__name")
+    injections_by_province = _count_map(injections, "patient__province__name")
+    treatments_by_province = _count_map(treatments, "patient__province__name")
+    stock_by_province = _sum_map(stock, "hospital__province__name", Sum("quantity"))
+    stock_in_by_province = _abs_map(
+        movements.filter(movement_type=StockMovementType.STOCK_IN),
+        "stock__hospital__province__name",
+    )
+    stock_out_by_province = _abs_map(
+        movements.filter(movement_type__in=stock_out_types),
+        "stock__hospital__province__name",
+    )
+    province_stats = []
     for province_name in province_names:
         if not province_name:
             continue
-        p_qs = patients.filter(province__name=province_name)
-        h_qs = hospitals.filter(province__name=province_name)
-        i_qs = injections.filter(patient__province__name=province_name)
-        t_qs = treatments.filter(patient__province__name=province_name)
-        s_qs = stock.filter(hospital__province__name=province_name)
-        m_qs = movements.filter(stock__hospital__province__name=province_name)
+        prow = patient_by_province.get(province_name, {})
         province_stats.append(
             {
                 "province": province_name,
-                "patients": p_qs.count(),
-                "activePatients": p_qs.filter(verification_status="Active").count(),
-                "pendingPatients": p_qs.filter(verification_status="Pending").count(),
-                "hospitals": h_qs.count(),
-                "injections": i_qs.count(),
-                "treatments": t_qs.count(),
-                "hemophiliaA": p_qs.filter(hemophilia_type="A").count(),
-                "hemophiliaB": p_qs.filter(hemophilia_type="B").count(),
-                "severe": p_qs.filter(severity="Severe").count(),
-                "stockUnits": float(s_qs.aggregate(total=Sum("quantity"))["total"] or 0),
-                "stockIn": _abs_qty(m_qs.filter(movement_type=StockMovementType.STOCK_IN)),
-                "stockOut": _abs_qty(m_qs.filter(movement_type__in=stock_out_types)),
+                "patients": prow.get("patients", 0),
+                "activePatients": prow.get("activePatients", 0),
+                "pendingPatients": prow.get("pendingPatients", 0),
+                "hospitals": hospitals_by_province.get(province_name, 0),
+                "injections": injections_by_province.get(province_name, 0),
+                "treatments": treatments_by_province.get(province_name, 0),
+                "hemophiliaA": prow.get("hemophiliaA", 0),
+                "hemophiliaB": prow.get("hemophiliaB", 0),
+                "severe": prow.get("severe", 0),
+                "stockUnits": stock_by_province.get(province_name, 0),
+                "stockIn": stock_in_by_province.get(province_name, 0),
+                "stockOut": stock_out_by_province.get(province_name, 0),
             }
         )
 
     admin_users = _scoped_admins(user)
+    patient_totals = patients.aggregate(
+        total=Count("id"),
+        active=Count("id", filter=Q(verification_status="Active")),
+    )
+    admin_totals = admin_users.aggregate(
+        total=Count("id"),
+        province=Count("id", filter=Q(role=UserRole.PROVINCE_ADMIN)),
+        hospital=Count("id", filter=Q(role=UserRole.HOSPITAL_ADMIN)),
+        login_today=Count("id", filter=Q(last_login__date=today)),
+    )
     total_stock = float(stock.aggregate(total=Sum("quantity"))["total"] or 0)
-    login_today = admin_users.filter(last_login__date=today).count()
     audit_today = _scoped_audit(user).filter(created_at__date=today).values("actor").distinct().count()
-    visits_today = visits.filter(visit_date=today).count()
+    activity_today = visits.filter(visit_date=today).aggregate(
+        visits=Count("id"),
+    )
     injections_today = injections.filter(administered_at__date=today).count()
     treatments_today = treatments.filter(treatment_date=today).count()
+    hospital_count = hospitals.count()
+    injection_count = injections.count()
+    treatment_count = treatments.count()
+    patient_count = patient_totals["total"] or 0
+    active_patients = patient_totals["active"] or 0
+
+    recent_patients = [
+        {
+            "id": row.unique_patient_id,
+            "fullName": row.full_name,
+            "province": row.province.name if row.province_id else "",
+            "status": row.verification_status,
+            "updatedAt": row.updated_at.isoformat() if row.updated_at else "",
+        }
+        for row in patients.select_related("province").order_by("-id")[:20]
+    ]
 
     system_overview = {
-        "totalUsers": patients.count() + admin_users.count(),
-        "totalAdmins": admin_users.count(),
+        "totalUsers": patient_count + (admin_totals["total"] or 0),
+        "totalAdmins": admin_totals["total"] or 0,
         "superAdmins": User.objects.filter(role=UserRole.SUPER_ADMIN).count() if is_national_scope(user) else 0,
-        "provinceAdmins": admin_users.filter(role=UserRole.PROVINCE_ADMIN).count(),
-        "hospitalAdmins": admin_users.filter(role=UserRole.HOSPITAL_ADMIN).count(),
-        "activeSessions": max(login_today, audit_today),
-        "todaysVisits": visits_today + injections_today + treatments_today,
+        "provinceAdmins": admin_totals["province"] or 0,
+        "hospitalAdmins": admin_totals["hospital"] or 0,
+        "activeSessions": max(admin_totals["login_today"] or 0, audit_today),
+        "todaysVisits": (activity_today["visits"] or 0) + injections_today + treatments_today,
         "totalStockUnits": total_stock,
         "totalProvinces": Province.objects.count() if is_national_scope(user) else 1,
-        "totalCenters": hospitals.count(),
-        "totalPatients": patients.count(),
-        "activePatients": patients.filter(verification_status="Active").count(),
+        "totalCenters": hospital_count,
+        "totalPatients": patient_count,
+        "activePatients": active_patients,
         "uptime": "99.8%",
     }
 
@@ -462,11 +571,12 @@ def _dashboard_payload(user):
         "provinceStats": province_stats,
         "systemOverview": system_overview,
         "recentActivity": recent_activity,
+        "recentPatients": recent_patients,
         "totals": {
-            "patients": patients.count(),
-            "hospitals": hospitals.count(),
-            "injections": injections.count(),
-            "treatments": treatments.count(),
-            "activePatients": patients.filter(verification_status="Active").count(),
+            "patients": patient_count,
+            "hospitals": hospital_count,
+            "injections": injection_count,
+            "treatments": treatment_count,
+            "activePatients": active_patients,
         },
     }

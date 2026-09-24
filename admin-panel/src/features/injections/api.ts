@@ -86,6 +86,8 @@ export async function verifyInjectionStock(params: {
 }): Promise<string | null> {
   const needed = parseFloat(String(params.dose));
   if (!params.factorMedicineId || Number.isNaN(needed) || needed <= 0) return null;
+  // Without a centre, national stock can look available while the logging centre is empty.
+  if (!params.hospitalName) return null;
   try {
     const data = await fetchStock({
       hospitalName: params.hospitalName || undefined,
@@ -104,6 +106,13 @@ export async function verifyInjectionStock(params: {
 
 export function isOutOfStockError(message: string) {
   return /out of stock|insufficient_stock/i.test(message);
+}
+
+export function stockToastMessage(message: string) {
+  return message
+    .replace(/^error:\s*/i, "")
+    .replace(/;\s*code:\s*insufficient_stock\s*$/i, "")
+    .trim();
 }
 
 export async function createInjection(payload: Record<string, unknown>) {

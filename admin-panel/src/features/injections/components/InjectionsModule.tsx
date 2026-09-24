@@ -34,6 +34,7 @@ import {
   fetchPatientInjections,
   statusClass,
   isOutOfStockError,
+  stockToastMessage,
   updateInjection,
   verifyInjectionStock,
   type ApiInjection,
@@ -47,6 +48,7 @@ import { ActionsMenu, copyText } from "@/components/ui/ActionsMenu";
 import { InjectionsSummarySkeleton, TableBodySkeleton } from "@/components/ui/Skeleton";
 import { formatNumber } from "@/lib/format";
 import { downloadCsv, stampFilename } from "@/lib/exportCsv";
+import { showToast } from "@/lib/toastBus";
 import { CHART_BAR_PROPS, useChartColors } from "@/lib/chartColors";
 import { useAuth } from "@/lib/auth";
 import { Perm } from "@/lib/permissions";
@@ -262,7 +264,7 @@ export default function InjectionsModule() {
       if (selected?.patientId === row.patientId) void loadRelated(row.patientId);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not update status";
-      if (isOutOfStockError(message)) showToast(message);
+      if (isOutOfStockError(message)) showToast(stockToastMessage(message));
     }
   }
 
@@ -677,22 +679,45 @@ export default function InjectionsModule() {
               type="button"
               className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
               data-shortcut-target="page-export"
-              onClick={() =>
-                downloadCsv(
-                  stampFilename("injections"),
-                  ["ID", "Patient", "Factor", "Dose", "Type", "Status", "When", "Center"],
-                  filtered.map((row) => [
-                    row.displayCode || row.id,
-                    `${row.patientId} ${row.patientName}`,
-                    row.factorMedicineName,
-                    `${row.dose} ${row.unit}`,
-                    row.indication,
-                    row.status,
-                    row.administeredAt,
-                    row.hospitalName,
-                  ]),
-                )
-              }
+              onClick={() => {
+                void (async () => {
+                  const q = query.trim().toLowerCase();
+                  const matches = (row: ApiInjection) =>
+                    !q ||
+                    row.displayCode.toLowerCase().includes(q) ||
+                    row.patientName.toLowerCase().includes(q) ||
+                    row.patientId.toLowerCase().includes(q) ||
+                    row.factorType.toLowerCase().includes(q);
+                  let exported = rows.filter(matches);
+                  let cursor = nextCursor;
+                  for (let page = 0; cursor && page < 80; page += 1) {
+                    const data = await fetchInjections({
+                      status: status === "All" ? undefined : status,
+                      indication: type === "All" ? undefined : type,
+                      from: from || undefined,
+                      to: to || undefined,
+                      cursor,
+                      limit: 100,
+                    });
+                    exported = exported.concat((data.injections ?? []).filter(matches));
+                    cursor = data.nextCursor ?? null;
+                  }
+                  downloadCsv(
+                    stampFilename("injections"),
+                    ["ID", "Patient", "Factor", "Dose", "Type", "Status", "When", "Center"],
+                    exported.map((row) => [
+                      row.displayCode || row.id,
+                      `${row.patientId} ${row.patientName}`,
+                      row.factorMedicineName,
+                      `${row.dose} ${row.unit}`,
+                      row.indication,
+                      row.status,
+                      row.administeredAt,
+                      row.hospitalName,
+                    ]),
+                  );
+                })().catch((err: unknown) => showToast(err instanceof Error ? err.message : "Could not export injections"));
+              }}
             >
               <Download className="size-3.5" />
               Export

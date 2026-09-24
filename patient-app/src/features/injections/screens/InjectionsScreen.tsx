@@ -4,7 +4,7 @@ import { useFocusEffect } from "@react-navigation/native";
 
 import { patientApi } from "@/core/api";
 import { useAuth } from "@/core/auth/AuthContext";
-import { invalidatePatientData } from "@/core/patientDataEvents";
+import { invalidatePatientData, shouldRefresh } from "@/core/patientDataEvents";
 import { useLocale } from "@/core/i18n";
 import { InteractiveChart } from "@/features/services/components/charts";
 import {
@@ -101,6 +101,7 @@ export default function InjectionsScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      if (!shouldRefresh("injections")) return;
       void load();
     }, [load]),
   );

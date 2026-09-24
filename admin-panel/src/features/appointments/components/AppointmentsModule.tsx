@@ -93,19 +93,33 @@ export default function AppointmentsModule() {
   }, [search]);
 
   const load = useCallback(async () => {
-    const query = new URLSearchParams();
-    if (status) query.set("status", status);
-    if (debounced.trim()) query.set("search", debounced.trim());
     setLoading(true);
     try {
-      const data = (await apiFetch(`/appointments/?${query}`)) as {
-        appointments?: Appointment[];
-        canUpdate?: boolean;
-        canDelete?: boolean;
-      };
-      setRows(Array.isArray(data.appointments) ? data.appointments : []);
-      setCanUpdate(Boolean(data.canUpdate));
-      setCanDelete(Boolean(data.canDelete));
+      const collected: Appointment[] = [];
+      let cursor = "";
+      let canEdit = false;
+      let canRemove = false;
+      for (let page = 0; page < 8; page += 1) {
+        const query = new URLSearchParams();
+        if (status) query.set("status", status);
+        if (debounced.trim()) query.set("search", debounced.trim());
+        query.set("limit", "50");
+        if (cursor) query.set("cursor", cursor);
+        const data = (await apiFetch(`/appointments/?${query}`)) as {
+          appointments?: Appointment[];
+          canUpdate?: boolean;
+          canDelete?: boolean;
+          nextCursor?: string | null;
+        };
+        collected.push(...(Array.isArray(data.appointments) ? data.appointments : []));
+        canEdit = Boolean(data.canUpdate);
+        canRemove = Boolean(data.canDelete);
+        cursor = data.nextCursor || "";
+        if (!cursor) break;
+      }
+      setRows(collected);
+      setCanUpdate(canEdit);
+      setCanDelete(canRemove);
     } finally {
       setLoading(false);
     }
@@ -512,9 +526,39 @@ function SlotManager({ onClose }: { onClose: () => void }) {
   const load = useCallback(async () => {
     try {
       const [slotData, scheduleData, centerData] = await Promise.all([
-        apiFetch("/appointments/slots/") as Promise<{ slots?: Slot[] }>,
+        (async () => {
+          const slots: Slot[] = [];
+          let cursor = "";
+          for (let page = 0; page < 4; page += 1) {
+            const query = new URLSearchParams({ limit: "100" });
+            if (cursor) query.set("cursor", cursor);
+            const data = (await apiFetch(`/appointments/slots/?${query}`)) as {
+              slots?: Slot[];
+              nextCursor?: string | null;
+            };
+            slots.push(...(Array.isArray(data.slots) ? data.slots : []));
+            cursor = data.nextCursor || "";
+            if (!cursor) break;
+          }
+          return { slots };
+        })(),
         apiFetch("/appointments/slots/schedules/") as Promise<{ schedules?: SlotSchedule[] }>,
-        apiFetch("/hospitals/") as Promise<{ hospitals?: Center[] }>,
+        (async () => {
+          const hospitals: Center[] = [];
+          let cursor = "";
+          for (let page = 0; page < 20; page += 1) {
+            const query = new URLSearchParams({ limit: "100" });
+            if (cursor) query.set("cursor", cursor);
+            const data = (await apiFetch(`/hospitals/?${query}`)) as {
+              hospitals?: Center[];
+              nextCursor?: string | null;
+            };
+            hospitals.push(...(Array.isArray(data.hospitals) ? data.hospitals : []));
+            cursor = data.nextCursor || "";
+            if (!cursor) break;
+          }
+          return { hospitals };
+        })(),
       ]);
       setSlots(Array.isArray(slotData.slots) ? slotData.slots : []);
       setSchedules(Array.isArray(scheduleData.schedules) ? scheduleData.schedules : []);

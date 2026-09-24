@@ -60,6 +60,22 @@ export type DashboardActivity = {
   createdAt: string;
 };
 
+export type DashboardRecentPatient = {
+  id: string;
+  fullName: string;
+  province: string;
+  status: string;
+  updatedAt: string;
+};
+
+export type DashboardTotals = {
+  patients: number;
+  hospitals: number;
+  injections: number;
+  treatments: number;
+  activePatients: number;
+};
+
 export type DashboardData = {
   treatmentTrend: DashboardTrendPoint[];
   stockByHospital: StockByHospital[];
@@ -67,4 +83,6 @@ export type DashboardData = {
   provinceStats: ProvinceStat[];
   systemOverview: SystemOverview;
   recentActivity: DashboardActivity[];
+  recentPatients?: DashboardRecentPatient[];
+  totals?: DashboardTotals;
 };

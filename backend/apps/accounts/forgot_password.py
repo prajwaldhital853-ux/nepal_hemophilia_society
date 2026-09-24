@@ -56,7 +56,9 @@ class AdminForgotPasswordView(APIView):
 
         try:
             _, raw_otp = create_password_reset_otp(user, email, client_ip(request))
-            send_reset_otp_email(user, email, raw_otp)
+            from apps.core.jobs import run_with_timeout
+
+            run_with_timeout(lambda: send_reset_otp_email(user, email, raw_otp), timeout=8)
             _audit_password_event(
                 user,
                 "Password reset OTP sent",

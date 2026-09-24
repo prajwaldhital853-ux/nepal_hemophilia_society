@@ -25,9 +25,19 @@ class PatientMeNotificationsView(APIView):
         qs = PatientNotification.objects.filter(patient=patient).order_by("-created_at")
         if category and category.lower() != "all":
             qs = qs.filter(category__iexact=category)
+        from apps.core.pagination import paginate_offset
+
         unread = qs.filter(is_read=False).count()
-        data = PatientNotificationSerializer(qs[:200], many=True).data
-        return Response({"notifications": data, "unreadCount": unread, "total": qs.count()})
+        rows, next_cursor, limit = paginate_offset(qs, request, default=50)
+        data = PatientNotificationSerializer(rows, many=True).data
+        return Response(
+            {
+                "notifications": data,
+                "unreadCount": unread,
+                "nextCursor": next_cursor,
+                "limit": limit,
+            }
+        )
 
 
 class PatientMeNotificationReadView(APIView):

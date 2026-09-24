@@ -60,7 +60,7 @@ export function PatientNotificationsProvider({ children }: { children: ReactNode
     }
     if (!silent) setLoading(true);
     try {
-      const data = await patientApi("/notifications/", { token });
+      const data = await patientApi("/notifications/?limit=100", { token });
       const rows = Array.isArray(data.notifications) ? data.notifications : [];
       const previous = seenIdsRef.current;
       const fresh = bootstrappedRef.current
@@ -69,7 +69,9 @@ export function PatientNotificationsProvider({ children }: { children: ReactNode
       if (fresh.length > 0) {
         const topics = fresh.flatMap((row) => [row.category, row.relatedType || ""]).filter(Boolean);
         void playPatientAlertSound();
-        invalidatePatientData(topics.length ? topics : ["all"]);
+        const clinical = new Set(["injection", "schedule", "treatment", "bleeding", "bleeding_episode"]);
+        const clinicalTopics = topics.filter((topic) => clinical.has(topic));
+        if (clinicalTopics.length) invalidatePatientData(clinicalTopics);
       }
       seenIdsRef.current = new Set(rows.map((row) => row.id));
       bootstrappedRef.current = true;

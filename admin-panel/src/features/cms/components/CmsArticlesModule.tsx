@@ -53,6 +53,7 @@ export default function CmsArticlesModule({ kind }: Props) {
   const canDelete = can(Perm.websiteDelete) && !user?.viewOnly;
   const [rows, setRows] = useState<CmsArticle[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -72,6 +73,11 @@ export default function CmsArticlesModule({ kind }: Props) {
     published: true,
     sortOrder: 10,
   });
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(searchInput), 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -226,8 +232,8 @@ export default function CmsArticlesModule({ kind }: Props) {
           <input
             className={`${fieldClass} mt-0 pl-7`}
             placeholder="Search…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
           />
         </div>
       </div>

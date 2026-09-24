@@ -134,10 +134,21 @@ function extractApiMessage(value: unknown): string | null {
   return null;
 }
 
+function readableApiError(message: string) {
+  return message
+    .replace(/^error:\s*/i, "")
+    .replace(/;\s*code:\s*insufficient_stock\s*$/i, "")
+    .trim();
+}
+
 function formatApiError(data: unknown, fallback = "Request failed") {
   if (!data || typeof data !== "object") return fallback;
   const record = data as Record<string, unknown>;
-  if (typeof record.error === "string" && record.error) return record.error;
+  if (typeof record.error === "string" && record.error) return readableApiError(record.error);
+  if (Array.isArray(record.error) && record.error.length) {
+    const message = extractApiMessage(record.error);
+    if (message) return readableApiError(message);
+  }
   if (typeof record.detail === "string" && record.detail) return record.detail;
   if (Array.isArray(record.detail) && typeof record.detail[0] === "string") return record.detail[0];
   if (typeof record.detail === "object" && record.detail !== null) {

@@ -41,7 +41,10 @@ class User(AbstractUser):
         db_table = "users"
         verbose_name = "User"
         verbose_name_plural = "Users"
-        indexes = [models.Index(fields=["-last_login"], name="users_last_login_idx")]
+        indexes = [
+            models.Index(fields=["-last_login"], name="users_last_login_idx"),
+            models.Index(fields=["role"], name="users_role_idx"),
+        ]
 
     @property
     def is_super_admin(self) -> bool:

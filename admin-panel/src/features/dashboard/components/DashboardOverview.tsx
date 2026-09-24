@@ -22,7 +22,7 @@ import {
 } from "@/features/dashboard/components/DashboardCharts";
 import { NepalProvinceMap } from "@/features/dashboard/components/NepalProvinceMap";
 import { SystemOverviewSection } from "@/features/dashboard/components/SystemOverviewSection";
-import type { DashboardData } from "@/features/dashboard/types";
+import type { DashboardData, DashboardRecentPatient, DashboardTotals } from "@/features/dashboard/types";
 import { apiFetch } from "@/lib/api";
 import { isNationalScope, useAuth } from "@/lib/auth";
 import { formatNumber } from "@/lib/format";
@@ -39,15 +39,8 @@ const actionTone = {
 
 const actionIcons = [UserPlus, Users, Building2, Package, FileBarChart, Settings];
 
-type ReportTotals = {
-  patients: number;
-  hospitals: number;
-  injections: number;
-  treatments: number;
-  activePatients: number;
-};
-
-type RecentPatient = { id: string; fullName: string; province: string; status: string; updatedAt: string };
+type ReportTotals = DashboardTotals;
+type RecentPatient = DashboardRecentPatient;
 
 const EMPTY_DASHBOARD: DashboardData = {
   treatmentTrend: [],
@@ -83,27 +76,25 @@ export default function DashboardOverview() {
   useEffect(() => {
     setLoading(true);
     const tasks: Promise<void>[] = [
-      apiFetch("/reports/")
-        .then((data) => setTotals(data.totals as ReportTotals))
-        .catch(() => setTotals(null)),
-      apiFetch("/patients/")
+      apiFetch("/reports/dashboard/")
         .then((data) => {
-          const patients = (data.patients ?? []) as RecentPatient[];
-          setRecent(patients.slice(0, 20));
+          const dash = data as DashboardData;
+          setDashboard(dash);
+          setTotals(dash.totals ?? null);
+          setRecent(dash.recentPatients ?? []);
           const counts: Record<string, number> = {};
-          for (const row of patients) {
-            if (!row.province) continue;
-            counts[row.province] = (counts[row.province] ?? 0) + 1;
+          for (const row of dash.provinceStats) {
+            if (!row.province || !row.patients) continue;
+            counts[row.province] = row.patients;
           }
           setProvinceCounts(counts);
         })
         .catch(() => {
+          setDashboard(EMPTY_DASHBOARD);
+          setTotals(null);
           setRecent([]);
           setProvinceCounts({});
         }),
-      apiFetch("/reports/dashboard/")
-        .then((data) => setDashboard(data as DashboardData))
-        .catch(() => setDashboard(EMPTY_DASHBOARD)),
     ];
     if (user?.permissions?.includes(Perm.stockView)) {
       tasks.push(

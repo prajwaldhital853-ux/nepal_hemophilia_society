@@ -33,6 +33,12 @@ def _attach_must_change_password_code(response):
             response.data = {"error": message, "code": "must_change_password"}
 
 
+def _first_message(value) -> str:
+    if isinstance(value, (list, tuple)):
+        return _first_message(value[0]) if value else ""
+    return str(value or "")
+
+
 def api_exception_handler(exc, context):
     response = exception_handler(exc, context)
     if response is None:
@@ -40,6 +46,13 @@ def api_exception_handler(exc, context):
         return Response({"error": _expose_exception_message(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     detail = response.data
     if isinstance(detail, dict) and "error" in detail:
+        payload = {"error": _first_message(detail.get("error")) or "Request failed"}
+        if detail.get("code"):
+            payload["code"] = _first_message(detail.get("code"))
+        for key in ("attemptsRemaining", "lockedUntil", "retryAfterSeconds", "otpSent"):
+            if key in detail:
+                payload[key] = detail[key]
+        response.data = payload
         _attach_must_change_password_code(response)
         return response
     if isinstance(detail, dict) and "detail" in detail:

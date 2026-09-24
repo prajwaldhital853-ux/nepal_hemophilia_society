@@ -80,8 +80,17 @@ class PatientVisitsView(APIView):
         patient = _get_patient_or_404(patient_id)
         if not can_view_patient(request.user, patient):
             raise PermissionDenied()
+        from apps.core.pagination import paginate_offset
+
         qs = HospitalVisit.objects.select_related("hospital", "hospital__province").filter(patient=patient)
-        return Response({"visits": HospitalVisitSerializer(qs.order_by("-visit_date"), many=True).data})
+        rows, next_cursor, limit = paginate_offset(qs.order_by("-visit_date"), request, default=50)
+        return Response(
+            {
+                "visits": HospitalVisitSerializer(rows, many=True).data,
+                "nextCursor": next_cursor,
+                "limit": limit,
+            }
+        )
 
 
 class PatientHistoryView(APIView):
@@ -178,8 +187,17 @@ class PatientMeVisitsView(APIView):
         patient = getattr(request.user, "patient_profile", None)
         if not patient:
             return Response({"error": "No patient profile linked."}, status=404)
+        from apps.core.pagination import paginate_offset
+
         qs = HospitalVisit.objects.select_related("hospital", "hospital__province").filter(patient=patient)
-        return Response({"visits": HospitalVisitSerializer(qs.order_by("-visit_date"), many=True).data})
+        rows, next_cursor, limit = paginate_offset(qs.order_by("-visit_date"), request, default=50)
+        return Response(
+            {
+                "visits": HospitalVisitSerializer(rows, many=True).data,
+                "nextCursor": next_cursor,
+                "limit": limit,
+            }
+        )
 
 
 class PatientMeInsightsView(APIView):

@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { StackScreenProps } from "@react-navigation/stack";
 
 import { useAuth } from "@/core/auth/AuthContext";
+import { shouldRefresh } from "@/core/patientDataEvents";
 import { usePullRefresh } from "@/core/hooks/usePullRefresh";
 import { useLocale } from "@/core/i18n";
 import { usePatientClinicalStats } from "@/features/home/hooks/usePatientClinicalStats";
@@ -40,6 +41,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   useFocusEffect(
     useCallback(() => {
+      if (!shouldRefresh("home")) return;
       void refreshPatient().catch(() => undefined);
       void refreshClinical().catch(() => undefined);
     }, [refreshPatient, refreshClinical]),

@@ -144,23 +144,38 @@ export default function AdminsModule() {
             type="button"
             data-shortcut-target="page-export"
             className="panel flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-muted"
-            onClick={() =>
-              downloadCsv(
-                stampFilename("admins"),
-                ["ID", "Name", "Role", "Email", "Phone", "Province", "Center", "Status", "Last login"],
-                visible.map((row) => [
-                  row.id,
-                  row.fullName,
-                  row.roleLabel,
-                  row.email,
-                  row.phone,
-                  row.province,
-                  row.treatmentCenter,
-                  row.status,
-                  row.lastLogin || "",
-                ]),
-              )
-            }
+            onClick={() => {
+              void (async () => {
+                let exported = [...visible];
+                let cursor = nextCursor;
+                for (let page = 0; cursor && page < 80; page += 1) {
+                  const data = await fetchStaffDirectory({
+                    kind: kind || undefined,
+                    search: debounced,
+                    province,
+                    cursor,
+                    limit: 100,
+                  });
+                  exported = exported.concat(data.staff);
+                  cursor = data.nextCursor;
+                }
+                downloadCsv(
+                  stampFilename("admins"),
+                  ["ID", "Name", "Role", "Email", "Phone", "Province", "Center", "Status", "Last login"],
+                  exported.map((row) => [
+                    row.id,
+                    row.fullName,
+                    row.roleLabel,
+                    row.email,
+                    row.phone,
+                    row.province,
+                    row.treatmentCenter,
+                    row.status,
+                    row.lastLogin || "",
+                  ]),
+                );
+              })().catch((err: unknown) => showToast(err instanceof Error ? err.message : "Could not export admins"));
+            }}
           >
             <Download className="size-3.5" />
             {t("common.export")}

@@ -194,25 +194,42 @@ export default function UsersModule() {
             type="button"
             data-shortcut-target="page-export"
             className="panel flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
-            onClick={() =>
-              downloadCsv(
-                stampFilename("users"),
-                ["ID", "Name", "Role", "Email", "Phone", "Province", "Center", "Status", "Last login", "Last active", "Presence"],
-                rows.map((row) => [
-                  row.id,
-                  row.fullName,
-                  row.roleLabel,
-                  row.email,
-                  row.phone,
-                  row.province,
-                  row.treatmentCenter,
-                  row.status,
-                  row.lastLogin || "",
-                  row.lastSeen || "",
-                  row.presence || "never",
-                ]),
-              )
-            }
+            onClick={() => {
+              void (async () => {
+                let exported = [...rows];
+                let cursor = nextCursor;
+                for (let page = 0; cursor && page < 80; page += 1) {
+                  const q = new URLSearchParams();
+                  if (search.trim()) q.set("search", search.trim());
+                  if (kind !== "All") q.set("kind", kind);
+                  if (status !== "All") q.set("status", status);
+                  if (from) q.set("from", from);
+                  if (to) q.set("to", to);
+                  q.set("limit", "100");
+                  q.set("cursor", cursor);
+                  const data = await apiFetch(`/users/?${q.toString()}`);
+                  exported = exported.concat(data.users ?? []);
+                  cursor = data.nextCursor ?? null;
+                }
+                downloadCsv(
+                  stampFilename("users"),
+                  ["ID", "Name", "Role", "Email", "Phone", "Province", "Center", "Status", "Last login", "Last active", "Presence"],
+                  exported.map((row) => [
+                    row.id,
+                    row.fullName,
+                    row.roleLabel,
+                    row.email,
+                    row.phone,
+                    row.province,
+                    row.treatmentCenter,
+                    row.status,
+                    row.lastLogin || "",
+                    row.lastSeen || "",
+                    row.presence || "never",
+                  ]),
+                );
+              })().catch((err: unknown) => showToast(err instanceof Error ? err.message : "Could not export users"));
+            }}
           >
             <Download className="size-3.5" />
             Export

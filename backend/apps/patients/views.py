@@ -96,7 +96,7 @@ class PatientViewSet(viewsets.ModelViewSet):
 
     queryset = Patient.objects.select_related(
         "province", "district", "primary_hospital", "created_by", "user"
-    ).prefetch_related("files")
+    )
     serializer_class = PatientSerializer
     permission_classes = [IsAdminRole, CanViewPatients]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
@@ -118,8 +118,16 @@ class PatientViewSet(viewsets.ModelViewSet):
             return [IsAdminRole(), CanDeletePatients()]
         return [IsAdminRole(), CanViewPatients()]
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        if getattr(self, "action", None) == "list":
+            context["omit_documents"] = True
+        return context
+
     def get_queryset(self):
         qs = super().get_queryset()
+        if getattr(self, "action", None) != "list":
+            qs = qs.prefetch_related("files__uploaded_by", "files__hospital")
         user = self.request.user
         if is_national_scope(user):
             return qs
@@ -354,7 +362,7 @@ class PatientMeView(APIView):
             return Response({"error": "No patient record is linked to this account."}, status=404)
         patient = (
             Patient.objects.select_related("province", "district", "primary_hospital", "user")
-            .prefetch_related("files")
+            .prefetch_related("files__uploaded_by", "files__hospital")
             .get(pk=patient.pk)
         )
         return Response({"patient": PatientSerializer(patient, context={"request": request}).data})

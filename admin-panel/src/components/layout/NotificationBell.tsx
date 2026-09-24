@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Check } from "lucide-react";
 
+import { refreshAdminNotifications, useAdminNotificationFeed, type AdminNote } from "@/components/layout/adminNotificationFeed";
 import { apiFetch } from "@/lib/api";
 import { registerAdminWebPush } from "@/lib/adminPush";
 import {
@@ -17,16 +18,6 @@ import { useHeaderPanel } from "@/components/layout/useHeaderPanel";
 import { UnreadBadge } from "@/components/ui/UnreadBadge";
 import { SHORTCUT_EVENT } from "@/lib/keyboardShortcuts";
 
-type AdminNote = {
-  id: number;
-  category: string;
-  title: string;
-  message: string;
-  isRead: boolean;
-  actorName?: string;
-  createdAt: string;
-};
-
 function formatWhen(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
@@ -38,34 +29,21 @@ export function NotificationBell() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const { rootRef, toggle } = useHeaderPanel("notifications", open, setOpen);
+  const feed = useAdminNotificationFeed(user?.id);
   const [items, setItems] = useState<AdminNote[]>([]);
   const [unread, setUnread] = useState(0);
   const [browserAlerts, setBrowserAlerts] = useState<NotificationPermission | "unsupported">("default");
 
   const load = useCallback(async () => {
     if (!user) return;
-    try {
-      const data = (await apiFetch("/notifications/admin/")) as { notifications?: AdminNote[]; unreadCount?: number };
-      const rows = Array.isArray(data.notifications) ? data.notifications : [];
-      const visible = rows.filter((row) => !row.isRead);
-      setItems(visible);
-      setUnread(Number(data.unreadCount ?? visible.length));
-    } catch {
-      setItems([]);
-      setUnread(0);
-    }
+    await refreshAdminNotifications();
   }, [user]);
 
   useEffect(() => {
-    void load();
-    const timer = setInterval(() => void load(), 10000);
-    const onRefresh = () => void load();
-    window.addEventListener("nhms-notifications-refresh", onRefresh);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener("nhms-notifications-refresh", onRefresh);
-    };
-  }, [load]);
+    const visible = feed.notifications.filter((row) => !row.isRead);
+    setItems(visible);
+    setUnread(feed.unreadCount);
+  }, [feed]);
 
   useEffect(() => {
     setBrowserAlerts(notificationPermission());

@@ -39,7 +39,14 @@ def dispatch_push(user_ids, title: str, body: str, data: dict | None = None):
     ids = [uid for uid in user_ids if uid]
     if not ids:
         return
-    transaction.on_commit(lambda: send_push_now(ids, title, body, data))
+    payload = dict(data or {})
+
+    def _send():
+        from apps.core.jobs import run_in_background
+
+        run_in_background(send_push_now, ids, title, body, payload)
+
+    transaction.on_commit(_send)
 
 
 def _send_expo(tokens: list[str], title: str, body: str, data: dict):
@@ -120,42 +127,50 @@ def _send_fcm(tokens: list[str], title: str, body: str, data: dict):
     payload.setdefault("title", title[:120])
     payload.setdefault("body", body[:240])
     devices = {row.token: row for row in PushDevice.objects.filter(token__in=tokens)}
+    admin_messages = []
+    mobile_messages = []
+    link = _admin_link(payload)
     for token in tokens:
+        device = devices.get(token)
+        is_admin_web = bool(device and device.platform == "web" and device.app == "admin")
+        if is_admin_web:
+            # Data-only for admin web — our service worker / foreground handler shows one notification.
+            admin_messages.append(
+                messaging.Message(
+                    data=payload,
+                    webpush=messaging.WebpushConfig(
+                        headers={"Urgency": "high"},
+                        fcm_options=messaging.WebpushFCMOptions(link=link),
+                    ),
+                    token=token,
+                )
+            )
+        else:
+            mobile_messages.append(
+                messaging.Message(
+                    notification=messaging.Notification(title=title[:120], body=body[:240]),
+                    data=payload,
+                    webpush=messaging.WebpushConfig(
+                        headers={"Urgency": "high"},
+                        notification=messaging.WebpushNotification(
+                            title=title[:120],
+                            body=body[:240],
+                            icon=f"{link.split('/dashboard')[0]}/nhs-logo.png",
+                        ),
+                        fcm_options=messaging.WebpushFCMOptions(link=link),
+                    ),
+                    token=token,
+                )
+            )
+    sender = getattr(messaging, "send_each", None)
+    for batch in (admin_messages, mobile_messages):
+        if not batch:
+            continue
         try:
-            device = devices.get(token)
-            is_admin_web = bool(device and device.platform == "web" and device.app == "admin")
-            if is_admin_web:
-                # Data-only for admin web — our service worker / foreground handler shows one notification.
-                messaging.send(
-                    messaging.Message(
-                        data=payload,
-                        webpush=messaging.WebpushConfig(
-                            headers={"Urgency": "high"},
-                            fcm_options=messaging.WebpushFCMOptions(link=_admin_link(payload)),
-                        ),
-                        token=token,
-                    ),
-                    app=app,
-                )
+            if sender:
+                sender(batch, app=app)
             else:
-                messaging.send(
-                    messaging.Message(
-                        notification=messaging.Notification(title=title[:120], body=body[:240]),
-                        data=payload,
-                        webpush=messaging.WebpushConfig(
-                            headers={"Urgency": "high"},
-                            notification=messaging.WebpushNotification(
-                                title=title[:120],
-                                body=body[:240],
-                                icon=f"{_admin_link(payload).split('/dashboard')[0]}/nhs-logo.png",
-                            ),
-                            fcm_options=messaging.WebpushFCMOptions(
-                                link=_admin_link(payload),
-                            ),
-                        ),
-                        token=token,
-                    ),
-                    app=app,
-                )
+                for message in batch:
+                    messaging.send(message, app=app)
         except Exception:
-            logger.exception("FCM send failed for a device token")
+            logger.exception("FCM send failed")

@@ -16,6 +16,7 @@ function severityClass(severity: AuditSeverity) {
 }
 
 export default function AuditModule() {
+  const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
   const [moduleFilter, setModuleFilter] = useState("All");
   const [openModule, setOpenModule] = useState(false);
@@ -26,6 +27,11 @@ export default function AuditModule() {
   const [loading, setLoading] = useState(true);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(queryInput), 300);
+    return () => window.clearTimeout(timer);
+  }, [queryInput]);
 
   useEffect(() => {
     const q = new URLSearchParams();
@@ -89,7 +95,7 @@ export default function AuditModule() {
   const rows = useMemo(() => {
     return logs.filter((row) => {
       const matchModule = moduleFilter === "All" || row.module === moduleFilter;
-      const q = query.trim().toLowerCase();
+      const q = queryInput.trim().toLowerCase();
       const matchQuery =
         !q ||
         row.actor.toLowerCase().includes(q) ||
@@ -97,7 +103,7 @@ export default function AuditModule() {
         row.id.toLowerCase().includes(q);
       return matchModule && matchQuery;
     });
-  }, [query, moduleFilter, logs]);
+  }, [queryInput, moduleFilter, logs]);
 
   const uniqueActors = new Set(logs.map((row) => row.actor)).size;
 
@@ -144,8 +150,8 @@ export default function AuditModule() {
               <Search className="size-3.5 text-faint" />
               <input
                 data-shortcut-target="page-search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                value={queryInput}
+                onChange={(e) => setQueryInput(e.target.value)}
                 className="w-full bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
                 placeholder="Search actor, action or ID..."
               />
@@ -185,13 +191,49 @@ export default function AuditModule() {
               type="button"
               data-shortcut-target="page-export"
               className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
-              onClick={() =>
-                downloadCsv(
-                  stampFilename("audit-trail"),
-                  ["ID", "When", "Actor", "Module", "Action", "IP", "Detail"],
-                  rows.map((row) => [row.id, row.time, row.actor, row.module, row.action, row.ip, row.detail]),
-                )
-              }
+              onClick={() => {
+                void (async () => {
+                  let all = [...logs];
+                  let cursor = nextCursor;
+                  for (let page = 0; cursor && page < 40; page += 1) {
+                    const q = new URLSearchParams();
+                    if (query.trim()) q.set("search", query.trim());
+                    if (moduleFilter !== "All") q.set("module", moduleFilter);
+                    if (from) q.set("from", from);
+                    if (to) q.set("to", to);
+                    q.set("limit", "100");
+                    q.set("cursor", cursor);
+                    const data = await apiFetch(`/audit/?${q.toString()}`);
+                    const extra = (data.logs ?? []).map((row: Record<string, string>) => ({
+                      id: String(row.id),
+                      actor: row.actor || "—",
+                      action: row.action || "—",
+                      module: row.module || "—",
+                      ip: row.ip || "—",
+                      time: row.createdAt ? new Date(row.createdAt).toLocaleString() : "",
+                      severity: "Info" as AuditSeverity,
+                      detail: row.detail || row.objectId || "",
+                    }));
+                    all = all.concat(extra);
+                    cursor = data.nextCursor ?? null;
+                  }
+                  const q = queryInput.trim().toLowerCase();
+                  const filtered = all.filter((row) => {
+                    const matchModule = moduleFilter === "All" || row.module === moduleFilter;
+                    const matchQuery =
+                      !q ||
+                      row.actor.toLowerCase().includes(q) ||
+                      row.action.toLowerCase().includes(q) ||
+                      row.id.toLowerCase().includes(q);
+                    return matchModule && matchQuery;
+                  });
+                  downloadCsv(
+                    stampFilename("audit-trail"),
+                    ["ID", "When", "Actor", "Module", "Action", "IP", "Detail"],
+                    filtered.map((row) => [row.id, row.time, row.actor, row.module, row.action, row.ip, row.detail]),
+                  );
+                })().catch((err: unknown) => showToast(err instanceof Error ? err.message : "Could not export the audit trail"));
+              }}
             >
               <Download className="size-3.5" />
               Export trail

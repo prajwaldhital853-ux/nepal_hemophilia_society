@@ -48,6 +48,16 @@ export async function updateHospitalStaff(
 }
 
 export async function fetchHospitals() {
-  const data = await apiFetch("/hospitals/");
-  return (Array.isArray(data.hospitals) ? data.hospitals : []) as HospitalOption[];
+  const hospitals: HospitalOption[] = [];
+  let cursor = "";
+  for (let page = 0; page < 20; page += 1) {
+    const query = new URLSearchParams({ limit: "100" });
+    if (cursor) query.set("cursor", cursor);
+    const data = await apiFetch(`/hospitals/?${query.toString()}`);
+    const rows = Array.isArray(data.hospitals) ? data.hospitals : [];
+    hospitals.push(...(rows as HospitalOption[]));
+    cursor = typeof data.nextCursor === "string" ? data.nextCursor : "";
+    if (!cursor) break;
+  }
+  return hospitals;
 }

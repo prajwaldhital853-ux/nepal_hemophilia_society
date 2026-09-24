@@ -66,8 +66,18 @@ class ProvinceAdminListCreateView(APIView):
     permission_classes = [IsAuthenticated, CanManageProvinceAdmins]
 
     def get(self, request):
+        from apps.core.pagination import paginate_offset
+
         qs = ProvinceAdmin.objects.select_related("user", "province").order_by("province__name")
-        return Response({"admins": [serialize_province_admin(row) for row in qs], "total": qs.count()})
+        rows, next_cursor, limit = paginate_offset(qs, request, default=100)
+        return Response(
+            {
+                "admins": [serialize_province_admin(row) for row in rows],
+                "total": qs.count(),
+                "nextCursor": next_cursor,
+                "limit": limit,
+            }
+        )
 
     @transaction.atomic
     def post(self, request):

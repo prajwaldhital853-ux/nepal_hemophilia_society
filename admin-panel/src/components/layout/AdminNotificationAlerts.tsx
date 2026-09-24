@@ -1,91 +1,66 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
-import { apiFetch } from "@/lib/api";
+import { useAdminNotificationFeed, type AdminNote } from "@/components/layout/adminNotificationFeed";
 import { registerAdminWebPush } from "@/lib/adminPush";
 import { loadAdminAlertSeenIds, saveAdminAlertSeenIds, shouldShowAdminAlertPopup } from "@/lib/adminNotificationSeen";
-import { showBrowserNotification, type AlertNote } from "@/lib/browserNotifications";
+import { showBrowserNotification } from "@/lib/browserNotifications";
 import { playNotificationSound } from "@/lib/notificationSound";
 import { useAuth } from "@/lib/auth";
-
-type AdminNote = AlertNote & { isRead?: boolean };
 
 function unreadRows(rows: AdminNote[]) {
   return rows.filter((row) => !row.isRead);
 }
 
 /**
- * Keeps badges fresh. Browser pop-ups use Firebase when configured (works with tab closed).
+ * Browser pop-ups use Firebase when configured (works with the tab closed).
  * Polling pop-ups are only used when Firebase web push is not configured.
+ * The feed itself is loaded once and shared with the bell and appointment inbox.
  */
 export function AdminNotificationAlerts() {
   const { user } = useAuth();
+  const feed = useAdminNotificationFeed(user?.id);
   const seenIds = useRef<Set<number>>(loadAdminAlertSeenIds());
   const bootstrapped = useRef(false);
   const pushRegistered = useRef(false);
   const pushReady = useRef(false);
 
-  const poll = useCallback(async () => {
-    if (!user || typeof window === "undefined") return;
-
-    try {
-      const data = (await apiFetch("/notifications/admin/")) as {
-        notifications?: AdminNote[];
-        appointmentNotifications?: AdminNote[];
-      };
-      const general = unreadRows(Array.isArray(data.notifications) ? data.notifications : []);
-      const appointments = unreadRows(
-        Array.isArray(data.appointmentNotifications) ? data.appointmentNotifications : [],
-      );
-      const combined = [...general, ...appointments];
-
-      if (!bootstrapped.current) {
-        combined.forEach((row) => seenIds.current.add(row.id));
-        saveAdminAlertSeenIds(seenIds.current);
-        bootstrapped.current = true;
-        window.dispatchEvent(new Event("nhms-notifications-refresh"));
-        return;
-      }
-
-      const usePollingPopups = Notification.permission === "granted" && !pushReady.current;
-      let hasNew = false;
-      for (const note of combined) {
-        if (seenIds.current.has(note.id)) continue;
-        seenIds.current.add(note.id);
-        if (usePollingPopups && shouldShowAdminAlertPopup(note.id)) {
-          showBrowserNotification(note);
-        }
-        hasNew = true;
-      }
-      saveAdminAlertSeenIds(seenIds.current);
-      if (hasNew) {
-        playNotificationSound();
-        window.dispatchEvent(new Event("nhms-notifications-refresh"));
-      }
-    } catch {
-      // Ignore polling errors — bell still works.
-    }
-  }, [user]);
-
   useEffect(() => {
-    if (!user) {
+    if (!user || typeof window === "undefined") {
       seenIds.current = new Set();
       bootstrapped.current = false;
       pushRegistered.current = false;
       return;
     }
+    if (!feed.loaded) return;
 
-    seenIds.current = loadAdminAlertSeenIds();
-    void poll();
-    const timer = window.setInterval(() => void poll(), 10000);
-    const onRefresh = () => void poll();
-    window.addEventListener("nhms-notifications-refresh", onRefresh);
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener("nhms-notifications-refresh", onRefresh);
-    };
-  }, [poll, user]);
+    const combined = [
+      ...unreadRows(feed.notifications),
+      ...unreadRows(feed.appointmentNotifications),
+    ];
+
+    if (!bootstrapped.current) {
+      seenIds.current = loadAdminAlertSeenIds();
+      combined.forEach((row) => seenIds.current.add(row.id));
+      saveAdminAlertSeenIds(seenIds.current);
+      bootstrapped.current = true;
+      return;
+    }
+
+    const usePollingPopups = Notification.permission === "granted" && !pushReady.current;
+    let hasNew = false;
+    for (const note of combined) {
+      if (seenIds.current.has(note.id)) continue;
+      seenIds.current.add(note.id);
+      if (usePollingPopups && shouldShowAdminAlertPopup(note.id)) {
+        showBrowserNotification(note);
+      }
+      hasNew = true;
+    }
+    saveAdminAlertSeenIds(seenIds.current);
+    if (hasNew) playNotificationSound();
+  }, [feed, user]);
 
   useEffect(() => {
     if (!user || pushRegistered.current) return;

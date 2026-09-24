@@ -47,6 +47,22 @@ def paginate_queryset(qs, request: Request, *, lookup: str = "pk"):
     return rows, next_cursor, limit
 
 
+def paginate_offset(qs, request: Request, *, default: int = DEFAULT_LIMIT):
+    """Page a queryset without changing its order. Cursor is the next offset."""
+    limit = parse_limit(request, default)
+    raw = decode_cursor(request.query_params.get("cursor"))
+    try:
+        offset = int(raw) if raw is not None else 0
+    except (TypeError, ValueError):
+        offset = 0
+    offset = max(0, offset)
+    rows = list(qs[offset : offset + limit + 1])
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    next_cursor = encode_cursor(offset + len(rows)) if has_more and rows else None
+    return rows, next_cursor, limit
+
+
 def paginate_sequence(items: list, request: Request, *, id_getter):
     limit = parse_limit(request)
     cursor = decode_cursor(request.query_params.get("cursor"))

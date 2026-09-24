@@ -220,13 +220,27 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
           <button
             type="button"
             className="panel ml-auto flex h-8 items-center gap-1.5 px-2.5 text-[11px] text-muted shadow-none"
-            onClick={() =>
-              downloadCsv(
-                stampFilename(labels.singular.replaceAll(" ", "-").toLowerCase()),
-                ["ID", "Name", "Email", "Phone", "Center", "Province", "Status", "Joined"],
-                rows.map((row) => [row.id, row.name, row.email, row.phone, row.treatmentCenter, row.province, row.status, row.joinedDate]),
-              )
-            }
+            onClick={() => {
+              void (async () => {
+                let exported = [...rows];
+                let cursor = nextCursor;
+                for (let page = 0; cursor && page < 80; page += 1) {
+                  const data = await fetchHospitalStaff(staffType, {
+                    province,
+                    search: debounced,
+                    cursor,
+                    limit: 100,
+                  });
+                  exported = exported.concat(data.staff.map(toStaffRow));
+                  cursor = data.nextCursor ?? null;
+                }
+                downloadCsv(
+                  stampFilename(labels.singular.replaceAll(" ", "-").toLowerCase()),
+                  ["ID", "Name", "Email", "Phone", "Center", "Province", "Status", "Joined"],
+                  exported.map((row) => [row.id, row.name, row.email, row.phone, row.treatmentCenter, row.province, row.status, row.joinedDate]),
+                );
+              })().catch((err: unknown) => showToast(err instanceof Error ? err.message : "Could not export staff"));
+            }}
           >
             <Download className="size-3.5" />
             Export

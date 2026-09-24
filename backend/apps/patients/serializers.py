@@ -195,6 +195,8 @@ class PatientSerializer(serializers.ModelSerializer):
         return url
 
     def get_documents(self, obj):
+        if self.context.get("omit_documents"):
+            return []
         request = self.context.get("request")
         files = obj.files.all() if hasattr(obj, "files") else []
         return [serialize_patient_document(doc, request) for doc in files]

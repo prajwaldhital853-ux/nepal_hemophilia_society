@@ -55,6 +55,7 @@ export default function AppServicesModule() {
   const canDelete = can(Perm.websiteDelete) && !user?.viewOnly;
   const [rows, setRows] = useState<AppService[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [loading, setLoading] = useState(true);
@@ -63,6 +64,11 @@ export default function AppServicesModule() {
   const [editing, setEditing] = useState<AppService | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(searchInput), 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -199,8 +205,8 @@ export default function AppServicesModule() {
           <input
             className={`${fieldClass} mt-0 pl-7`}
             placeholder="Search title…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
           />
         </div>
         <select className={fieldClass + " mt-0 w-auto"} value={category} onChange={(e) => setCategory(e.target.value)}>

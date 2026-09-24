@@ -225,8 +225,17 @@ class HospitalListView(viewsets.ViewSet):
         }
 
     def list(self, request):
-        hospitals = self._queryset(request).filter(is_active=True)
-        return Response({"hospitals": [self._serialize(h) for h in hospitals]})
+        from apps.core.pagination import paginate_offset
+
+        hospitals = self._queryset(request).filter(is_active=True).order_by("name")
+        rows, next_cursor, limit = paginate_offset(hospitals, request, default=100)
+        return Response(
+            {
+                "hospitals": [self._serialize(h) for h in rows],
+                "nextCursor": next_cursor,
+                "limit": limit,
+            }
+        )
 
     def create(self, request):
         from apps.accounts.rbac import PERM_HOSPITALS_MANAGE, has_perm, province_id_for

@@ -1,5 +1,8 @@
 """Scoped users directory for Super Admin, Admin, Province Admin, and hospital staff."""
 
+import base64
+import json
+
 from django.db.models import Count, F, Q
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
@@ -17,8 +20,8 @@ from apps.accounts.rbac import (
     province_id_for,
 )
 from apps.accounts.staffing import photo_url_for, staff_queryset_for
+from apps.core.pagination import parse_limit
 from apps.patients.models import Patient
-from apps.core.pagination import paginate_sequence
 
 
 def _patient_queryset_for(actor):
@@ -62,6 +65,94 @@ def _serialize_patient(patient, request):
         "photoUrl": "",
         "isPatient": True,
     }
+
+
+def _filter_staff_status(qs, status):
+    if not status or status == "All":
+        return qs
+    if status == "Inactive":
+        return qs.filter(is_active_account=False)
+    if status == "Pending":
+        return qs.filter(is_active_account=True, must_change_password=True)
+    if status == "Active":
+        return qs.filter(is_active_account=True, must_change_password=False)
+    return qs.none()
+
+
+def _encode_cursor(payload):
+    raw = json.dumps(payload, separators=(",", ":"), default=str)
+    return base64.urlsafe_b64encode(raw.encode()).decode()
+
+
+def _decode_cursor(raw):
+    if not raw:
+        return None
+    try:
+        padded = raw + "=" * (-len(raw) % 4)
+        data = json.loads(base64.urlsafe_b64decode(padded.encode()).decode())
+    except Exception:
+        return None
+    if not isinstance(data, dict) or "phase" not in data:
+        return None
+    return data
+
+
+def _staff_after(cursor):
+    fn = cursor.get("fn") or ""
+    ln = cursor.get("ln") or ""
+    pk = cursor.get("id")
+    return (
+        Q(first_name__gt=fn)
+        | Q(first_name=fn, last_name__gt=ln)
+        | Q(first_name=fn, last_name=ln, id__gt=pk)
+    )
+
+
+def _patient_after(cursor):
+    name = cursor.get("name") or ""
+    pk = cursor.get("id")
+    return Q(full_name__gt=name) | Q(full_name=name, id__gt=pk)
+
+
+def _page_directory(staff_qs, patient_qs, request, *, include_staff, include_patients):
+    """Staff (by name) then patients (by name), one database page at a time."""
+    limit = parse_limit(request)
+    cursor = _decode_cursor(request.query_params.get("cursor"))
+    staff_rows = []
+    patient_rows = []
+
+    take_staff = include_staff and (cursor is None or cursor.get("phase") == "staff")
+    if take_staff:
+        qs = staff_qs.order_by("first_name", "last_name", "id")
+        if cursor and cursor.get("phase") == "staff" and not cursor.get("start"):
+            qs = qs.filter(_staff_after(cursor))
+        staff_rows = list(qs[: limit + 1])
+        if len(staff_rows) > limit:
+            page = staff_rows[:limit]
+            last = page[-1]
+            return page, [], _encode_cursor(
+                {"phase": "staff", "fn": last.first_name or "", "ln": last.last_name or "", "id": last.id}
+            ), limit
+
+    remaining = limit - len(staff_rows)
+    if include_patients:
+        qs = patient_qs.order_by("full_name", "id")
+        if cursor and cursor.get("phase") == "patient" and not cursor.get("start"):
+            qs = qs.filter(_patient_after(cursor))
+        probe = max(remaining, 0) + 1
+        fetched = list(qs[:probe])
+        patient_rows = fetched[:remaining]
+        if len(fetched) > remaining:
+            if patient_rows:
+                last = patient_rows[-1]
+                next_cursor = _encode_cursor(
+                    {"phase": "patient", "name": last.full_name or "", "id": last.id}
+                )
+            else:
+                next_cursor = _encode_cursor({"phase": "patient", "start": True})
+            return staff_rows, patient_rows, next_cursor, limit
+
+    return staff_rows, patient_rows, None, limit
 
 
 def _serialize_staff_row(user, request):
@@ -125,19 +216,12 @@ class UsersDirectoryView(APIView):
             staff_qs = staff_qs.filter(date_joined__date__gte=date_from)
         if date_to:
             staff_qs = staff_qs.filter(date_joined__date__lte=date_to)
+        staff_qs = _filter_staff_status(staff_qs, status)
 
-        rows = []
         include_staff = kind in ("", "All", "all") or kind not in ("patient",)
         include_patients = kind in ("", "All", "all", "patient")
-        if include_staff:
-            for user in staff_qs.order_by("first_name", "last_name", "id")[:400]:
-                row = _serialize_staff_row(user, request)
-                if status and status != "All" and row["status"] != status:
-                    continue
-                rows.append(row)
-
+        patients = _patient_queryset_for(request.user)
         if include_patients:
-            patients = _patient_queryset_for(request.user)
             if province and province != "All":
                 patients = patients.filter(province__name=province)
             if search:
@@ -153,10 +237,25 @@ class UsersDirectoryView(APIView):
                 patients = patients.filter(created_at__date__lte=date_to)
             if status and status != "All":
                 patients = patients.filter(verification_status=status)
-            for patient in patients.order_by("full_name")[:400]:
-                rows.append(_serialize_patient(patient, request))
+        else:
+            patients = patients.none()
+        if not include_staff:
+            staff_qs = staff_qs.none()
 
-        page_rows, next_cursor, limit = paginate_sequence(rows, request, id_getter=lambda row: row["id"])
+        staff_count = staff_qs.count()
+        patient_count = patients.count()
+        active_count = staff_qs.filter(is_active_account=True, must_change_password=False).count()
+        active_count += patients.filter(verification_status="Active").count()
+
+        staff_page, patient_page, next_cursor, limit = _page_directory(
+            staff_qs,
+            patients,
+            request,
+            include_staff=include_staff,
+            include_patients=include_patients,
+        )
+        page_rows = [_serialize_staff_row(user, request) for user in staff_page]
+        page_rows.extend(_serialize_patient(patient, request) for patient in patient_page)
 
         login_users = User.objects.exclude(role=UserRole.PATIENT)
         if not is_national_scope(request.user):
@@ -218,17 +317,17 @@ class UsersDirectoryView(APIView):
         ]
 
         counts = {
-            "total": len(rows),
-            "admins": sum(1 for row in rows if not row["isPatient"]),
-            "patients": sum(1 for row in rows if row["isPatient"]),
-            "active": sum(1 for row in rows if row["status"] == "Active"),
+            "total": staff_count + patient_count,
+            "admins": staff_count,
+            "patients": patient_count,
+            "active": active_count,
             "online": presence_counts["online"] or 0,
             "signedInToday": presence_counts["today"] or 0,
         }
         return Response(
             {
                 "users": page_rows,
-                "total": len(rows),
+                "total": staff_count + patient_count,
                 "counts": counts,
                 "loginTracking": login_tracking,
                 "devices": devices,

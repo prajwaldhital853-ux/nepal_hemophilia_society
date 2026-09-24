@@ -198,7 +198,16 @@ class AdminAppointmentSlotsView(APIView):
     def get(self, request):
         if not has_perm(request.user, PERM_APPOINTMENTS_VIEW):
             raise PermissionDenied("You cannot view appointment slots.")
-        return Response({"slots": [_slot_payload(slot) for slot in _slots_scope(request.user)[:200]]})
+        from apps.core.pagination import paginate_offset
+
+        rows, next_cursor, limit = paginate_offset(_slots_scope(request.user), request, default=100)
+        return Response(
+            {
+                "slots": [_slot_payload(slot) for slot in rows],
+                "nextCursor": next_cursor,
+                "limit": limit,
+            }
+        )
 
     def post(self, request):
         if not has_perm(request.user, PERM_APPOINTMENTS_UPDATE):
@@ -392,11 +401,16 @@ class AdminAppointmentsView(APIView):
         search = (request.query_params.get("search") or "").strip()
         if search:
             qs = qs.filter(Q(patient__full_name__icontains=search) | Q(patient__unique_patient_id__icontains=search))
+        from apps.core.pagination import paginate_offset
+
+        rows, next_cursor, limit = paginate_offset(qs, request, default=50)
         return Response(
             {
-                "appointments": AppointmentSerializer(qs[:200], many=True).data,
+                "appointments": AppointmentSerializer(rows, many=True).data,
                 "canUpdate": has_perm(request.user, PERM_APPOINTMENTS_UPDATE),
                 "canDelete": has_perm(request.user, PERM_APPOINTMENTS_DELETE),
+                "nextCursor": next_cursor,
+                "limit": limit,
             }
         )
 

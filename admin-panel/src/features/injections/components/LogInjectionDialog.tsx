@@ -8,6 +8,7 @@ import {
   INJECTION_INDICATIONS,
   INJECTION_STATUSES,
   isOutOfStockError,
+  stockToastMessage,
   verifyInjectionStock,
   type InjectionIndication,
   type InjectionStatus,
@@ -63,7 +64,6 @@ export default function LogInjectionDialog({
       });
       if (stockError) {
         showToast(stockError);
-        setError(stockError);
         return;
       }
     }
@@ -89,8 +89,7 @@ export default function LogInjectionDialog({
         setNeedsAck(true);
         setError("Patient has current inhibitors. Click Save again to acknowledge and continue.");
       } else if (isOutOfStockError(message)) {
-        showToast(message);
-        setError(message);
+        showToast(stockToastMessage(message));
       } else {
         setError(message);
       }

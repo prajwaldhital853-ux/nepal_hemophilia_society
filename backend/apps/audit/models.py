@@ -15,6 +15,12 @@ class AuditLog(TimeStampedModel):
     class Meta:
         db_table = "audit_logs"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["-created_at"], name="audit_created_idx"),
+            models.Index(fields=["actor"], name="audit_actor_idx"),
+            models.Index(fields=["module", "-created_at"], name="audit_module_created_idx"),
+            models.Index(fields=["action"], name="audit_action_idx"),
+        ]
 
     def __str__(self):
         return f"{self.action} ({self.module})"
