@@ -401,9 +401,6 @@ footer a:hover { text-decoration: underline; }
   width: 100%;
 }
 .page-prose :where(p, h1, h2, ul, ol, blockquote, details, form) {
-  max-width: 72ch;
-}
-.page-prose :where(.topic-card-grid, .mt-6.grid, .mt-8.grid, .mt-10.grid) {
   max-width: none;
 }
 
