@@ -279,12 +279,60 @@ footer a:hover { text-decoration: underline; }
 }
 .nav-drop-link:hover { color: var(--primary); background: #fff1f2; }
 
-@media (max-width: 1023px) {
-  .nav-drop {
-    display: grid;
-    margin: 0 0 0.4rem 0.35rem;
-    border-left: 2px solid var(--primary);
+@media (prefers-reduced-motion: no-preference) {
+  .mobile-nav-drawer {
+    animation: mobile-nav-in 260ms ease both;
   }
+  .mobile-nav-backdrop {
+    animation: mobile-nav-fade 220ms ease both;
+  }
+}
+
+.cookie-consent-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: color-mix(in oklab, #111 45%, transparent);
+}
+
+.cookie-consent-panel {
+  width: min(100%, 42rem);
+  max-height: min(88vh, 34rem);
+  overflow: hidden;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  background: var(--background);
+  padding: 1.5rem 1.5rem 1.25rem;
+  box-shadow: 0 24px 48px color-mix(in oklab, #000 22%, transparent);
+}
+
+.cookie-consent-copy {
+  max-height: 9.5rem;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+.cookie-consent-btn-outline {
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.cookie-consent-btn-outline:hover {
+  background: color-mix(in oklab, var(--primary) 8%, white);
+  color: var(--primary);
+}
+@keyframes mobile-nav-in {
+  from { opacity: 0; translate: 100% 0; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes mobile-nav-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @media (min-width: 1024px) {
@@ -384,7 +432,7 @@ footer a:hover { text-decoration: underline; }
 @view-transition { navigation: auto; }
 
 @media (prefers-reduced-motion: reduce) {
-  .page-enter, .reveal, .reveal-up, .reveal-left { animation: none; opacity: 1; transform: none; }
+  .page-enter, .reveal, .reveal-up, .reveal-left, .mobile-nav-drawer, .mobile-nav-backdrop { animation: none; opacity: 1; transform: none; }
   ::view-transition-old(page-main),
   ::view-transition-new(page-main) { animation: none; }
 }

@@ -21,6 +21,9 @@ import { Route as BleedingDisordersWomenWithBleedingDisordersRouteImport } from 
 import { Route as EventsCategoriesRouteImport } from './routes/events/categories'
 import { Route as GetInvolvedFundraisingRouteImport } from './routes/get-involved/fundraising'
 import { Route as GetInvolvedJoinRouteImport } from './routes/get-involved/join'
+import { Route as LegalCookiePolicyRouteImport } from './routes/legal/cookie-policy'
+import { Route as LegalPrivacyPolicyRouteImport } from './routes/legal/privacy-policy'
+import { Route as LegalTermsAndConditionsRouteImport } from './routes/legal/terms-and-conditions'
 import { Route as PublicInquiryInquiryNewsRouteImport } from './routes/public-inquiry/inquiry-news'
 import { Route as PublicInquirySupportRouteImport } from './routes/public-inquiry/support'
 import { Route as ResourcesExternalResourcesRouteImport } from './routes/resources/external-resources'
@@ -98,6 +101,21 @@ const GetInvolvedJoinRoute = GetInvolvedJoinRouteImport.update({
   path: '/get-involved/join',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LegalCookiePolicyRoute = LegalCookiePolicyRouteImport.update({
+  id: '/legal/cookie-policy',
+  path: '/legal/cookie-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalPrivacyPolicyRoute = LegalPrivacyPolicyRouteImport.update({
+  id: '/legal/privacy-policy',
+  path: '/legal/privacy-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalTermsAndConditionsRoute = LegalTermsAndConditionsRouteImport.update({
+  id: '/legal/terms-and-conditions',
+  path: '/legal/terms-and-conditions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PublicInquiryInquiryNewsRoute =
   PublicInquiryInquiryNewsRouteImport.update({
     id: '/public-inquiry/inquiry-news',
@@ -171,6 +189,9 @@ export interface FileRoutesByFullPath {
   '/events/categories': typeof EventsCategoriesRoute
   '/get-involved/fundraising': typeof GetInvolvedFundraisingRoute
   '/get-involved/join': typeof GetInvolvedJoinRoute
+  '/legal/cookie-policy': typeof LegalCookiePolicyRoute
+  '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
+  '/legal/terms-and-conditions': typeof LegalTermsAndConditionsRoute
   '/public-inquiry/inquiry-news': typeof PublicInquiryInquiryNewsRoute
   '/public-inquiry/support': typeof PublicInquirySupportRoute
   '/resources/external-resources': typeof ResourcesExternalResourcesRoute
@@ -196,6 +217,9 @@ export interface FileRoutesByTo {
   '/events/categories': typeof EventsCategoriesRoute
   '/get-involved/fundraising': typeof GetInvolvedFundraisingRoute
   '/get-involved/join': typeof GetInvolvedJoinRoute
+  '/legal/cookie-policy': typeof LegalCookiePolicyRoute
+  '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
+  '/legal/terms-and-conditions': typeof LegalTermsAndConditionsRoute
   '/public-inquiry/inquiry-news': typeof PublicInquiryInquiryNewsRoute
   '/public-inquiry/support': typeof PublicInquirySupportRoute
   '/resources/external-resources': typeof ResourcesExternalResourcesRoute
@@ -222,6 +246,9 @@ export interface FileRoutesById {
   '/events/categories': typeof EventsCategoriesRoute
   '/get-involved/fundraising': typeof GetInvolvedFundraisingRoute
   '/get-involved/join': typeof GetInvolvedJoinRoute
+  '/legal/cookie-policy': typeof LegalCookiePolicyRoute
+  '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
+  '/legal/terms-and-conditions': typeof LegalTermsAndConditionsRoute
   '/public-inquiry/inquiry-news': typeof PublicInquiryInquiryNewsRoute
   '/public-inquiry/support': typeof PublicInquirySupportRoute
   '/resources/external-resources': typeof ResourcesExternalResourcesRoute
@@ -249,6 +276,9 @@ export interface FileRouteTypes {
     | '/events/categories'
     | '/get-involved/fundraising'
     | '/get-involved/join'
+    | '/legal/cookie-policy'
+    | '/legal/privacy-policy'
+    | '/legal/terms-and-conditions'
     | '/public-inquiry/inquiry-news'
     | '/public-inquiry/support'
     | '/resources/external-resources'
@@ -274,6 +304,9 @@ export interface FileRouteTypes {
     | '/events/categories'
     | '/get-involved/fundraising'
     | '/get-involved/join'
+    | '/legal/cookie-policy'
+    | '/legal/privacy-policy'
+    | '/legal/terms-and-conditions'
     | '/public-inquiry/inquiry-news'
     | '/public-inquiry/support'
     | '/resources/external-resources'
@@ -299,6 +332,9 @@ export interface FileRouteTypes {
     | '/events/categories'
     | '/get-involved/fundraising'
     | '/get-involved/join'
+    | '/legal/cookie-policy'
+    | '/legal/privacy-policy'
+    | '/legal/terms-and-conditions'
     | '/public-inquiry/inquiry-news'
     | '/public-inquiry/support'
     | '/resources/external-resources'
@@ -325,6 +361,9 @@ export interface RootRouteChildren {
   EventsCategoriesRoute: typeof EventsCategoriesRoute
   GetInvolvedFundraisingRoute: typeof GetInvolvedFundraisingRoute
   GetInvolvedJoinRoute: typeof GetInvolvedJoinRoute
+  LegalCookiePolicyRoute: typeof LegalCookiePolicyRoute
+  LegalPrivacyPolicyRoute: typeof LegalPrivacyPolicyRoute
+  LegalTermsAndConditionsRoute: typeof LegalTermsAndConditionsRoute
   PublicInquiryInquiryNewsRoute: typeof PublicInquiryInquiryNewsRoute
   PublicInquirySupportRoute: typeof PublicInquirySupportRoute
   ResourcesExternalResourcesRoute: typeof ResourcesExternalResourcesRoute
@@ -424,6 +463,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GetInvolvedJoinRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/legal/cookie-policy': {
+      id: '/legal/cookie-policy'
+      path: '/legal/cookie-policy'
+      fullPath: '/legal/cookie-policy'
+      preLoaderRoute: typeof LegalCookiePolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/privacy-policy': {
+      id: '/legal/privacy-policy'
+      path: '/legal/privacy-policy'
+      fullPath: '/legal/privacy-policy'
+      preLoaderRoute: typeof LegalPrivacyPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/terms-and-conditions': {
+      id: '/legal/terms-and-conditions'
+      path: '/legal/terms-and-conditions'
+      fullPath: '/legal/terms-and-conditions'
+      preLoaderRoute: typeof LegalTermsAndConditionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/public-inquiry/inquiry-news': {
       id: '/public-inquiry/inquiry-news'
       path: '/public-inquiry/inquiry-news'
@@ -519,6 +579,9 @@ const rootRouteChildren: RootRouteChildren = {
   EventsCategoriesRoute: EventsCategoriesRoute,
   GetInvolvedFundraisingRoute: GetInvolvedFundraisingRoute,
   GetInvolvedJoinRoute: GetInvolvedJoinRoute,
+  LegalCookiePolicyRoute: LegalCookiePolicyRoute,
+  LegalPrivacyPolicyRoute: LegalPrivacyPolicyRoute,
+  LegalTermsAndConditionsRoute: LegalTermsAndConditionsRoute,
   PublicInquiryInquiryNewsRoute: PublicInquiryInquiryNewsRoute,
   PublicInquirySupportRoute: PublicInquirySupportRoute,
   ResourcesExternalResourcesRoute: ResourcesExternalResourcesRoute,

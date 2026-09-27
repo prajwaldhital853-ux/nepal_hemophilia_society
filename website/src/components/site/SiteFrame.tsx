@@ -3,6 +3,9 @@ import { ChevronDown, Facebook, Instagram, Linkedin, Mail, Menu, Phone, X, Youtu
 
 import { Button } from "@/components/ui/button";
 import nhsLogo from "@/assets/nhs-logo.png";
+import { CookieConsentProvider } from "@/components/site/CookieConsent";
+import { CookieSettingsButton } from "@/components/site/CookieSettingsButton";
+import { MobileNavDrawer } from "@/components/site/MobileNavDrawer";
 import { navItems } from "@/components/site/nav";
 import { SiteLink } from "@/components/site/SiteLink";
 
@@ -19,6 +22,7 @@ export function SiteFrame({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
+    <CookieConsentProvider>
     <div className="min-h-screen bg-background text-foreground">
       <header className="site-header">
         <div className="h-12 bg-primary text-primary-foreground">
@@ -53,7 +57,7 @@ export function SiteFrame({ children }: { children: ReactNode }) {
             {menuOpen ? <X /> : <Menu />}
           </Button>
         </div>
-        <div className={`site-container flex-col gap-1 py-3 lg:flex lg:flex-row lg:items-center lg:justify-between lg:py-4 ${menuOpen ? "flex" : "hidden"}`}>
+        <div className="site-container hidden lg:flex lg:flex-row lg:items-center lg:justify-between lg:py-4">
           {navItems.map((item) => (
             <div key={item.label} className="nav-item relative">
               <SiteLink href={item.href} className="flex items-center gap-1 py-2 text-sm font-extrabold hover:text-primary">
@@ -73,6 +77,8 @@ export function SiteFrame({ children }: { children: ReactNode }) {
           ))}
         </div>
       </nav>
+
+      <MobileNavDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       {children}
 
@@ -123,10 +129,22 @@ export function SiteFrame({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="mt-16 border-t border-primary-foreground/30 pt-5 text-center text-xs">
-            <p>© 2026 Nepal Hemophilia Society. A nonprofit organization serving Nepal’s bleeding disorder community.</p>
+            <p>
+              © 2026 Nepal Hemophilia Society. A nonprofit organization serving Nepal’s bleeding disorder community.
+            </p>
+            <p className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+              <SiteLink href="/legal/privacy-policy" className="hover:underline">Privacy Policy</SiteLink>
+              <span aria-hidden="true">·</span>
+              <SiteLink href="/legal/terms-and-conditions" className="hover:underline">Terms and Conditions</SiteLink>
+              <span aria-hidden="true">·</span>
+              <SiteLink href="/legal/cookie-policy" className="hover:underline">Cookie Policy</SiteLink>
+              <span aria-hidden="true">·</span>
+              <CookieSettingsButton />
+            </p>
           </div>
         </div>
       </footer>
     </div>
+    </CookieConsentProvider>
   );
 }
