@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarRange,
@@ -56,7 +56,7 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
   const [loadingMore, setLoadingMore] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetchHospitalStaff(staffType, { province, search: debounced, limit: 10 });
@@ -72,7 +72,7 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
     } finally {
       setLoading(false);
     }
-  }
+  }, [staffType, province, debounced]);
 
   async function loadMore() {
     if (!nextCursor || loadingMore) return;
@@ -104,7 +104,7 @@ export default function HospitalStaffModule({ staffType }: { staffType: Hospital
 
   useEffect(() => {
     void loadData();
-  }, [staffType, province, debounced]);
+  }, [loadData]);
 
   const provinceTotal = totalsByProvince[province] ?? total;
 

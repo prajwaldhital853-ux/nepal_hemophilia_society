@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, ChevronDown, Download, Eye, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 
@@ -68,7 +68,7 @@ export default function AdminsModule() {
   const [roles, setRoles] = useState<StaffKind[]>([]);
   const [showForm, setShowForm] = useState(false);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetchStaffDirectory({
@@ -86,7 +86,7 @@ export default function AdminsModule() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [kind, province, debounced]);
 
   async function loadMore() {
     if (!nextCursor || loadingMore) return;
@@ -121,7 +121,7 @@ export default function AdminsModule() {
 
   useEffect(() => {
     void load();
-  }, [kind, province, debounced]);
+  }, [load]);
 
   useShortcutAction("page-refresh", () => {
     void load();

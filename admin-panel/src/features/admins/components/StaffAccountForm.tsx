@@ -25,6 +25,15 @@ import { useAuth } from "@/lib/auth";
 import { PERM_LABELS } from "@/lib/permissions";
 import { showToast } from "@/lib/toastBus";
 
+function availableCodesFromGroups(source: PermissionGroup[]) {
+  return new Set(source.flatMap((group) => group.permissions.map((perm) => perm.code)));
+}
+
+function sanitizePermissions(codes: string[], source: PermissionGroup[]) {
+  const allowed = availableCodesFromGroups(source);
+  return codes.filter((code) => allowed.has(code));
+}
+
 const steps = [
   { id: 1, label: "Identity", icon: UserRound },
   { id: 2, label: "Assignment", icon: MapPin },
@@ -220,15 +229,6 @@ export default function StaffAccountForm({
     return roles.find((role) => role.kind === kind)?.defaults ?? [];
   }
 
-  function availableCodesFromGroups(source: PermissionGroup[]) {
-    return new Set(source.flatMap((group) => group.permissions.map((perm) => perm.code)));
-  }
-
-  function sanitizePermissions(codes: string[], source = groups) {
-    const allowed = availableCodesFromGroups(source);
-    return codes.filter((code) => allowed.has(code));
-  }
-
   function roleDefaultsFor(kind: StaffKind | "", source = groups) {
     const role = roles.find((item) => item.kind === kind);
     const defaults = role?.defaults?.length ? role.defaults : defaultsForKind(kind);
@@ -410,7 +410,7 @@ export default function StaffAccountForm({
         treatmentCenter: form.treatmentCenter,
         notes: form.notes,
         viewOnly: form.viewOnly,
-        permissions: sanitizePermissions(form.permissions),
+        permissions: sanitizePermissions(form.permissions, groups),
       };
       if (mode === "create") payload.temporaryPassword = form.temporaryPassword;
       if (mode === "edit") payload.status = form.status;

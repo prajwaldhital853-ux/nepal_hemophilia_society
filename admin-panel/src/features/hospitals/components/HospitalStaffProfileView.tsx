@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Building2, Check, FileText, Pencil, Shield, Trash2 } from "lucide-react";
@@ -273,7 +273,7 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
   const isSelf = isOwnStaffAccount(user, staff) || isOwnStaffAccount(user, profile);
   const canEditThis = Boolean(staff?.canEdit && !isSelf);
 
-  function load() {
+  const load = useCallback(() => {
     return Promise.all([
       fetchHospitalStaffProfile(staffType, id),
       fetchStaffAccount(id).catch(() => null),
@@ -287,11 +287,11 @@ export default function HospitalStaffProfileView({ id, staffType }: { id: string
         });
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load profile"));
-  }
+  }, [id, staffType]);
 
   useEffect(() => {
     void load();
-  }, [id, staffType]);
+  }, [load]);
 
   async function setAccountStatus(status: "Active" | "Inactive") {
     if (!staff) return;
