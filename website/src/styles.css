@@ -156,6 +156,17 @@
     border-color: var(--color-border);
   }
 
+  html {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  html::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
@@ -163,6 +174,25 @@
     letter-spacing: 0;
     scroll-behavior: smooth;
     overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  body::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
   }
 }
 
@@ -314,6 +344,14 @@ footer a:hover { text-decoration: underline; }
   max-height: 9.5rem;
   overflow-y: auto;
   padding-right: 0.35rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.cookie-consent-copy::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .cookie-consent-btn-outline {

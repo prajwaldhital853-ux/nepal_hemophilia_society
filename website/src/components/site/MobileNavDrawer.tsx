@@ -52,7 +52,7 @@ export function MobileNavDrawer({ open, onClose }: { open: boolean; onClose: () 
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-3" aria-label="Mobile navigation">
+        <nav className="scrollbar-none flex-1 overflow-y-auto px-3 py-3" aria-label="Mobile navigation">
           {navItems.map((item) => {
             const isExpanded = expanded === item.label;
             return (
