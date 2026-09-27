@@ -36,6 +36,9 @@ class User(AbstractUser):
     photo = models.ImageField(upload_to="admins/photos/", blank=True)
     last_seen_at = models.DateTimeField(null=True, blank=True, db_index=True)
     last_logout_at = models.DateTimeField(null=True, blank=True)
+    totp_secret_encrypted = models.TextField(blank=True, default="")
+    totp_enabled = models.BooleanField(default=False)
+    totp_confirmed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "users"

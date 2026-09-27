@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.jwt import issue_admin_tokens
+from apps.accounts.admin_tokens import issue_admin_tokens
 from apps.accounts.password_policy import password_expires_at, password_is_expired, password_reuse_error, record_password_history
 from apps.accounts.permissions import IsAdminRole
 from apps.accounts.serializers import UserSerializer

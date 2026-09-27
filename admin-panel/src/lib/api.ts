@@ -186,6 +186,10 @@ export async function apiFetch(path: string, init: ApiInit = {}) {
   const data = await res.json().catch(() => ({}));
   const isLogin = path.startsWith("/auth/login");
   const isRefresh = path.startsWith("/auth/refresh");
+  const isPreAuth =
+    path.startsWith("/auth/2fa/setup") ||
+    path.startsWith("/auth/2fa/confirm") ||
+    path.startsWith("/auth/2fa/verify");
 
   if (
     res.status === 401 &&
@@ -193,6 +197,7 @@ export async function apiFetch(path: string, init: ApiInit = {}) {
     !skipAuthRedirect &&
     !isLogin &&
     !isRefresh &&
+    !isPreAuth &&
     !_retried
   ) {
     const nextToken = await refreshAccessToken();

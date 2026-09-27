@@ -20,6 +20,7 @@ class UserSerializer(serializers.ModelSerializer):
     staffId = serializers.SerializerMethodField()
     passwordExpired = serializers.SerializerMethodField()
     passwordExpiresAt = serializers.SerializerMethodField()
+    totpEnabled = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -64,7 +65,11 @@ class UserSerializer(serializers.ModelSerializer):
             "photoUrl",
             "passwordExpired",
             "passwordExpiresAt",
+            "totpEnabled",
         )
+
+    def get_totpEnabled(self, obj):
+        return bool(getattr(obj, "totp_enabled", False))
 
     def get_hospitalStaff(self, obj):
         profile = getattr(obj, "hospital_admin", None)

@@ -23,27 +23,16 @@ from apps.accounts.password_policy import password_is_expired
 from apps.accounts.presence import mark_login, mark_seen
 from apps.accounts.serializers import UserSerializer
 from apps.accounts.throttles import DeviceLoginThrottle
+from apps.accounts.totp import admin_totp_required
+from apps.accounts.totp_auth import build_pre_auth_login_response, build_pre_auth_setup_response
 from apps.audit.models import AuditLog
 from apps.patients.views import client_ip
 
 User = get_user_model()
 
-ADMIN_ACCESS_LIFETIME = timedelta(hours=int(os.getenv("JWT_ADMIN_ACCESS_HOURS", "8")))
-ADMIN_REFRESH_LIFETIME = timedelta(hours=int(os.getenv("JWT_ADMIN_REFRESH_HOURS", "12")))
+from apps.accounts.admin_tokens import ADMIN_ACCESS_LIFETIME, ADMIN_REFRESH_LIFETIME, issue_admin_tokens
+
 GENERIC_ADMIN_LOGIN_ERROR = "Invalid admin ID/email/username or password."
-
-
-def issue_admin_tokens(user):
-    refresh = RefreshToken.for_user(user)
-    refresh["role"] = user.role
-    refresh["username"] = user.username
-    refresh.set_exp(lifetime=ADMIN_REFRESH_LIFETIME)
-    access = refresh.access_token
-    access["role"] = user.role
-    access["username"] = user.username
-    access["must_change_password"] = user.must_change_password
-    access.set_exp(lifetime=ADMIN_ACCESS_LIFETIME)
-    return {"refresh": str(refresh), "access": str(access)}
 
 
 def resolve_admin_login(identifier: str):
@@ -91,9 +80,8 @@ class NhmsTokenObtainPairSerializer(TokenObtainPairSerializer):
         if hasattr(self.user, "is_active_account") and not self.user.is_active_account:
             raise serializers.ValidationError("This administrator account is inactive.")
         request = self.context.get("request")
-        tokens = issue_admin_tokens(self.user)
-        data["refresh"] = tokens["refresh"]
-        data["access"] = tokens["access"]
+        data.pop("refresh", None)
+        data.pop("access", None)
         data["user"] = UserSerializer(self.user, context={"request": request}).data
         data["mustChangePassword"] = self.user.must_change_password or password_is_expired(self.user)
         data["passwordExpired"] = password_is_expired(self.user)
@@ -142,6 +130,13 @@ class NhmsTokenObtainPairView(TokenObtainPairView):
 
         user = serializer.user
         register_success(device_id, identifier, user)
+
+        if user.totp_enabled:
+            return Response(build_pre_auth_login_response(user, request), status=status.HTTP_200_OK)
+
+        if admin_totp_required(user) and not user.totp_enabled:
+            return Response(build_pre_auth_setup_response(user, request), status=status.HTTP_200_OK)
+
         mark_login(user)
         try:
             AuditLog.objects.create(
@@ -153,7 +148,14 @@ class NhmsTokenObtainPairView(TokenObtainPairView):
             )
         except Exception:
             pass
-        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        payload = issue_admin_tokens(user)
+        return Response(
+            {
+                **payload,
+                **serializer.validated_data,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class NhmsTokenRefreshSerializer(TokenRefreshSerializer):

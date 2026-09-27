@@ -5,6 +5,7 @@ from apps.accounts.forgot_password import AdminForgotPasswordView, AdminResetPas
 from apps.accounts.jwt import NhmsTokenObtainPairView, NhmsTokenRefreshView
 from apps.accounts.patient_auth import PatientChangePasswordView, PatientLoginView
 from apps.accounts.staff_views import StaffCatalogView, StaffDetailView, StaffListCreateView
+from apps.accounts.totp_auth import TotpConfirmView, TotpDisableView, TotpSetupView, TotpStatusView, TotpVerifyLoginView
 from apps.accounts.views import LogoutView, MeProfileView, MeView
 
 app_name = "accounts"
@@ -19,6 +20,11 @@ urlpatterns = [
     path("forgot-password/", AdminForgotPasswordView.as_view(), name="admin-forgot-password"),
     path("verify-reset-otp/", AdminVerifyResetOtpView.as_view(), name="admin-verify-reset-otp"),
     path("reset-password/", AdminResetPasswordView.as_view(), name="admin-reset-password"),
+    path("2fa/setup/", TotpSetupView.as_view(), name="admin-2fa-setup"),
+    path("2fa/confirm/", TotpConfirmView.as_view(), name="admin-2fa-confirm"),
+    path("2fa/verify/", TotpVerifyLoginView.as_view(), name="admin-2fa-verify"),
+    path("2fa/status/", TotpStatusView.as_view(), name="admin-2fa-status"),
+    path("2fa/disable/", TotpDisableView.as_view(), name="admin-2fa-disable"),
     path("patient/login/", PatientLoginView.as_view(), name="patient-login"),
     path("patient/change-password/", PatientChangePasswordView.as_view(), name="patient-change-password"),
 ]

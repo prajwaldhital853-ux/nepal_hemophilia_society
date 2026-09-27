@@ -5,11 +5,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { PasswordField } from "@/components/ui/PasswordField";
-import { homeForUser, type AuthUser, useAuth } from "@/lib/auth";
-import { ApiClientError, apiFetch, setAuthTokens } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { ApiClientError, apiFetch } from "@/lib/api";
 import { REMEMBER_KEY, readRememberedUsername, setRememberMe } from "@/lib/authStorage";
 import { showToast } from "@/lib/toastBus";
 import { ensureAdminDeviceId, getAdminDeviceAuth } from "@/lib/deviceId";
+import { storePreAuthToken } from "@/lib/twoFactorSession";
+import { finishAdminLogin } from "@/lib/completeAdminLogin";
 
 function formatRemaining(untilIso?: string, fallbackSeconds?: number) {
   const until = untilIso ? new Date(untilIso).getTime() : Date.now() + (fallbackSeconds ?? 0) * 1000;

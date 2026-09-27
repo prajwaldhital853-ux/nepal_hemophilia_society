@@ -29,6 +29,10 @@ whitenoise>=6.7,<7.0
 # Development
 django-extensions>=3.2,<5.0
 
+# Admin TOTP 2FA (Google Authenticator compatible)
+pyotp>=2.9,<3.0
+qrcode[pil]>=7.4,<9.0
+
 # Reports (Phase 2+)
 cryptography>=43.0,<47.0
 openpyxl>=3.1,<4.0

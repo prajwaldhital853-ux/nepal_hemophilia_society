@@ -30,6 +30,7 @@ export type AuthUser = {
   must_change_password?: boolean;
   passwordExpired?: boolean;
   passwordExpiresAt?: string;
+  totpEnabled?: boolean;
   photoUrl?: string;
   staffId?: string;
   hospitalStaff?: {
