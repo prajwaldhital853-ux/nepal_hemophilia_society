@@ -306,6 +306,7 @@ footer a:hover { text-decoration: underline; }
   font-weight: 800;
   color: var(--foreground);
   text-decoration: none;
+  white-space: nowrap;
 }
 .nav-drop-link:hover { color: var(--primary); background: #fff1f2; }
 
@@ -374,21 +375,35 @@ footer a:hover { text-decoration: underline; }
 }
 
 @media (min-width: 1024px) {
-  .nav-item { position: relative; }
+  .site-nav { overflow: visible; }
+
+  .nav-item {
+    position: relative;
+    overflow: visible;
+  }
+
   .nav-drop {
     display: none;
     position: absolute;
     top: 100%;
     left: 0;
     z-index: 50;
-    min-width: 16.5rem;
+    width: max-content;
+    min-width: max(100%, 16.5rem);
+    max-width: min(24rem, calc(100vw - 2rem));
     padding: 0.35rem 0;
     background: #fff;
     border: 1px solid var(--border);
     box-shadow: 0 12px 30px color-mix(in oklab, var(--foreground) 12%, transparent);
   }
+
+  .nav-item:last-child > .nav-drop {
+    left: auto;
+    right: 0;
+  }
+
   .nav-item:hover > .nav-drop,
-  .nav-item:focus-within > .nav-drop { display: grid; }
+  .nav-item:focus-within > .nav-drop { display: block; }
 }
 
 .faq summary { list-style: none; }
