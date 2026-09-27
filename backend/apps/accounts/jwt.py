@@ -148,7 +148,7 @@ class NhmsTokenObtainPairView(TokenObtainPairView):
             )
         except Exception:
             pass
-        payload = issue_admin_tokens(user)
+        payload = issue_admin_tokens(user, totp_verified=True)
         return Response(
             {
                 **payload,
@@ -175,11 +175,18 @@ class NhmsTokenRefreshSerializer(TokenRefreshSerializer):
         refresh_value = data.get("refresh", attrs["refresh"])
         next_refresh = RefreshToken(refresh_value)
         access = next_refresh.access_token
-        for claim in ("role", "username", "must_change_password"):
+        for claim in ("role", "username", "must_change_password", "totp_verified"):
             if claim in next_refresh:
                 access[claim] = next_refresh[claim]
         if user:
             access["must_change_password"] = user.must_change_password
+            from apps.accounts.totp import admin_totp_required
+
+            if user.totp_enabled or admin_totp_required(user):
+                if not next_refresh.get("totp_verified"):
+                    raise ValidationError(
+                        {"detail": "Sign in again with your authenticator code.", "code": "requires_2fa"}
+                    )
         access.set_exp(lifetime=access_lifetime)
         data["access"] = str(access)
         next_refresh.set_exp(lifetime=refresh_lifetime)

@@ -20,6 +20,7 @@ class LogoutView(APIView):
 
     permission_classes = [permissions.IsAuthenticated]
     allow_must_change_password = True
+    allow_without_totp = True
 
     def post(self, request):
         mark_logout(request.user)
@@ -45,6 +46,11 @@ class MeView(APIView):
         )
 
     def get(self, request):
+        from apps.accounts.totp import evaluate_totp_access
+
+        code, message = evaluate_totp_access(request.user, request)
+        if code:
+            return Response({"error": message, "code": code}, status=status.HTTP_403_FORBIDDEN)
         user = self._user(request)
         return Response(UserSerializer(user or request.user, context={"request": request}).data, status=status.HTTP_200_OK)
 

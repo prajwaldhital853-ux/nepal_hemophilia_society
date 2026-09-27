@@ -35,6 +35,14 @@ from apps.accounts.rbac import (
 __all__ = ["ADMIN_ROLES"]
 
 
+def admin_totp_unsatisfied(user, request, view=None) -> tuple[str | None, str]:
+    from apps.accounts.totp import evaluate_totp_access
+
+    if getattr(view, "allow_without_totp", False):
+        return None, ""
+    return evaluate_totp_access(user, request)
+
+
 def admin_must_set_password(user, view=None) -> bool:
     """True when an admin must change password (temporary or expired) and this view is not exempt."""
     from apps.accounts.password_policy import password_requires_change
@@ -70,6 +78,11 @@ class IsSuperAdmin(BasePermission):
             return False
         if admin_must_set_password(request.user, view):
             self.message = "You must set a new password before using the admin panel."
+            return False
+        code, message = admin_totp_unsatisfied(request.user, request, view)
+        if code:
+            self.message = message
+            setattr(request, "totp_error_code", code)
             return False
         return True
 

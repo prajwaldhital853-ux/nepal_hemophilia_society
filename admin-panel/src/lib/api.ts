@@ -213,6 +213,18 @@ export async function apiFetch(path: string, init: ApiInit = {}) {
     const record = data as Record<string, unknown>;
     if (
       res.status === 403 &&
+      typeof record.code === "string" &&
+      (record.code === "requires_2fa" || record.code === "requires_2fa_setup") &&
+      typeof window !== "undefined" &&
+      !skipAuthRedirect &&
+      !isPreAuth
+    ) {
+      clearAccessToken();
+      window.location.href = record.code === "requires_2fa_setup" ? "/login" : "/login?reason=2fa";
+      return Promise.reject(new ApiClientError(formatApiError(data), 403, { code: record.code }));
+    }
+    if (
+      res.status === 403 &&
       record.code === "must_change_password" &&
       typeof window !== "undefined" &&
       !skipAuthRedirect

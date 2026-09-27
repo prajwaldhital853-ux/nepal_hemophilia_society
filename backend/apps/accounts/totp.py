@@ -19,19 +19,42 @@ from apps.accounts.models import UserRole
 PRE_AUTH_MAX_AGE_SECONDS = 300
 PRE_AUTH_PURPOSE_LOGIN = "2fa_login"
 PRE_AUTH_PURPOSE_SETUP = "2fa_setup"
-TOTP_ISSUER = os.getenv("ADMIN_TOTP_ISSUER", "NHMS Admin")
 MAX_TOTP_VERIFY_ATTEMPTS = 5
 
 
 def admin_totp_required(user) -> bool:
     if not user or user.role == UserRole.PATIENT:
         return False
-    flag = os.getenv("ADMIN_REQUIRE_TOTP", "true").lower()
-    return flag in ("1", "true", "yes", "on")
+    return bool(settings.ADMIN_REQUIRE_TOTP)
+
+
+def totp_issuer() -> str:
+    return settings.ADMIN_TOTP_ISSUER
+
+
+def _jwt_payload(request) -> dict:
+    token = getattr(request, "auth", None)
+    if token is None:
+        return {}
+    payload = getattr(token, "payload", None)
+    return payload if isinstance(payload, dict) else {}
+
+
+def evaluate_totp_access(user, request) -> tuple[str | None, str]:
+    """Return (error_code, message) when admin 2FA is not satisfied."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return None, ""
+    if user.role == UserRole.PATIENT:
+        return None, ""
+    if admin_totp_required(user) and not user.totp_enabled:
+        return "requires_2fa_setup", "Two-factor authentication setup is required before using the admin panel."
+    if user.totp_enabled and not _jwt_payload(request).get("totp_verified"):
+        return "requires_2fa", "Sign in again with your authenticator code."
+    return None, ""
 
 
 def _fernet() -> Fernet:
-    secret = (os.getenv("TOTP_ENCRYPTION_KEY") or settings.SECRET_KEY).encode()
+    secret = (settings.TOTP_ENCRYPTION_KEY or settings.SECRET_KEY).encode()
     digest = hashlib.sha256(secret).digest()
     return Fernet(base64.urlsafe_b64encode(digest))
 
@@ -55,7 +78,7 @@ def generate_totp_secret() -> str:
 
 def provisioning_uri(user, secret: str) -> str:
     label = (user.email or user.username or f"user-{user.pk}").strip()
-    return pyotp.TOTP(secret).provisioning_uri(name=label, issuer_name=TOTP_ISSUER)
+    return pyotp.TOTP(secret).provisioning_uri(name=label, issuer_name=totp_issuer())
 
 
 def qr_code_data_url(provisioning_url: str) -> str:

@@ -7,11 +7,11 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { PasswordField } from "@/components/ui/PasswordField";
 import { useAuth } from "@/lib/auth";
 import { ApiClientError, apiFetch } from "@/lib/api";
+import { finishAdminLogin } from "@/lib/completeAdminLogin";
 import { REMEMBER_KEY, readRememberedUsername, setRememberMe } from "@/lib/authStorage";
 import { showToast } from "@/lib/toastBus";
 import { ensureAdminDeviceId, getAdminDeviceAuth } from "@/lib/deviceId";
 import { storePreAuthToken } from "@/lib/twoFactorSession";
-import { finishAdminLogin } from "@/lib/completeAdminLogin";
 
 function formatRemaining(untilIso?: string, fallbackSeconds?: number) {
   const until = untilIso ? new Date(untilIso).getTime() : Date.now() + (fallbackSeconds ?? 0) * 1000;
@@ -40,6 +40,9 @@ export default function LoginPage() {
     if (window.location.search.includes("password-changed")) {
       setPasswordChanged(true);
     }
+    if (window.location.search.includes("reason=2fa")) {
+      showToast("Sign in again with your username, password, and authenticator code.");
+    }
   }, []);
 
   useEffect(() => {
@@ -66,18 +69,20 @@ export default function LoginPage() {
         skipAuthRedirect: true,
         body: JSON.stringify({ username, password, deviceId, deviceSignals }),
       });
-      if (!data.access) throw new Error("Login failed");
-      if (data.user?.role === "patient") {
-        throw new Error("Patient accounts cannot use the admin panel");
-      }
       setRememberMe(rememberMe, username.trim());
-      setAuthTokens(data.access, data.refresh);
-      if (data.user) setSession(data.user as AuthUser);
-      if (data.mustChangePassword || data.passwordExpired || data.user?.must_change_password || data.user?.passwordExpired) {
-        router.push("/change-password");
+
+      if (data.requires2FA && data.preAuthToken) {
+        storePreAuthToken(String(data.preAuthToken));
+        router.push("/verify-2fa");
         return;
       }
-      router.push(data.user ? homeForUser(data.user as AuthUser) : "/dashboard");
+      if (data.requires2FASetup && data.preAuthToken) {
+        storePreAuthToken(String(data.preAuthToken));
+        router.push("/setup-2fa");
+        return;
+      }
+
+      finishAdminLogin(data, setSession, router);
     } catch (err) {
       if (err instanceof ApiClientError) {
         if (err.code === "device_locked" || err.status === 423) {

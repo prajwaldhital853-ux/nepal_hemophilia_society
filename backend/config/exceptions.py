@@ -60,12 +60,26 @@ def api_exception_handler(exc, context):
     elif isinstance(detail, list):
         response.data = {"error": str(detail[0])}
     elif isinstance(detail, dict):
-        parts = []
-        for key, value in detail.items():
-            if isinstance(value, (list, tuple)):
-                parts.append(f"{key}: {value[0]}")
-            else:
-                parts.append(f"{key}: {value}")
-        response.data = {"error": "; ".join(parts) if parts else "Request failed"}
+        if detail.get("code"):
+            response.data = {
+                "error": _first_message(detail.get("detail") or detail.get("error")) or "Request failed",
+                "code": _first_message(detail.get("code")),
+            }
+        else:
+            parts = []
+            for key, value in detail.items():
+                if isinstance(value, (list, tuple)):
+                    parts.append(f"{key}: {value[0]}")
+                else:
+                    parts.append(f"{key}: {value}")
+            response.data = {"error": "; ".join(parts) if parts else "Request failed"}
     _attach_must_change_password_code(response)
+    request = context.get("request")
+    if request and response.status_code == status.HTTP_403_FORBIDDEN:
+        totp_code = getattr(request, "totp_error_code", None)
+        if totp_code:
+            if isinstance(response.data, dict):
+                response.data = {**response.data, "code": totp_code}
+            else:
+                response.data = {"error": str(response.data), "code": totp_code}
     return response

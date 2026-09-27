@@ -48,7 +48,7 @@ def _clear_totp_attempts(pre_auth_token: str) -> None:
 
 
 def _login_payload(user, request):
-    tokens = issue_admin_tokens(user)
+    tokens = issue_admin_tokens(user, totp_verified=True)
     return {
         **tokens,
         "user": UserSerializer(user, context={"request": request}).data,
@@ -70,6 +70,7 @@ class TotpSetupView(APIView):
     """Generate a TOTP secret and QR code (login setup or authenticated re-enrollment)."""
 
     permission_classes = [AllowAny]
+    allow_without_totp = True
 
     def post(self, request):
         pre_auth = str(request.data.get("preAuthToken") or "").strip()
@@ -107,6 +108,7 @@ class TotpConfirmView(APIView):
     """Confirm TOTP setup with a live 6-digit code."""
 
     permission_classes = [AllowAny]
+    allow_without_totp = True
 
     def post(self, request):
         pre_auth = str(request.data.get("preAuthToken") or "").strip()
@@ -175,6 +177,7 @@ class TotpVerifyLoginView(APIView):
     """Complete login after password verification with a TOTP code."""
 
     permission_classes = [AllowAny]
+    allow_without_totp = True
 
     def post(self, request):
         pre_auth = str(request.data.get("preAuthToken") or "").strip()

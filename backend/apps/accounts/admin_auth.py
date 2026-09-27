@@ -18,6 +18,7 @@ User = get_user_model()
 class AdminChangePasswordView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
     allow_must_change_password = True
+    allow_without_totp = True
 
     def post(self, request):
         current = str(request.data.get("currentPassword") or "").strip()
@@ -72,7 +73,10 @@ class AdminChangePasswordView(APIView):
         if expires:
             payload["passwordExpiresAt"] = expires.isoformat()
         payload["passwordExpired"] = password_is_expired(user)
-        tokens = issue_admin_tokens(user)
+        from apps.accounts.totp import _jwt_payload
+
+        totp_verified = bool(_jwt_payload(request).get("totp_verified"))
+        tokens = issue_admin_tokens(user, totp_verified=totp_verified)
         return Response(
             {
                 "user": payload,

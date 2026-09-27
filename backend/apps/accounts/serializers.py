@@ -21,6 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
     passwordExpired = serializers.SerializerMethodField()
     passwordExpiresAt = serializers.SerializerMethodField()
     totpEnabled = serializers.SerializerMethodField()
+    totpRequired = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -47,6 +48,8 @@ class UserSerializer(serializers.ModelSerializer):
             "photoUrl",
             "passwordExpired",
             "passwordExpiresAt",
+            "totpEnabled",
+            "totpRequired",
         )
         read_only_fields = (
             "id",
@@ -66,10 +69,16 @@ class UserSerializer(serializers.ModelSerializer):
             "passwordExpired",
             "passwordExpiresAt",
             "totpEnabled",
+            "totpRequired",
         )
 
     def get_totpEnabled(self, obj):
         return bool(getattr(obj, "totp_enabled", False))
+
+    def get_totpRequired(self, obj):
+        from apps.accounts.totp import admin_totp_required
+
+        return admin_totp_required(obj)
 
     def get_hospitalStaff(self, obj):
         profile = getattr(obj, "hospital_admin", None)

@@ -274,6 +274,16 @@ REST_FRAMEWORK = {
     "DATETIME_FORMAT": "%Y-%m-%dT%H:%M:%S%z",
 }
 
+# Admin TOTP (Google Authenticator). Set ADMIN_REQUIRE_TOTP=false only for local dev.
+ADMIN_REQUIRE_TOTP = os.getenv("ADMIN_REQUIRE_TOTP", "true").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+ADMIN_TOTP_ISSUER = os.getenv("ADMIN_TOTP_ISSUER", "NHMS Admin").strip() or "NHMS Admin"
+TOTP_ENCRYPTION_KEY = os.getenv("TOTP_ENCRYPTION_KEY", "").strip()
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(
         minutes=int(os.getenv("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", "60"))

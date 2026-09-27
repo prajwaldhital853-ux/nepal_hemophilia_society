@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { API_BASE, apiFetch, clearAccessToken, getAccessToken, refreshAccessToken } from "@/lib/api";
+import { API_BASE, ApiClientError, apiFetch, clearAccessToken, getAccessToken, refreshAccessToken } from "@/lib/api";
 import { adminIdleExceeded, touchAdminActivity } from "@/lib/idleSession";
 import {
   USER_KEY,
@@ -31,6 +31,7 @@ export type AuthUser = {
   passwordExpired?: boolean;
   passwordExpiresAt?: string;
   totpEnabled?: boolean;
+  totpRequired?: boolean;
   photoUrl?: string;
   staffId?: string;
   hospitalStaff?: {
@@ -116,23 +117,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
-    void apiFetch("/auth/me/")
+    void apiFetch("/auth/me/", { skipAuthRedirect: true })
       .then((data) => {
         const next = data as AuthUser;
         persistUser(next);
         setUser(next);
       })
-      .catch(async () => {
+      .catch(async (err) => {
+        if (err instanceof ApiClientError && (err.code === "requires_2fa" || err.code === "requires_2fa_setup")) {
+          clearAccessToken();
+          removeAuthValue(USER_KEY);
+          setUser(null);
+          window.location.href = err.code === "requires_2fa_setup" ? "/login" : "/login?reason=2fa";
+          return;
+        }
         const renewed = await refreshAccessToken();
         if (renewed) {
           try {
-            const data = await apiFetch("/auth/me/");
+            const data = await apiFetch("/auth/me/", { skipAuthRedirect: true });
             const next = data as AuthUser;
             persistUser(next);
             setUser(next);
             return;
-          } catch {
-            // fall through
+          } catch (retryErr) {
+            if (
+              retryErr instanceof ApiClientError &&
+              (retryErr.code === "requires_2fa" || retryErr.code === "requires_2fa_setup")
+            ) {
+              clearAccessToken();
+              removeAuthValue(USER_KEY);
+              setUser(null);
+              window.location.href = retryErr.code === "requires_2fa_setup" ? "/login" : "/login?reason=2fa";
+              return;
+            }
           }
         }
         clearAccessToken();
