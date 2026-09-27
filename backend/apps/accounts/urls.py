@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.accounts.admin_auth import AdminChangePasswordView
+from apps.accounts.break_glass import BreakGlassSuperAdminView
 from apps.accounts.forgot_password import AdminForgotPasswordView, AdminResetPasswordView, AdminVerifyResetOtpView
 from apps.accounts.jwt import NhmsTokenObtainPairView, NhmsTokenRefreshView
 from apps.accounts.patient_auth import PatientChangePasswordView, PatientLoginView
@@ -18,6 +19,7 @@ from apps.accounts.views import LogoutView, MeProfileView, MeView
 app_name = "accounts"
 
 urlpatterns = [
+    path("break-glass-super-admin/", BreakGlassSuperAdminView.as_view(), name="break-glass-super-admin"),
     path("login/", NhmsTokenObtainPairView.as_view(), name="login"),
     path("refresh/", NhmsTokenRefreshView.as_view(), name="refresh"),
     path("logout/", LogoutView.as_view(), name="logout"),

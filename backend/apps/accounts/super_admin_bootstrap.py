@@ -73,7 +73,8 @@ def ensure_super_admin(*, reset_password: bool = True, reset_2fa: bool = True):
             user.must_change_password = False
             user.password_changed_at = None
 
-        if reset_2fa:
+        clear_2fa = reset_2fa or provisioned
+        if clear_2fa:
             user.totp_secret_encrypted = ""
             user.totp_enabled = False
             user.totp_confirmed_at = None
@@ -81,7 +82,7 @@ def ensure_super_admin(*, reset_password: bool = True, reset_2fa: bool = True):
 
         user.save()
 
-        if reset_2fa and user.pk:
+        if clear_2fa and user.pk:
             TotpBackupCode.objects.filter(user=user).delete()
 
     return user, temp_password, provisioned

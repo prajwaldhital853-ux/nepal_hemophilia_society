@@ -23,7 +23,7 @@ from apps.accounts.password_policy import password_is_expired
 from apps.accounts.presence import mark_login, mark_seen
 from apps.accounts.serializers import UserSerializer
 from apps.accounts.throttles import DeviceLoginThrottle
-from apps.accounts.totp import admin_totp_required
+from apps.accounts.totp import admin_totp_required, decrypt_totp_secret
 from apps.accounts.totp_auth import build_pre_auth_login_response, build_pre_auth_setup_response
 from apps.audit.models import AuditLog
 from apps.patients.views import client_ip
@@ -131,8 +131,12 @@ class NhmsTokenObtainPairView(TokenObtainPairView):
         user = serializer.user
         register_success(device_id, identifier, user)
 
-        if user.totp_enabled:
+        if user.totp_enabled and decrypt_totp_secret(user.totp_secret_encrypted):
             return Response(build_pre_auth_login_response(user, request), status=status.HTTP_200_OK)
+
+        if user.totp_enabled and not decrypt_totp_secret(user.totp_secret_encrypted):
+            user.totp_enabled = False
+            user.save(update_fields=["totp_enabled"])
 
         if admin_totp_required(user) and not user.totp_enabled:
             return Response(build_pre_auth_setup_response(user, request), status=status.HTTP_200_OK)
