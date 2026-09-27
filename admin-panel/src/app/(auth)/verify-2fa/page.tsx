@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 
@@ -86,6 +87,12 @@ export default function VerifyTwoFactorPage() {
         >
           {loading ? "Verifying…" : "Verify and sign in"}
         </button>
+        <p className="text-center text-[11px] text-muted">
+          Lost your authenticator?{" "}
+          <Link href="/recover-2fa" className="font-semibold text-brand hover:underline">
+            Use a backup code
+          </Link>
+        </p>
       </form>
     </AuthShell>
   );

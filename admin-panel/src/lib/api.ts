@@ -189,7 +189,8 @@ export async function apiFetch(path: string, init: ApiInit = {}) {
   const isPreAuth =
     path.startsWith("/auth/2fa/setup") ||
     path.startsWith("/auth/2fa/confirm") ||
-    path.startsWith("/auth/2fa/verify");
+    path.startsWith("/auth/2fa/verify") ||
+    path.startsWith("/auth/2fa/recover");
 
   if (
     res.status === 401 &&

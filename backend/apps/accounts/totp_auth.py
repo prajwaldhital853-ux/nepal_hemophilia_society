@@ -12,6 +12,7 @@ from apps.accounts.presence import mark_login
 from apps.accounts.serializers import UserSerializer
 from apps.accounts.totp import (
     PRE_AUTH_PURPOSE_LOGIN,
+    PRE_AUTH_PURPOSE_RECOVER,
     PRE_AUTH_PURPOSE_SETUP,
     MAX_TOTP_VERIFY_ATTEMPTS,
     admin_totp_required,
@@ -25,11 +26,14 @@ from apps.accounts.totp import (
     verify_pre_auth_token,
     verify_totp_code,
 )
+from apps.accounts.totp_backup import consume_backup_code_for_recovery, issue_backup_codes
 from apps.accounts.admin_tokens import issue_admin_tokens
 from apps.audit.models import AuditLog
 from apps.patients.views import client_ip
 
 User = get_user_model()
+
+_SETUP_PURPOSES = {PRE_AUTH_PURPOSE_SETUP, PRE_AUTH_PURPOSE_RECOVER}
 
 
 def _attempt_key(pre_auth_token: str) -> str:
@@ -47,15 +51,17 @@ def _clear_totp_attempts(pre_auth_token: str) -> None:
     cache.delete(_attempt_key(pre_auth_token))
 
 
-def _login_payload(user, request):
-    tokens = issue_admin_tokens(user, totp_verified=True)
-    return {
-        **tokens,
+def _login_payload(user, request, *, backup_codes: list[str] | None = None):
+    payload = {
+        **issue_admin_tokens(user, totp_verified=True),
         "user": UserSerializer(user, context={"request": request}).data,
         "mustChangePassword": user.must_change_password or password_is_expired(user),
         "passwordExpired": password_is_expired(user),
         "accountStatus": "Pending" if user.must_change_password else "Active",
     }
+    if backup_codes:
+        payload["backupCodes"] = backup_codes
+    return payload
 
 
 def _resolve_pre_auth_user(token: str, purpose: str):
@@ -64,6 +70,34 @@ def _resolve_pre_auth_user(token: str, purpose: str):
     if not user or not user.is_active or not user.is_active_account:
         raise ValueError("Account unavailable. Sign in again.")
     return user
+
+
+def _resolve_setup_pre_auth_user(token: str):
+    for purpose in _SETUP_PURPOSES:
+        try:
+            return _resolve_pre_auth_user(token, purpose), purpose
+        except ValueError:
+            continue
+    raise ValueError("Invalid verification session. Sign in again.")
+
+
+def _begin_totp_enrollment(user) -> None:
+    secret = generate_totp_secret()
+    user.totp_secret_encrypted = encrypt_totp_secret(secret)
+    user.totp_enabled = False
+    user.totp_confirmed_at = None
+    user.save(update_fields=["totp_secret_encrypted", "totp_enabled", "totp_confirmed_at"])
+
+
+def _setup_response(user):
+    secret = decrypt_totp_secret(user.totp_secret_encrypted)
+    uri = provisioning_uri(user, secret)
+    return {
+        "otpauthUrl": uri,
+        "qrCodeDataUrl": qr_code_data_url(uri),
+        "secret": secret,
+        "issuer": "NHMS Admin",
+    }
 
 
 class TotpSetupView(APIView):
@@ -77,7 +111,7 @@ class TotpSetupView(APIView):
         user = None
         if pre_auth:
             try:
-                user = _resolve_pre_auth_user(pre_auth, PRE_AUTH_PURPOSE_SETUP)
+                user, _purpose = _resolve_setup_pre_auth_user(pre_auth)
             except ValueError as exc:
                 return Response({"error": str(exc), "code": "pre_auth_invalid"}, status=400)
         elif request.user and request.user.is_authenticated:
@@ -87,21 +121,9 @@ class TotpSetupView(APIView):
         else:
             return Response({"error": "Sign in or provide a valid setup session."}, status=401)
 
-        secret = generate_totp_secret()
-        user.totp_secret_encrypted = encrypt_totp_secret(secret)
-        user.totp_enabled = False
-        user.totp_confirmed_at = None
-        user.save(update_fields=["totp_secret_encrypted", "totp_enabled", "totp_confirmed_at"])
-
-        uri = provisioning_uri(user, secret)
-        return Response(
-            {
-                "otpauthUrl": uri,
-                "qrCodeDataUrl": qr_code_data_url(uri),
-                "secret": secret,
-                "issuer": "NHMS Admin",
-            }
-        )
+        if not decrypt_totp_secret(user.totp_secret_encrypted):
+            _begin_totp_enrollment(user)
+        return Response(_setup_response(user))
 
 
 class TotpConfirmView(APIView):
@@ -117,15 +139,14 @@ class TotpConfirmView(APIView):
             return Response({"error": "Enter the 6-digit code from your authenticator app."}, status=400)
 
         user = None
-        purpose = PRE_AUTH_PURPOSE_SETUP
+        purpose = ""
         if pre_auth:
             try:
-                user = _resolve_pre_auth_user(pre_auth, PRE_AUTH_PURPOSE_SETUP)
+                user, purpose = _resolve_setup_pre_auth_user(pre_auth)
             except ValueError as exc:
                 return Response({"error": str(exc), "code": "pre_auth_invalid"}, status=400)
         elif request.user and request.user.is_authenticated:
             user = request.user
-            purpose = ""
         else:
             return Response({"error": "Sign in or provide a valid setup session."}, status=401)
 
@@ -154,23 +175,97 @@ class TotpConfirmView(APIView):
         if pre_auth:
             _clear_totp_attempts(pre_auth)
 
+        is_first_issue = not user.totp_backup_issued
+        is_recovery = purpose == PRE_AUTH_PURPOSE_RECOVER
         mark_totp_confirmed(user)
+
+        backup_codes: list[str] = []
+        if is_first_issue:
+            backup_codes = issue_backup_codes(user)
+            user.totp_backup_issued = True
+            user.save(update_fields=["totp_backup_issued"])
+            audit_detail = "Google Authenticator setup confirmed; backup codes issued"
+        elif is_recovery:
+            issue_backup_codes(user)
+            audit_detail = "Authenticator reset with backup code; new backup codes stored"
+        else:
+            audit_detail = "Google Authenticator setup confirmed"
+
         try:
             AuditLog.objects.create(
                 actor=user.get_username(),
-                action="2FA enabled",
+                action="2FA enabled" if is_first_issue else "2FA reset",
                 module="Auth",
                 ip=client_ip(request),
-                detail="Google Authenticator setup confirmed",
+                detail=audit_detail,
             )
         except Exception:
             pass
 
-        if pre_auth and purpose == PRE_AUTH_PURPOSE_SETUP:
+        if pre_auth and purpose in _SETUP_PURPOSES:
             mark_login(user)
-            return Response(_login_payload(user, request))
+            return Response(_login_payload(user, request, backup_codes=backup_codes or None))
 
         return Response({"totpEnabled": True, "message": "Two-factor authentication is now enabled."})
+
+
+class TotpRecoverView(APIView):
+    """Use a one-time backup code to replace a lost authenticator."""
+
+    permission_classes = [AllowAny]
+    allow_without_totp = True
+
+    def post(self, request):
+        pre_auth = str(request.data.get("preAuthToken") or "").strip()
+        backup_code = str(request.data.get("backupCode") or "").strip()
+        if not pre_auth or not backup_code:
+            return Response({"error": "Sign-in session and backup code are required."}, status=400)
+
+        try:
+            user = _resolve_pre_auth_user(pre_auth, PRE_AUTH_PURPOSE_LOGIN)
+        except ValueError as exc:
+            return Response({"error": str(exc), "code": "pre_auth_invalid"}, status=400)
+
+        if not user.totp_enabled:
+            return Response({"error": "Two-factor authentication is not enabled for this account."}, status=400)
+
+        if not consume_backup_code_for_recovery(user, backup_code):
+            attempts = _register_totp_failure(pre_auth)
+            remaining = max(0, MAX_TOTP_VERIFY_ATTEMPTS - attempts)
+            if remaining <= 0:
+                return Response(
+                    {"error": "Too many failed attempts. Sign in again.", "code": "totp_locked"},
+                    status=429,
+                )
+            return Response(
+                {
+                    "error": "Incorrect backup code.",
+                    "attemptsRemaining": remaining,
+                    "code": "invalid_backup_code",
+                },
+                status=400,
+            )
+
+        _clear_totp_attempts(pre_auth)
+        _begin_totp_enrollment(user)
+        recover_token = issue_pre_auth_token(user.pk, PRE_AUTH_PURPOSE_RECOVER)
+        try:
+            AuditLog.objects.create(
+                actor=user.get_username(),
+                action="2FA recovery started",
+                module="Auth",
+                ip=client_ip(request),
+                detail="Backup code accepted; authenticator re-enrollment required",
+            )
+        except Exception:
+            pass
+        return Response(
+            {
+                "preAuthToken": recover_token,
+                "message": "Backup code accepted. Scan the new QR code in your authenticator app.",
+                **_setup_response(user),
+            }
+        )
 
 
 class TotpVerifyLoginView(APIView):
@@ -232,11 +327,14 @@ class TotpStatusView(APIView):
         user = request.user
         if user.role == UserRole.PATIENT:
             return Response({"error": "Not available."}, status=403)
+        from apps.accounts.totp_backup import unused_backup_code_count
+
         return Response(
             {
                 "totpEnabled": bool(user.totp_enabled),
                 "totpRequired": admin_totp_required(user),
                 "confirmedAt": user.totp_confirmed_at.isoformat() if user.totp_confirmed_at else None,
+                "backupCodesRemaining": unused_backup_code_count(user),
             }
         )
 
@@ -261,7 +359,11 @@ class TotpDisableView(APIView):
         user.totp_secret_encrypted = ""
         user.totp_enabled = False
         user.totp_confirmed_at = None
-        user.save(update_fields=["totp_secret_encrypted", "totp_enabled", "totp_confirmed_at"])
+        user.totp_backup_issued = False
+        user.save(update_fields=["totp_secret_encrypted", "totp_enabled", "totp_confirmed_at", "totp_backup_issued"])
+        from apps.accounts.totp_backup import delete_all_backup_codes
+
+        delete_all_backup_codes(user)
         try:
             AuditLog.objects.create(
                 actor=user.get_username(),

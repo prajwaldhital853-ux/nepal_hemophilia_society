@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 
 import { AuthShell } from "@/components/auth/AuthShell";
-import { useAuth } from "@/lib/auth";
+import { BackupCodesPanel } from "@/components/auth/BackupCodesPanel";
+import { clearRecoverSetup, isRecoverSetupRoute, readRecoverSetup } from "@/lib/twoFactorRecovery";
+import { useAuth, type AuthUser } from "@/lib/auth";
 import { ApiClientError, apiFetch } from "@/lib/api";
 import { finishAdminLogin } from "@/lib/completeAdminLogin";
 import { showToast } from "@/lib/toastBus";
@@ -17,20 +19,41 @@ type SetupPayload = {
   otpauthUrl?: string;
 };
 
+type PendingLogin = {
+  access?: string;
+  refresh?: string;
+  user?: AuthUser;
+  mustChangePassword?: boolean;
+  passwordExpired?: boolean;
+};
+
 export default function SetupTwoFactorPage() {
   const router = useRouter();
   const { setSession } = useAuth();
+  const [isRecovery, setIsRecovery] = useState(false);
   const [setup, setSetup] = useState<SetupPayload | null>(null);
   const [code, setCode] = useState("");
   const [loadingSetup, setLoadingSetup] = useState(true);
   const [loadingConfirm, setLoadingConfirm] = useState(false);
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
+  const [pendingLogin, setPendingLogin] = useState<PendingLogin | null>(null);
 
   useEffect(() => {
+    const recovery = isRecoverSetupRoute();
+    setIsRecovery(recovery);
     const preAuthToken = readPreAuthToken();
     if (!preAuthToken) {
       router.replace("/login");
       return;
     }
+
+    const cachedRecover = recovery ? readRecoverSetup() : null;
+    if (cachedRecover?.qrCodeDataUrl) {
+      setSetup(cachedRecover);
+      setLoadingSetup(false);
+      return;
+    }
+
     void (async () => {
       try {
         const data = await apiFetch("/auth/2fa/setup/", {
@@ -67,10 +90,18 @@ export default function SetupTwoFactorPage() {
         skipAuthRedirect: true,
         body: JSON.stringify({ preAuthToken, code: normalized }),
       });
+      clearRecoverSetup();
+      const codes = Array.isArray(data.backupCodes) ? (data.backupCodes as string[]) : null;
+      if (codes?.length) {
+        setPendingLogin(data as PendingLogin & { backupCodes?: string[] });
+        setBackupCodes(codes);
+        return;
+      }
       finishAdminLogin(data, setSession, router);
     } catch (err) {
       if (err instanceof ApiClientError && err.code === "totp_locked") {
         clearPreAuthToken();
+        clearRecoverSetup();
         showToast(err.message);
         router.replace("/login");
         return;
@@ -81,11 +112,26 @@ export default function SetupTwoFactorPage() {
     }
   }
 
+  function finishAfterBackupCodes() {
+    if (!pendingLogin) return;
+    finishAdminLogin(pendingLogin, setSession, router);
+  }
+
+  const title = isRecovery ? "Set up a new authenticator" : "Set up two-factor authentication";
+  const subtitle = isRecovery
+    ? "Your backup code was accepted. Scan this new QR code, then enter the 6-digit code. Your old authenticator and backup codes no longer work."
+    : "Scan the QR code with Google Authenticator, then enter the 6-digit code to finish setup. You will need a code every time you sign in.";
+
+  if (backupCodes?.length) {
+    return (
+      <AuthShell title="Save your backup codes" subtitle="Store these codes before you continue.">
+        <BackupCodesPanel codes={backupCodes} onContinue={finishAfterBackupCodes} />
+      </AuthShell>
+    );
+  }
+
   return (
-    <AuthShell
-      title="Set up two-factor authentication"
-      subtitle="Scan the QR code with Google Authenticator, then enter the 6-digit code to finish setup. You will need a code every time you sign in."
-    >
+    <AuthShell title={title} subtitle={subtitle}>
       {loadingSetup ? (
         <p className="text-[12px] text-muted">Preparing your QR code…</p>
       ) : (
@@ -124,7 +170,7 @@ export default function SetupTwoFactorPage() {
               disabled={loadingConfirm}
               className="w-full rounded-xl bg-brand py-2.5 text-[12px] font-semibold text-white hover:bg-brand-blueDark disabled:opacity-60"
             >
-              {loadingConfirm ? "Confirming…" : "Confirm and sign in"}
+              {loadingConfirm ? "Confirming…" : isRecovery ? "Confirm and sign in" : "Confirm and sign in"}
             </button>
           </form>
         </div>

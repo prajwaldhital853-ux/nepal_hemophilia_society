@@ -39,6 +39,7 @@ class User(AbstractUser):
     totp_secret_encrypted = models.TextField(blank=True, default="")
     totp_enabled = models.BooleanField(default=False)
     totp_confirmed_at = models.DateTimeField(null=True, blank=True)
+    totp_backup_issued = models.BooleanField(default=False)
 
     class Meta:
         db_table = "users"
@@ -84,6 +85,19 @@ class PasswordHistory(models.Model):
     class Meta:
         db_table = "password_history"
         ordering = ["-created_at"]
+
+
+class TotpBackupCode(models.Model):
+    """Hashed one-time recovery codes for admin 2FA."""
+
+    user = models.ForeignKey("User", on_delete=models.CASCADE, related_name="totp_backup_codes")
+    code_hash = models.CharField(max_length=128)
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "totp_backup_codes"
+        indexes = [models.Index(fields=["user", "used_at"], name="totp_backup_user_used_idx")]
 
 
 class AdminPasswordResetOTP(models.Model):

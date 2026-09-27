@@ -19,6 +19,7 @@ from apps.accounts.models import UserRole
 PRE_AUTH_MAX_AGE_SECONDS = 300
 PRE_AUTH_PURPOSE_LOGIN = "2fa_login"
 PRE_AUTH_PURPOSE_SETUP = "2fa_setup"
+PRE_AUTH_PURPOSE_RECOVER = "2fa_recover"
 MAX_TOTP_VERIFY_ATTEMPTS = 5
 
 

@@ -66,6 +66,91 @@ def post_admin_login(client, username, password, device=TEST_DEVICE, signals=Non
     return client.post("/api/v1/auth/login/", payload, format="json")
 
 
+class TotpBackupCodeTests(APITestCase):
+    @override_settings(ADMIN_REQUIRE_TOTP=False)
+    def test_first_setup_returns_backup_codes_once(self):
+        user = User.objects.create_user(
+            username="backup.admin",
+            password="TempPass#123",
+            role=UserRole.ADMIN,
+            email="backup.admin@hemophilia.org.np",
+        )
+        from apps.accounts.totp import (
+            PRE_AUTH_PURPOSE_SETUP,
+            encrypt_totp_secret,
+            generate_totp_secret,
+            issue_pre_auth_token,
+        )
+        import pyotp
+
+        secret = generate_totp_secret()
+        user.totp_secret_encrypted = encrypt_totp_secret(secret)
+        user.save(update_fields=["totp_secret_encrypted"])
+        pre_auth = issue_pre_auth_token(user.pk, PRE_AUTH_PURPOSE_SETUP)
+        code = pyotp.TOTP(secret).now()
+        res = self.client.post(
+            "/api/v1/auth/2fa/confirm/",
+            {"preAuthToken": pre_auth, "code": code},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(len(res.data.get("backupCodes") or []), 3)
+        user.refresh_from_db()
+        self.assertTrue(user.totp_backup_issued)
+
+    @override_settings(ADMIN_REQUIRE_TOTP=False)
+    def test_backup_code_recovery_rotates_authenticator(self):
+        user = User.objects.create_user(
+            username="recover.admin",
+            password="TempPass#123",
+            role=UserRole.ADMIN,
+            email="recover.admin@hemophilia.org.np",
+            totp_enabled=True,
+            totp_backup_issued=True,
+        )
+        from apps.accounts.totp import (
+            PRE_AUTH_PURPOSE_LOGIN,
+            encrypt_totp_secret,
+            generate_totp_secret,
+            issue_pre_auth_token,
+        )
+        from apps.accounts.totp_backup import issue_backup_codes
+        import pyotp
+
+        old_secret = generate_totp_secret()
+        user.totp_secret_encrypted = encrypt_totp_secret(old_secret)
+        user.save(update_fields=["totp_secret_encrypted"])
+        codes = issue_backup_codes(user)
+        login_pre_auth = issue_pre_auth_token(user.pk, PRE_AUTH_PURPOSE_LOGIN)
+
+        recover = self.client.post(
+            "/api/v1/auth/2fa/recover/",
+            {"preAuthToken": login_pre_auth, "backupCode": codes[0]},
+            format="json",
+        )
+        self.assertEqual(recover.status_code, 200, recover.data)
+        self.assertTrue(recover.data.get("qrCodeDataUrl"))
+        self.assertTrue(recover.data.get("preAuthToken"))
+
+        old_code = pyotp.TOTP(old_secret).now()
+        blocked = self.client.post(
+            "/api/v1/auth/2fa/verify/",
+            {"preAuthToken": login_pre_auth, "code": old_code},
+            format="json",
+        )
+        self.assertEqual(blocked.status_code, 400, blocked.data)
+
+        new_secret = recover.data.get("secret")
+        recover_pre_auth = recover.data["preAuthToken"]
+        confirm = self.client.post(
+            "/api/v1/auth/2fa/confirm/",
+            {"preAuthToken": recover_pre_auth, "code": pyotp.TOTP(new_secret).now()},
+            format="json",
+        )
+        self.assertEqual(confirm.status_code, 200, confirm.data)
+        self.assertNotIn("backupCodes", confirm.data)
+
+
 class SessionInvalidationTests(APITestCase):
     @override_settings(ADMIN_REQUIRE_TOTP=False)
     def test_admin_password_reset_invalidates_jwt_issued_before_rotation(self):
