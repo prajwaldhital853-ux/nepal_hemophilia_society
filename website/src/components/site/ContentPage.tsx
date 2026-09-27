@@ -14,6 +14,7 @@ import { SiteFrame } from "@/components/site/SiteFrame";
 import { SiteLink } from "@/components/site/SiteLink";
 import { TopicCard } from "@/components/site/TopicCard";
 import { Button } from "@/components/ui/button";
+import { articleHref } from "@/data/articles";
 import type { PageDoc, Photo } from "@/data/pages";
 
 const photos: Record<Photo, string> = {
@@ -181,6 +182,9 @@ export function ContentPage({ page }: { page: PageDoc }) {
                         <SiteLink href={item.href} className="block rounded-md border border-border bg-white p-5 hover:border-primary">
                           <span className="block font-black text-primary">{item.title}</span>
                           <span className="mt-1 block text-sm leading-relaxed">{item.text}</span>
+                          {!item.href.startsWith("http") && !item.href.startsWith("mailto:") ? (
+                            <span className="mt-3 inline-flex text-sm font-black text-primary">Read more →</span>
+                          ) : null}
                         </SiteLink>
                       </Reveal>
                     ))}
@@ -214,6 +218,9 @@ export function ContentPage({ page }: { page: PageDoc }) {
                             <time className="text-xs font-extrabold text-primary">{article.date}</time>
                             <h2 className="mt-2 text-2xl font-black">{article.title}</h2>
                             {article.paragraphs.map((paragraph) => <p key={paragraph} className="mt-3 leading-relaxed">{paragraph}</p>)}
+                            <SiteLink href={articleHref(article.id)} className="mt-5 inline-flex rounded-full bg-primary px-5 py-2 text-sm font-black text-primary-foreground">
+                              Read more
+                            </SiteLink>
                           </div>
                         </article>
                       </Reveal>

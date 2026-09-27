@@ -8,6 +8,7 @@ import { SiteLink } from "@/components/site/SiteLink";
 import { TopicCard } from "@/components/site/TopicCard";
 import { Button } from "@/components/ui/button";
 import type { CardImage } from "@/assets/cards";
+import { articleHref } from "@/data/articles";
 import type { Tone } from "@/data/pages";
 
 export const Route = createFileRoute("/")({
@@ -25,22 +26,24 @@ export const Route = createFileRoute("/")({
 });
 
 const helpCards: { title: string; text: string; href: string; tone: Tone; image: CardImage }[] = [
-  { title: "My child is newly diagnosed", text: "Finding out that you or your child has a bleeding disorder can be stressful. We’re here to help you make sense of it all.", href: "/support/newly-diagnosed", tone: "primary", image: "hands" },
-  { title: "Someone I know has a bleeding disorder", text: "Learn about different bleeding disorders, available diagnosis and treatment options, and how you can offer support.", href: "/bleeding-disorders/haemophilia", tone: "magenta", image: "genetics" },
-  { title: "I need help and support", text: "Find practical information for staying active and healthy, along with support available to you and your family.", href: "/support/day-day-living", tone: "sky", image: "bandage" },
+  { title: "My child is newly diagnosed", text: "Finding out that you or your child has a bleeding disorder can be stressful. We’re here to help you make sense of it all.", href: articleHref("help-newly-diagnosed-child"), tone: "primary", image: "hands" },
+  { title: "Someone I know has a bleeding disorder", text: "Learn about different bleeding disorders, available diagnosis and treatment options, and how you can offer support.", href: articleHref("help-someone-i-know"), tone: "magenta", image: "genetics" },
+  { title: "I need help and support", text: "Find practical information for staying active and healthy, along with support available to you and your family.", href: articleHref("help-day-to-day-support"), tone: "sky", image: "bandage" },
 ];
 
 const newsCards: { kicker: string; title: string; text: string; href: string; tone: Tone; image: CardImage }[] = [
-  { kicker: "11 MAR 24", title: "NHS asks provinces to invest in diagnosis and treatment", text: "Provincial governments were asked to fund diagnosis, care and safe treatment closer to home.", href: "/news#provinces-2024", tone: "primary", image: "newsProvinces" },
-  { kicker: "11 MAR 24", title: "Members gather in Kathmandu for hemophilia care", text: "Families, clinicians and volunteers met in Kathmandu to share knowledge and connection.", href: "/news#community-kathmandu", tone: "magenta", image: "newsKathmandu" },
-  { kicker: "17 APR", title: "World Hemophilia Day in Nepal", text: "Each 17 April NHS marks World Hemophilia Day with families across the country.", href: "/news#whd", tone: "sky", image: "newsWhd" },
+  { kicker: "11 MAR 24", title: "NHS asks provinces to invest in diagnosis and treatment", text: "Provincial governments were asked to fund diagnosis, care and safe treatment closer to home.", href: articleHref("provinces-2024"), tone: "primary", image: "newsProvinces" },
+  { kicker: "11 MAR 24", title: "Members gather in Kathmandu for hemophilia care", text: "Families, clinicians and volunteers met in Kathmandu to share knowledge and connection.", href: articleHref("community-kathmandu"), tone: "magenta", image: "newsKathmandu" },
+  { kicker: "17 APR", title: "World Hemophilia Day in Nepal", text: "Each 17 April NHS marks World Hemophilia Day with families across the country.", href: articleHref("whd"), tone: "sky", image: "newsWhd" },
 ];
 
 const events: { kicker: string; title: string; text: string; href: string; tone: Tone; image: CardImage }[] = [
-  { kicker: "17 Apr", title: "World Hemophilia Day", text: "Stand with Nepal’s bleeding disorder community and help raise awareness.", href: "/events/categories#world-hemophilia-day", tone: "primary", image: "eventWhd" },
-  { kicker: "11 Mar", title: "Provincial advocacy meeting", text: "Families, clinicians and volunteers sharing knowledge and connection.", href: "/events/categories#advocacy-meeting", tone: "magenta", image: "eventAdvocacy" },
-  { kicker: "Camp", title: "Community health camp", text: "Hands-on support for children living with hemophilia.", href: "/events/categories#health-camps", tone: "sky", image: "eventCamp" },
+  { kicker: "17 Apr", title: "World Hemophilia Day", text: "Stand with Nepal’s bleeding disorder community and help raise awareness.", href: articleHref("world-hemophilia-day"), tone: "primary", image: "eventWhd" },
+  { kicker: "11 Mar", title: "Provincial advocacy meeting", text: "Families, clinicians and volunteers sharing knowledge and connection.", href: articleHref("advocacy-meeting"), tone: "magenta", image: "eventAdvocacy" },
+  { kicker: "Camp", title: "Community health camp", text: "Hands-on support for children living with hemophilia.", href: articleHref("health-camps"), tone: "sky", image: "eventCamp" },
 ];
+
+const storySlugs = ["story-family-journey", "story-living-confidence", "story-stronger-together"] as const;
 
 const stories = [
   { title: "A family’s journey", text: "Finding support, confidence and a community that understands changed everything." },
@@ -49,10 +52,10 @@ const stories = [
 ];
 
 const joinCards = [
-  ["Become a Member", "Join Nepal Hemophilia Society and connect with a community that understands.", "Join us now", "/get-involved/join"],
-  ["Campaign with us", "Help improve access to diagnosis, safe treatment and comprehensive care.", "Take action", "/public-inquiry/the-infected-blood-inquiry/appg"],
-  ["Get Involved", "Volunteer, fundraise or share your expertise to support families across Nepal.", "Sign me up", "/get-involved/fundraising"],
-  ["Reach Out", "We’re on the end of an email or phone whenever you need information and support.", "Get connected", "mailto:nepalhemo@gmail.com"],
+  ["Become a Member", "Join Nepal Hemophilia Society and connect with a community that understands.", "Read more", articleHref("join-become-member")],
+  ["Campaign with us", "Help improve access to diagnosis, safe treatment and comprehensive care.", "Read more", articleHref("join-campaign-with-us")],
+  ["Get Involved", "Volunteer, fundraise or share your expertise to support families across Nepal.", "Read more", articleHref("join-get-involved")],
+  ["Reach Out", "We’re on the end of an email or phone whenever you need information and support.", "Read more", articleHref("join-reach-out")],
 ];
 
 function Index() {
@@ -147,7 +150,7 @@ function Index() {
                     <div className="flex min-h-56 flex-col items-center p-7 text-center">
                       <h3 className="text-xl font-black text-primary">{story.title}</h3>
                       <p className="mt-4 text-sm leading-relaxed">{story.text}</p>
-                      <Button variant="brand" className="mt-auto" asChild><SiteLink href="/support/our-community#stories">Read more</SiteLink></Button>
+                      <Button variant="brand" className="mt-auto" asChild><SiteLink href={articleHref(storySlugs[index])}>Read more</SiteLink></Button>
                     </div>
                   </article>
                 </Reveal>

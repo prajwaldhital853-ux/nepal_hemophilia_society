@@ -26,6 +26,7 @@ import { Route as LegalPrivacyPolicyRouteImport } from './routes/legal/privacy-p
 import { Route as LegalTermsAndConditionsRouteImport } from './routes/legal/terms-and-conditions'
 import { Route as PublicInquiryInquiryNewsRouteImport } from './routes/public-inquiry/inquiry-news'
 import { Route as PublicInquirySupportRouteImport } from './routes/public-inquiry/support'
+import { Route as ReadSlugRouteImport } from './routes/read/$slug'
 import { Route as ResourcesExternalResourcesRouteImport } from './routes/resources/external-resources'
 import { Route as ResourcesGuidelinesRouteImport } from './routes/resources/guidelines'
 import { Route as ResourcesPublicationsRouteImport } from './routes/resources/publications'
@@ -127,6 +128,11 @@ const PublicInquirySupportRoute = PublicInquirySupportRouteImport.update({
   path: '/public-inquiry/support',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReadSlugRoute = ReadSlugRouteImport.update({
+  id: '/read/$slug',
+  path: '/read/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResourcesExternalResourcesRoute =
   ResourcesExternalResourcesRouteImport.update({
     id: '/resources/external-resources',
@@ -194,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/legal/terms-and-conditions': typeof LegalTermsAndConditionsRoute
   '/public-inquiry/inquiry-news': typeof PublicInquiryInquiryNewsRoute
   '/public-inquiry/support': typeof PublicInquirySupportRoute
+  '/read/$slug': typeof ReadSlugRoute
   '/resources/external-resources': typeof ResourcesExternalResourcesRoute
   '/resources/guidelines': typeof ResourcesGuidelinesRoute
   '/resources/publications': typeof ResourcesPublicationsRoute
@@ -222,6 +229,7 @@ export interface FileRoutesByTo {
   '/legal/terms-and-conditions': typeof LegalTermsAndConditionsRoute
   '/public-inquiry/inquiry-news': typeof PublicInquiryInquiryNewsRoute
   '/public-inquiry/support': typeof PublicInquirySupportRoute
+  '/read/$slug': typeof ReadSlugRoute
   '/resources/external-resources': typeof ResourcesExternalResourcesRoute
   '/resources/guidelines': typeof ResourcesGuidelinesRoute
   '/resources/publications': typeof ResourcesPublicationsRoute
@@ -251,6 +259,7 @@ export interface FileRoutesById {
   '/legal/terms-and-conditions': typeof LegalTermsAndConditionsRoute
   '/public-inquiry/inquiry-news': typeof PublicInquiryInquiryNewsRoute
   '/public-inquiry/support': typeof PublicInquirySupportRoute
+  '/read/$slug': typeof ReadSlugRoute
   '/resources/external-resources': typeof ResourcesExternalResourcesRoute
   '/resources/guidelines': typeof ResourcesGuidelinesRoute
   '/resources/publications': typeof ResourcesPublicationsRoute
@@ -281,6 +290,7 @@ export interface FileRouteTypes {
     | '/legal/terms-and-conditions'
     | '/public-inquiry/inquiry-news'
     | '/public-inquiry/support'
+    | '/read/$slug'
     | '/resources/external-resources'
     | '/resources/guidelines'
     | '/resources/publications'
@@ -309,6 +319,7 @@ export interface FileRouteTypes {
     | '/legal/terms-and-conditions'
     | '/public-inquiry/inquiry-news'
     | '/public-inquiry/support'
+    | '/read/$slug'
     | '/resources/external-resources'
     | '/resources/guidelines'
     | '/resources/publications'
@@ -337,6 +348,7 @@ export interface FileRouteTypes {
     | '/legal/terms-and-conditions'
     | '/public-inquiry/inquiry-news'
     | '/public-inquiry/support'
+    | '/read/$slug'
     | '/resources/external-resources'
     | '/resources/guidelines'
     | '/resources/publications'
@@ -366,6 +378,7 @@ export interface RootRouteChildren {
   LegalTermsAndConditionsRoute: typeof LegalTermsAndConditionsRoute
   PublicInquiryInquiryNewsRoute: typeof PublicInquiryInquiryNewsRoute
   PublicInquirySupportRoute: typeof PublicInquirySupportRoute
+  ReadSlugRoute: typeof ReadSlugRoute
   ResourcesExternalResourcesRoute: typeof ResourcesExternalResourcesRoute
   ResourcesGuidelinesRoute: typeof ResourcesGuidelinesRoute
   ResourcesPublicationsRoute: typeof ResourcesPublicationsRoute
@@ -498,6 +511,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicInquirySupportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/read/$slug': {
+      id: '/read/$slug'
+      path: '/read/$slug'
+      fullPath: '/read/$slug'
+      preLoaderRoute: typeof ReadSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/resources/external-resources': {
       id: '/resources/external-resources'
       path: '/resources/external-resources'
@@ -584,6 +604,7 @@ const rootRouteChildren: RootRouteChildren = {
   LegalTermsAndConditionsRoute: LegalTermsAndConditionsRoute,
   PublicInquiryInquiryNewsRoute: PublicInquiryInquiryNewsRoute,
   PublicInquirySupportRoute: PublicInquirySupportRoute,
+  ReadSlugRoute: ReadSlugRoute,
   ResourcesExternalResourcesRoute: ResourcesExternalResourcesRoute,
   ResourcesGuidelinesRoute: ResourcesGuidelinesRoute,
   ResourcesPublicationsRoute: ResourcesPublicationsRoute,
