@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.test import override_settings
 from django.utils import timezone as dj_timezone
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import AccessToken
@@ -63,6 +64,30 @@ def post_admin_login(client, username, password, device=TEST_DEVICE, signals=Non
     else:
         payload["deviceId"] = device
     return client.post("/api/v1/auth/login/", payload, format="json")
+
+
+class SessionInvalidationTests(APITestCase):
+    @override_settings(ADMIN_REQUIRE_TOTP=False)
+    def test_admin_password_reset_invalidates_jwt_issued_before_rotation(self):
+        user = User.objects.create_user(
+            username="session.user",
+            password="TempPass#123",
+            role=UserRole.ADMIN,
+            must_change_password=False,
+        )
+        token = AccessToken.for_user(user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+        ok = self.client.get("/api/v1/auth/me/")
+        self.assertEqual(ok.status_code, 200, ok.data)
+
+        user.set_password("TempPass#456")
+        user.must_change_password = True
+        user.password_changed_at = dj_timezone.now()
+        user.save(update_fields=["password", "must_change_password", "password_changed_at"])
+
+        blocked = self.client.get("/api/v1/auth/me/")
+        self.assertEqual(blocked.status_code, 401, blocked.data)
+        self.assertEqual(blocked.data.get("code"), "session_expired")
 
 
 class RbacMatrixTests(APITestCase):
@@ -607,6 +632,7 @@ class RbacMatrixTests(APITestCase):
         relogin = post_admin_login(self.client, "photo.keeper@hemophilia.org.np", "OwnPass#2026")
         self.assertEqual(relogin.status_code, 200, relogin.data)
 
+    @override_settings(ADMIN_REQUIRE_TOTP=False)
     def test_reset_password_with_active_status_forces_pending_change(self):
         self.client.force_authenticate(self.super)
         created = self.client.post(
@@ -658,8 +684,19 @@ class RbacMatrixTests(APITestCase):
         self.assertTrue(forced.data["mustChangePassword"])
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {changed.data['access']}")
         blocked = self.client.get("/api/v1/patients/")
-        self.assertEqual(blocked.status_code, 403, blocked.data)
-        self.assertEqual(blocked.data.get("code"), "must_change_password")
+        self.assertEqual(blocked.status_code, 401, blocked.data)
+        self.assertEqual(blocked.data.get("code"), "session_expired")
+        stale_change = self.client.post(
+            "/api/v1/auth/change-password/",
+            {
+                "currentPassword": "TempPass#456",
+                "newPassword": "OwnPass#7890",
+                "confirmPassword": "OwnPass#7890",
+            },
+            format="json",
+        )
+        self.assertEqual(stale_change.status_code, 401, stale_change.data)
+        self.assertEqual(stale_change.data.get("code"), "session_expired")
 
     def test_super_marks_pending_admin_active_without_first_login(self):
         self.client.force_authenticate(self.super)

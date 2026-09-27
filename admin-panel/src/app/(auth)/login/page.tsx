@@ -43,6 +43,9 @@ export default function LoginPage() {
     if (window.location.search.includes("reason=2fa")) {
       showToast("Sign in again with your username, password, and authenticator code.");
     }
+    if (window.location.search.includes("reason=session-expired")) {
+      showToast("Your session ended. Sign in again with your password and authenticator code.");
+    }
   }, []);
 
   useEffect(() => {

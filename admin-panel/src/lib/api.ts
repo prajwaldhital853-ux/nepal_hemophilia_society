@@ -205,7 +205,7 @@ export async function apiFetch(path: string, init: ApiInit = {}) {
       return apiFetch(path, { ...init, _retried: true });
     }
     clearAccessToken();
-    window.location.href = "/login";
+    window.location.href = "/login?reason=session-expired";
     return Promise.reject(new Error("Session expired"));
   }
 
@@ -255,7 +255,7 @@ export async function apiDownload(path: string, filename: string) {
       res = await fetch(`${API_BASE}${path}`, { headers });
     } else {
       clearAccessToken();
-      window.location.href = "/login";
+      window.location.href = "/login?reason=session-expired";
       throw new Error("Session expired");
     }
   }
@@ -321,7 +321,7 @@ export async function apiForm<T = Record<string, unknown>>(
       ({ res, data, raw } = await fetchFormOnce(path, formData, method, nextToken));
     } else {
       clearAccessToken();
-      window.location.href = "/login";
+      window.location.href = "/login?reason=session-expired";
       throw new Error("Session expired");
     }
   }

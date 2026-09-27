@@ -487,11 +487,14 @@ def update_staff_account(actor, user, data: dict):
         issued = validate_password(reset_temp, field="resetTemporaryPassword")
         from apps.accounts.password_policy import record_password_history
 
+        from apps.accounts.presence import mark_logout
+
         record_password_history(user)
         user.set_password(issued)
         user.must_change_password = True
-        user.password_changed_at = None
+        user.password_changed_at = timezone.now()
         user.save(update_fields=["password", "must_change_password", "password_changed_at"])
+        mark_logout(user)
     from apps.notifications.services import notify_staff_updated
 
     notify_staff_updated(user, actor=actor)

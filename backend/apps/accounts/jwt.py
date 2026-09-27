@@ -174,6 +174,12 @@ class NhmsTokenRefreshSerializer(TokenRefreshSerializer):
         data = super().validate(attrs)
         refresh_value = data.get("refresh", attrs["refresh"])
         next_refresh = RefreshToken(refresh_value)
+        from apps.accounts.session import session_token_stale
+
+        if user and session_token_stale(user, next_refresh.payload):
+            raise ValidationError(
+                {"detail": "Session expired. Sign in again.", "code": "session_expired"}
+            )
         access = next_refresh.access_token
         for claim in ("role", "username", "must_change_password", "totp_verified"):
             if claim in next_refresh:

@@ -239,7 +239,7 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!user) return;
-    if (needsPasswordChange(user)) {
+    if (needsPasswordChange(user) && pathname !== "/change-password") {
       router.replace("/change-password");
       return;
     }

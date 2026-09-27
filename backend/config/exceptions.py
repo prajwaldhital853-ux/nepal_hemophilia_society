@@ -56,7 +56,14 @@ def api_exception_handler(exc, context):
         _attach_must_change_password_code(response)
         return response
     if isinstance(detail, dict) and "detail" in detail:
-        response.data = {"error": str(detail["detail"])}
+        payload = {"error": str(detail["detail"])}
+        if detail.get("code"):
+            payload["code"] = _first_message(detail.get("code"))
+        else:
+            exc_code = getattr(exc, "default_code", "")
+            if exc_code and exc_code not in ("authentication_failed", "not_authenticated", "permission_denied"):
+                payload["code"] = exc_code
+        response.data = payload
     elif isinstance(detail, list):
         response.data = {"error": str(detail[0])}
     elif isinstance(detail, dict):

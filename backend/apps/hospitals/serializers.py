@@ -364,11 +364,14 @@ class HospitalStaffUpdateSerializer(HospitalStaffSerializer):
             except Exception as exc:
                 messages = getattr(exc, "messages", [str(exc)])
                 raise serializers.ValidationError({"resetTemporaryPassword": " ".join(messages)})
+            from apps.accounts.presence import mark_logout
+
             record_password_history(user)
             user.set_password(str(reset_temp))
             user.must_change_password = True
-            user.password_changed_at = None
+            user.password_changed_at = timezone.now()
             user_update_fields.extend(["password", "must_change_password", "password_changed_at"])
+            mark_logout(user)
             self.issued_temporary_password = str(reset_temp)
 
         for field in ("date_of_birth", "gender", "address"):

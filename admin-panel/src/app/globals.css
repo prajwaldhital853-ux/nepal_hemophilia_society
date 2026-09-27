@@ -96,6 +96,15 @@ body {
 }
 
 @layer components {
+  .auth-shell-body input:not([type="checkbox"]):not([type="radio"]),
+  .auth-shell-body button[type="submit"] {
+    min-height: 2.75rem;
+  }
+
+  .auth-shell-body input:not([type="checkbox"]):not([type="radio"]) {
+    font-size: 16px;
+  }
+
   .panel {
     border: 1px solid var(--line-subtle);
     background: var(--card);

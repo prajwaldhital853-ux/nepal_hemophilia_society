@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
 import { AuthProvider } from "@/lib/auth";
@@ -20,6 +20,12 @@ export const metadata: Metadata = {
     icon: "/favicon.png",
     apple: "/nhs-app-icon.png",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 const themeScript = `(function(){try{var t=localStorage.getItem('nhs-theme');var d=t==='dark';document.documentElement.classList.toggle('dark',d);document.documentElement.style.colorScheme=d?'dark':'light'}catch(e){}})()`;
