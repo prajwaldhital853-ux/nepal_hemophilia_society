@@ -110,8 +110,8 @@ export function ContentPage({ page }: { page: PageDoc }) {
   return (
     <SiteFrame>
       <main className="page-main page-enter">
-        <article className="site-container w-full max-w-none py-10">
-          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 px-[clamp(1rem,4vw,2.5rem)] text-sm font-extrabold text-primary">
+        <article className="site-container py-10 lg:py-12">
+          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm font-extrabold text-primary">
             {page.crumbs.map((crumb, index) => (
               <span key={crumb.label} className="flex items-center gap-2">
                 {index > 0 ? <span aria-hidden="true">/</span> : null}
@@ -119,7 +119,7 @@ export function ContentPage({ page }: { page: PageDoc }) {
               </span>
             ))}
           </nav>
-          <div className="page-prose mt-4 w-full max-w-none">
+          <div className="page-prose mt-4">
             <AnimatedBlock index={0}>
               <h1 className="text-4xl font-black leading-tight text-primary sm:text-5xl">{page.title}</h1>
               <p className="mt-6 text-lg font-semibold leading-relaxed">{page.lead}</p>
