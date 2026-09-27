@@ -1,8 +1,18 @@
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
+from django.http import HttpResponse, JsonResponse
 from django.urls import path
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+
+@csrf_exempt
+def ping2_view(request):
+    """Plain Django probe — no DRF, no auth. For uptime monitors when /ping/ is blocked."""
+    if request.method == "HEAD":
+        return HttpResponse(status=200)
+    return JsonResponse({"status": "ok", "endpoint": "ping2"})
 
 
 class CronPingView(APIView):

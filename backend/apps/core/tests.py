@@ -27,6 +27,21 @@ class CronPingTests(APITestCase):
         res = self.client.head("/api/v1/cron/")
         self.assertEqual(res.status_code, 200)
 
+    def test_root_ping2_returns_200(self):
+        res = self.client.get("/ping2/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["status"], "ok")
+        self.assertEqual(res.json()["endpoint"], "ping2")
+
+    def test_api_cron_ping2_returns_200(self):
+        res = self.client.get("/api/v1/cron/ping2/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["endpoint"], "ping2")
+
+    def test_ping2_head_returns_200(self):
+        res = self.client.head("/ping2/")
+        self.assertEqual(res.status_code, 200)
+
 
 class BackupApiTests(APITestCase):
     def setUp(self):

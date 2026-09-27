@@ -8,10 +8,11 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
-from apps.core.urls import CronPingView
+from apps.core.urls import CronPingView, ping2_view
 
 urlpatterns = [
     path("ping/", CronPingView.as_view(), name="ping"),
+    path("ping2/", ping2_view, name="ping2"),
     path("admin/", admin.site.urls),
     # OpenAPI schema & Swagger UI
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
