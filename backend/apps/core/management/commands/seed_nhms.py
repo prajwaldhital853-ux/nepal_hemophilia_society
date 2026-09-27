@@ -126,32 +126,19 @@ class Command(BaseCommand):
                 defaults={"province": province, "district": district, "is_active": True},
             )
 
-        user, created = User.objects.get_or_create(
-            username="superadmin",
-            defaults={
-                "email": "superadmin@hemophilia.org.np",
-                "role": UserRole.SUPER_ADMIN,
-                "is_staff": True,
-                "is_superuser": True,
-                "first_name": "Super",
-                "last_name": "Admin",
-                "staff_id": "SADM-00001",
-            },
-        )
-        if created:
-            user.set_password("ChangeMe#2026")
-            user.staff_id = user.staff_id or "SADM-00001"
-            user.save()
-            self.stdout.write(self.style.WARNING("Created superadmin / ChangeMe#2026 — change this password."))
+        from apps.accounts.super_admin_bootstrap import SUPER_ADMIN_USERNAME, ensure_super_admin, super_admin_temp_password
+
+        user, _temp_password, provisioned = ensure_super_admin(reset_password=False, reset_2fa=False)
+        if provisioned:
+            user.set_password(super_admin_temp_password())
+            user.save(update_fields=["password"])
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Created super admin `{SUPER_ADMIN_USERNAME}` / {super_admin_temp_password()} — change this password."
+                )
+            )
         else:
-            if user.role != UserRole.SUPER_ADMIN:
-                user.role = UserRole.SUPER_ADMIN
-                user.is_staff = True
-                user.save(update_fields=["role", "is_staff"])
-            if not user.staff_id:
-                user.staff_id = "SADM-00001"
-                user.save(update_fields=["staff_id"])
-            self.stdout.write("Super admin already exists.")
+            self.stdout.write(f"Super admin `{SUPER_ADMIN_USERNAME}` already exists.")
 
         self._seed_hospital_staff(User)
         self._seed_province_admins(User)

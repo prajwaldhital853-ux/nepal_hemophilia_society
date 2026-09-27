@@ -65,9 +65,11 @@ class Command(BaseCommand):
         call_command("seed_nhms", verbosity=0)
 
         User = get_user_model()
-        actor = User.objects.filter(username="superadmin").first()
+        from apps.accounts.super_admin_bootstrap import SUPER_ADMIN_USERNAME
+
+        actor = User.objects.filter(username=SUPER_ADMIN_USERNAME).first()
         if not actor:
-            self.stderr.write(self.style.ERROR("superadmin not found. Run seed_nhms first."))
+            self.stderr.write(self.style.ERROR(f"{SUPER_ADMIN_USERNAME} not found. Run seed_nhms first."))
             return
 
         with transaction.atomic():
