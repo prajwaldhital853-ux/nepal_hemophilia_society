@@ -2,6 +2,7 @@ export type RootStackParamList = {
   Splash: undefined;
   Login: undefined;
   Register: undefined;
+  Legal: { document: "terms" | "privacy" };
   ChangePassword: undefined;
   Home: undefined;
   Services: undefined;

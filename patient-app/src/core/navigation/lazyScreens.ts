@@ -4,6 +4,7 @@ import { lazyScreen } from "./lazyScreen";
 export const LoginScreen = lazyScreen(() => import("@/features/auth/screens/LoginScreen"));
 export const ChangePasswordScreen = lazyScreen(() => import("@/features/auth/screens/ChangePasswordScreen"));
 export const RegisterScreen = lazyScreen(() => import("@/features/auth/screens/RegisterScreen"));
+export const LegalDocumentScreen = lazyScreen(() => import("@/features/legal/screens/LegalDocumentScreen"));
 export const HomeScreen = lazyScreen(() => import("@/features/home/screens/HomeScreen"));
 export const ServicesScreen = lazyScreen(() => import("@/features/services/screens/ServicesScreen"));
 export const FactorScreen = lazyScreen(() => import("@/features/factor/screens/FactorScreen"));

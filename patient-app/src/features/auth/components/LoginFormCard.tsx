@@ -17,6 +17,10 @@ type Props = {
   onChangeUserId: (value: string) => void;
   onChangePassword: (value: string) => void;
   onLogin: () => void;
+  acceptedTerms: boolean;
+  onToggleAcceptedTerms: () => void;
+  onOpenTerms: () => void;
+  onOpenPrivacy: () => void;
   onPasswordFocus?: () => void;
   error?: string;
   connectionHint?: string;
@@ -36,6 +40,10 @@ export function LoginFormCard({
   onChangeUserId,
   onChangePassword,
   onLogin,
+  acceptedTerms,
+  onToggleAcceptedTerms,
+  onOpenTerms,
+  onOpenPrivacy,
   onPasswordFocus,
   error,
   connectionHint,
@@ -117,6 +125,29 @@ export function LoginFormCard({
         </Pressable>
       </View>
 
+      <View style={[styles.agreeRow, { marginTop: sectionGap }]}>
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: acceptedTerms }}
+          onPress={onToggleAcceptedTerms}
+          hitSlop={8}
+        >
+          <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
+            {acceptedTerms ? <Ionicons name="checkmark" size={12} color="#FFFFFF" /> : null}
+          </View>
+        </Pressable>
+        <Text style={[styles.agreeText, { fontSize: linkSize }]}>
+          I agree to the{" "}
+          <Text style={styles.legalLink} onPress={onOpenTerms}>
+            Terms and Conditions
+          </Text>
+          {" "}and{" "}
+          <Text style={styles.legalLink} onPress={onOpenPrivacy}>
+            Privacy Policy
+          </Text>
+        </Text>
+      </View>
+
       {connectionHint ? <Text style={styles.hintText}>{connectionHint}</Text> : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {locked ? (
@@ -129,11 +160,11 @@ export function LoginFormCard({
           {
             marginTop: sectionGap,
             height: layout.buttonHeight,
-            opacity: loading || locked ? 0.7 : 1,
+            opacity: loading || locked || !acceptedTerms ? 0.45 : 1,
           },
         ]}
         onPress={onLogin}
-        disabled={loading || locked}
+        disabled={loading || locked || !acceptedTerms}
       >
         <MaterialCommunityIcons name="login" size={21} color="#FFFFFF" />
         <Text style={[styles.loginButtonText, { fontSize: buttonSize }]}>
@@ -217,6 +248,20 @@ const styles = StyleSheet.create({
   },
   rememberText: {
     color: nhmsColors.textDark,
+  },
+  agreeRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  agreeText: {
+    flex: 1,
+    color: nhmsColors.textDark,
+    lineHeight: 18,
+  },
+  legalLink: {
+    color: "#1A73E8",
+    fontWeight: "600",
   },
   forgotText: {
     color: nhmsColors.primaryRed,

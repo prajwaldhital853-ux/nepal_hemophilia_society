@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Keyboard, Platform, Pressable, StatusBar, StyleSheet, Text, View } from "react-native";
+import { Keyboard, Platform, Pressable, StatusBar, StyleSheet, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { StackNavigationProp } from "@react-navigation/stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ApiError, checkApiReachable } from "@/core/api";
@@ -13,6 +15,7 @@ import { LoginHeader } from "@/features/auth/components/LoginHeader";
 import { SaferTomorrowBanner } from "@/features/auth/components/SaferTomorrowBanner";
 import { useLoginLayout } from "@/features/auth/hooks/useLoginLayout";
 import { nhmsColors } from "@/features/auth/theme/nhmsTheme";
+import type { RootStackParamList } from "@/core/navigation/types";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -20,7 +23,9 @@ export default function LoginScreen() {
   const scrollRef = useRef<KeyboardFormScrollRef>(null);
   const passwordWrapRef = useRef<View>(null);
   const { login } = useAuth();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const [rememberMe, setRememberMe] = useState(true);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
@@ -111,6 +116,10 @@ export default function LoginScreen() {
   async function onLogin() {
     setError("");
     if (lockedUntil) return;
+    if (!acceptedTerms) {
+      setError("Accept the Terms and Conditions and Privacy Policy to continue.");
+      return;
+    }
     if (!userId.trim() || !password) {
       setError("Enter your email or patient ID and password.");
       return;
@@ -173,6 +182,13 @@ export default function LoginScreen() {
             onChangeUserId={setUserId}
             onChangePassword={setPassword}
             onLogin={() => void onLogin()}
+            acceptedTerms={acceptedTerms}
+            onToggleAcceptedTerms={() => {
+              setAcceptedTerms((value) => !value);
+              setError("");
+            }}
+            onOpenTerms={() => navigation.navigate("Legal", { document: "terms" })}
+            onOpenPrivacy={() => navigation.navigate("Legal", { document: "privacy" })}
             onPasswordFocus={focusPasswordField}
             error={error}
             connectionHint={connectionHint}
