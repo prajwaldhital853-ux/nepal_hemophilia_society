@@ -148,7 +148,7 @@ class TotpBackupCodeTests(APITestCase):
             format="json",
         )
         self.assertEqual(confirm.status_code, 200, confirm.data)
-        self.assertNotIn("backupCodes", confirm.data)
+        self.assertEqual(len(confirm.data.get("backupCodes") or []), 3)
 
 
 class SessionInvalidationTests(APITestCase):

@@ -124,7 +124,14 @@ export default function SetupTwoFactorPage() {
 
   if (backupCodes?.length) {
     return (
-      <AuthShell title="Save your backup codes" subtitle="Store these codes before you continue.">
+      <AuthShell
+        title="Save your new backup codes"
+        subtitle={
+          isRecovery
+            ? "Your authenticator was reset. Store these three new codes before you continue — they replace the old ones."
+            : "Store these codes before you continue."
+        }
+      >
         <BackupCodesPanel codes={backupCodes} onContinue={finishAfterBackupCodes} />
       </AuthShell>
     );

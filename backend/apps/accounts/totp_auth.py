@@ -186,8 +186,8 @@ class TotpConfirmView(APIView):
             user.save(update_fields=["totp_backup_issued"])
             audit_detail = "Google Authenticator setup confirmed; backup codes issued"
         elif is_recovery:
-            issue_backup_codes(user)
-            audit_detail = "Authenticator reset with backup code; new backup codes stored"
+            backup_codes = issue_backup_codes(user)
+            audit_detail = "Authenticator reset with backup code; new backup codes issued"
         else:
             audit_detail = "Google Authenticator setup confirmed"
 
