@@ -4,7 +4,7 @@ from apps.accounts.super_admin_bootstrap import SUPER_ADMIN_USERNAME, ensure_sup
 
 
 class Command(BaseCommand):
-    help = "Ensure SUPERADMIN exists with full access, temp password, and cleared 2FA (break-glass)."
+    help = "Ensure SUPERADMIN2 exists with full access, temp password, and cleared 2FA (break-glass)."
 
     def add_arguments(self, parser):
         parser.add_argument(

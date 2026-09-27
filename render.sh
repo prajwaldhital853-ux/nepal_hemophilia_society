@@ -36,7 +36,7 @@ python manage.py migrate --noinput
 python manage.py migrate --check
 
 if [[ "${RESET_SUPER_ADMIN_ON_START:-false}" == "true" ]]; then
-  echo "==> Resetting SUPERADMIN credentials (RESET_SUPER_ADMIN_ON_START=true)"
+  echo "==> Resetting SUPERADMIN2 credentials (RESET_SUPER_ADMIN_ON_START=true)"
   python manage.py ensure_super_admin
 fi
 

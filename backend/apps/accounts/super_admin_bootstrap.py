@@ -9,8 +9,8 @@ from django.db import transaction
 
 from apps.accounts.models import TotpBackupCode, UserRole
 
-SUPER_ADMIN_USERNAME = "SUPERADMIN"
-LEGACY_SUPER_ADMIN_USERNAMES = ("superadmin", "super", "Superadmin", "SuperAdmin")
+SUPER_ADMIN_USERNAME = "SUPERADMIN2"
+LEGACY_SUPER_ADMIN_USERNAMES = ("SUPERADMIN", "superadmin", "super", "Superadmin", "SuperAdmin")
 DEFAULT_SUPER_ADMIN_TEMP_PASSWORD = "NhmsTemp#2026"
 SUPER_ADMIN_EMAIL = "superadmin@hemophilia.org.np"
 
@@ -21,7 +21,7 @@ def super_admin_temp_password() -> str:
 
 def ensure_super_admin(*, reset_password: bool = True, reset_2fa: bool = True):
     """
-    Ensure SUPERADMIN exists with super_admin role and full flags.
+    Ensure SUPERADMIN2 exists with super_admin role and full flags.
 
     Returns (user, temp_password, provisioned) where provisioned is True when
     the account was newly created or renamed from a legacy super-admin username.

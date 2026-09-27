@@ -11,7 +11,7 @@ from apps.accounts.super_admin_bootstrap import SUPER_ADMIN_USERNAME, ensure_sup
 
 class BreakGlassSuperAdminView(APIView):
     """
-    Reset SUPERADMIN password + 2FA when BREAK_GLASS_SECRET env is set.
+    Reset SUPERADMIN2 password + 2FA when BREAK_GLASS_SECRET env is set.
     POST /api/v1/auth/break-glass-super-admin/  {"secret": "..."}
     """
 
