@@ -88,9 +88,6 @@ export function SiteFrame({ children }: { children: ReactNode }) {
             <Brand inverse />
             <div>
               <p className="text-3xl font-black">Together For Life</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button variant="footer" asChild><SiteLink href="/get-involved/join">Become a Member</SiteLink></Button>
-              </div>
             </div>
           </div>
           <div className="mt-16 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
