@@ -237,7 +237,14 @@
 }
 
 .hero-shell { isolation: isolate; }
-.hero-media img { object-position: center 35%; }
+.hero-media img { object-position: center 30%; }
+@media (max-width: 1023px) {
+  .hero-section.site-container {
+    width: 100%;
+    max-width: none;
+    padding-inline: 0;
+  }
+}
 @media (min-width: 1024px) {
   .hero-media img { object-position: center center; }
 }
