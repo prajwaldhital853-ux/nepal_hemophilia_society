@@ -28,7 +28,7 @@ const photos: Record<Photo, string> = {
   bir: birImage,
 };
 
-function revealDelay(index: number, step = 70, max = 420) {
+function revealDelay(index: number, step = 35, max = 175) {
   return Math.min(index * step, max);
 }
 
@@ -111,7 +111,7 @@ export function ContentPage({ page }: { page: PageDoc }) {
     <SiteFrame>
       <main className="page-main page-enter">
         <article className="site-container w-full max-w-none py-10">
-          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm font-extrabold text-primary">
+          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 px-[clamp(1rem,4vw,2.5rem)] text-sm font-extrabold text-primary">
             {page.crumbs.map((crumb, index) => (
               <span key={crumb.label} className="flex items-center gap-2">
                 {index > 0 ? <span aria-hidden="true">/</span> : null}
@@ -166,7 +166,7 @@ export function ContentPage({ page }: { page: PageDoc }) {
                 return (
                   <div key={index} className={`topic-card-grid mt-10 grid w-full items-stretch gap-5 ${grid}`}>
                     {block.items.map((card, cardIndex) => (
-                      <Reveal key={card.title} variant="up" delay={cardIndex * 120} className="h-full">
+                      <Reveal key={card.title} variant="up" delay={cardIndex * 60} className="h-full">
                         <TopicCard title={card.title} text={card.text} href={card.href} tone={card.tone} image={card.image} />
                       </Reveal>
                     ))}
@@ -177,7 +177,7 @@ export function ContentPage({ page }: { page: PageDoc }) {
                 return (
                   <div key={index} className="mt-6 grid gap-3">
                     {block.items.map((item, linkIndex) => (
-                      <Reveal key={item.title} variant="left" delay={linkIndex * 100}>
+                      <Reveal key={item.title} variant="left" delay={linkIndex * 50}>
                         <SiteLink href={item.href} className="block rounded-md border border-border bg-white p-5 hover:border-primary">
                           <span className="block font-black text-primary">{item.title}</span>
                           <span className="mt-1 block text-sm leading-relaxed">{item.text}</span>
@@ -192,7 +192,7 @@ export function ContentPage({ page }: { page: PageDoc }) {
                   <AnimatedBlock key={index} index={blockIndex}>
                     <div className="mt-6 divide-y divide-border border-y border-border">
                       {block.items.map((item, faqIndex) => (
-                        <Reveal key={item.q} variant="up" delay={faqIndex * 80}>
+                        <Reveal key={item.q} variant="up" delay={faqIndex * 40}>
                           <details className="faq py-1">
                             <summary className="cursor-pointer py-3 font-black">{item.q}</summary>
                             <p className="pb-4 leading-relaxed">{item.a}</p>
@@ -207,7 +207,7 @@ export function ContentPage({ page }: { page: PageDoc }) {
                 return (
                   <div key={index} className="mt-8 grid gap-6">
                     {block.items.map((article, articleIndex) => (
-                      <Reveal key={article.id} variant="up" delay={articleIndex * 140}>
+                      <Reveal key={article.id} variant="up" delay={articleIndex * 70}>
                         <article id={article.id} className="scroll-mt-24 overflow-hidden rounded-md border border-border bg-white">
                           <img src={photos[article.photo]} alt="" className="aspect-[16/7] w-full object-cover" />
                           <div className="p-6">

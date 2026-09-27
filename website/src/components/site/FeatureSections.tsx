@@ -36,7 +36,7 @@ export function FeatureSections() {
           </Reveal>
           <div className="mt-10 grid gap-6 md:grid-cols-3">
             {focus.map((item, index) => (
-              <Reveal key={item.title} variant="up" delay={index * 120}>
+              <Reveal key={item.title} variant="up" delay={index * 60}>
                 <article className="focus-card flex min-h-80 flex-col items-center bg-white px-8 py-12 text-center text-foreground shadow-xl lg:min-h-[26rem]">
                   <item.icon className="size-16 text-primary lg:size-20" strokeWidth={1.6} />
                   <h3 className="mt-6 text-2xl font-black">{item.title}</h3>
@@ -67,7 +67,7 @@ export function FeatureSections() {
                 <div className="vision-bar mt-auto h-1.5 w-20 bg-primary" />
               </article>
             </Reveal>
-            <Reveal variant="up" delay={140}>
+            <Reveal variant="up" delay={70}>
               <article className="vision-card flex h-full min-h-[26rem] flex-col bg-white p-8 shadow-md lg:p-10">
                 <Flag className="size-10 text-primary" />
                 <h3 className="mt-5 text-2xl font-black">MISSION</h3>
@@ -96,7 +96,7 @@ export function FeatureSections() {
               />
             </div>
           </Reveal>
-          <Reveal variant="up" delay={120}>
+          <Reveal variant="up" delay={60}>
             <div className="rounded-2xl bg-white p-8 shadow-lg lg:p-10">
               <p className="text-xs font-black tracking-[0.14em] text-primary">TOGETHER FOR LIFE</p>
               <h2 className="mt-3 text-4xl font-black leading-tight">You are not alone,</h2>

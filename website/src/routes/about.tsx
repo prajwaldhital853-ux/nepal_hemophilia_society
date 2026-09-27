@@ -83,7 +83,7 @@ function AboutPage() {
                 The Kathmandu office in Anamnagar is open Sunday to Friday, 9 am to 5 pm. Call 01-5172729 or email nepalhemo@gmail.com before you travel to a clinic day in another district.
               </p>
             </Reveal>
-            <Reveal variant="up" delay={120}>
+            <Reveal variant="up" delay={60}>
               <img src={membersImage} alt="Nepal Hemophilia Society members at a meeting in Kathmandu" className="aspect-[4/3] w-full rounded-md object-cover shadow-lg" />
             </Reveal>
           </div>
@@ -96,7 +96,7 @@ function AboutPage() {
             </Reveal>
             <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {milestones.map((item, index) => (
-                <Reveal key={item.year} variant="up" delay={index * 120}>
+                <Reveal key={item.year} variant="up" delay={index * 60}>
                   <article className="h-full rounded-md border border-border bg-white p-6 shadow-sm">
                     <p className="text-2xl font-black text-primary">{item.year}</p>
                     <p className="mt-3 text-sm leading-relaxed">{item.text}</p>
@@ -123,7 +123,7 @@ function AboutPage() {
                 </ul>
               </article>
             </Reveal>
-            <Reveal variant="up" delay={140}>
+            <Reveal variant="up" delay={70}>
               <article className="h-full rounded-md bg-white p-8 shadow-md lg:p-10">
                 <h3 className="text-2xl font-black text-primary">Mission</h3>
                 <ul className="mt-4 list-disc space-y-2 pl-5 leading-relaxed">
@@ -145,7 +145,7 @@ function AboutPage() {
             </Reveal>
             <div className="mt-10 grid gap-6 md:grid-cols-3">
               {focus.map((item, index) => (
-                <Reveal key={item.title} variant="up" delay={index * 120}>
+                <Reveal key={item.title} variant="up" delay={index * 60}>
                   <article className="flex min-h-64 flex-col items-center bg-white px-8 py-10 text-center text-foreground shadow-xl">
                     <item.icon className="size-14 text-primary" strokeWidth={1.6} />
                     <h3 className="mt-5 text-xl font-black">{item.title}</h3>
@@ -163,7 +163,7 @@ function AboutPage() {
           </Reveal>
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {gallery.map((photo, index) => (
-              <Reveal key={photo.src} variant="up" delay={index * 120} className={index === 2 ? "sm:col-span-2 lg:col-span-1" : ""}>
+              <Reveal key={photo.src} variant="up" delay={index * 60} className={index === 2 ? "sm:col-span-2 lg:col-span-1" : ""}>
                 <img src={photo.src} alt={photo.alt} className="aspect-[4/3] w-full rounded-md object-cover shadow-md" />
               </Reveal>
             ))}
@@ -187,7 +187,7 @@ function AboutPage() {
               <Reveal variant="up" delay={0}>
                 <TopicCard title="Join us" text="Register as a member, parent, clinician or volunteer." href="/get-involved/join" tone="gold" image="hands" />
               </Reveal>
-              <Reveal variant="up" delay={120}>
+              <Reveal variant="up" delay={60}>
                 <TopicCard title="Our community" text="Meet families and chapters across Nepal." href="/support/our-community" tone="sky" image="newsKathmandu" />
               </Reveal>
             </div>
