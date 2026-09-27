@@ -10,10 +10,10 @@ const DEFAULT_MAX_AGE = 60 * 60 * 24 * 365;
 export function getCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
   const prefix = `${encodeURIComponent(name)}=`;
-  const parts = document.cookie.split("; ");
-  for (const part of parts) {
-    if (part.startsWith(prefix)) {
-      return decodeURIComponent(part.slice(prefix.length));
+  for (const part of document.cookie.split(";")) {
+    const trimmed = part.trim();
+    if (trimmed.startsWith(prefix)) {
+      return decodeURIComponent(trimmed.slice(prefix.length));
     }
   }
   return null;
@@ -33,5 +33,10 @@ export function setCookie(name: string, value: string, options: CookieOptions = 
 
 export function deleteCookie(name: string, path = "/") {
   if (typeof document === "undefined") return;
-  document.cookie = `${encodeURIComponent(name)}=; path=${path}; max-age=0; SameSite=Lax`;
+  const encoded = encodeURIComponent(name);
+  const base = `${encoded}=; path=${path}; max-age=0; SameSite=Lax`;
+  document.cookie = base;
+  if (typeof location !== "undefined" && location.protocol === "https:") {
+    document.cookie = `${base}; Secure`;
+  }
 }

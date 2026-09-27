@@ -82,7 +82,12 @@ export function applyConsent(consent: CookieConsentState) {
 
   if (consent.preferences) {
     if (!getCookie(PREFERENCES_COOKIE)) {
-      setCookie(PREFERENCES_COOKIE, JSON.stringify({ savedAt: new Date().toISOString() }));
+      const reducedMotion =
+        typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      setCookie(
+        PREFERENCES_COOKIE,
+        JSON.stringify({ savedAt: new Date().toISOString(), reducedMotion }),
+      );
     }
   } else {
     deleteCookie(PREFERENCES_COOKIE);
