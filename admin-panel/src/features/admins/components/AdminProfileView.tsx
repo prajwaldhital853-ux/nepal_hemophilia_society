@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Pencil, Shield, Trash2 } from "lucide-react";
@@ -44,15 +44,15 @@ export default function AdminProfileView({ id }: { id: string }) {
   const isSelf = isOwnStaffAccount(user, admin);
   const canEditThis = Boolean(admin?.canEdit && !isSelf);
 
-  function load() {
+  const load = useCallback(() => {
     return fetchStaffAccount(id)
       .then(setAdmin)
       .catch((err) => setError(err instanceof Error ? err.message : "Admin not found"));
-  }
+  }, [id]);
 
   useEffect(() => {
     void load();
-  }, [id]);
+  }, [load]);
 
   async function setAccountStatus(status: "Active" | "Inactive") {
     if (!admin) return;

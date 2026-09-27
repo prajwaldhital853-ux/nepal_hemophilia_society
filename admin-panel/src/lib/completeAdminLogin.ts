@@ -1,17 +1,24 @@
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
-import type { AuthUser } from "@/lib/auth";
+import type { AdminRole, AuthUser } from "@/lib/auth";
 import { homeForUser } from "@/lib/auth";
 import { setAuthTokens } from "@/lib/api";
 import { clearPreAuthToken } from "@/lib/twoFactorSession";
 
+/** Login API may return non-admin roles before tokens are rejected server-side. */
+type LoginUser = Omit<AuthUser, "role"> & { role: AdminRole | "patient" };
+
 type LoginPayload = {
   access?: string;
   refresh?: string;
-  user?: AuthUser;
+  user?: LoginUser;
   mustChangePassword?: boolean;
   passwordExpired?: boolean;
 };
+
+function isLoginAdminUser(user: LoginUser): user is AuthUser {
+  return user.role !== "patient";
+}
 
 export function finishAdminLogin(
   data: LoginPayload,
@@ -19,7 +26,7 @@ export function finishAdminLogin(
   router: AppRouterInstance,
 ) {
   if (!data.access) throw new Error("Login failed");
-  if (data.user?.role === "patient") {
+  if (data.user && !isLoginAdminUser(data.user)) {
     throw new Error("Patient accounts cannot use the admin panel");
   }
   clearPreAuthToken();
