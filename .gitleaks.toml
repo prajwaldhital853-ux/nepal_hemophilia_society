@@ -1,0 +1,17 @@
+title = "NHMS gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore known safe placeholders and local-only dev fallbacks"
+regexes = [
+  '''local-dev-only''',
+  '''local-demo-only''',
+  '''change-me-to-a-long-random-secret-key''',
+  '''hemophilia_pass''',
+  '''API_KEY:API_SECRET@CLOUD_NAME''',
+  '''YOUR_FIREBASE''',
+  '''TempPass#''',
+  '''ChangeMe#''',
+]

@@ -14,7 +14,6 @@ from apps.accounts.rbac import (
 )
 
 DEMO_MARKER = "NHMS_DEMO_SEED"
-DEMO_PASSWORD = "DemoPass#2026"
 
 CENTER_ADMINS = [
     {

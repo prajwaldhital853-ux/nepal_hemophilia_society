@@ -2,6 +2,7 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 
 from apps.accounts.models import UserRole
+from apps.core.seed_passwords import nhms_seed_staff_password
 from apps.hospitals.models import Hospital, HospitalAdmin, HospitalStaffType
 from apps.provinces.models import District, Province, ProvinceAdmin
 
@@ -126,15 +127,17 @@ class Command(BaseCommand):
                 defaults={"province": province, "district": district, "is_active": True},
             )
 
-        from apps.accounts.super_admin_bootstrap import SUPER_ADMIN_USERNAME, ensure_super_admin, super_admin_temp_password
+        from apps.accounts.super_admin_bootstrap import SUPER_ADMIN_USERNAME, ensure_super_admin
+        from apps.core.seed_passwords import super_admin_temp_password
 
         user, _temp_password, provisioned = ensure_super_admin(reset_password=False, reset_2fa=False)
         if provisioned:
-            user.set_password(super_admin_temp_password())
+            bootstrap_password = super_admin_temp_password()
+            user.set_password(bootstrap_password)
             user.save(update_fields=["password"])
             self.stdout.write(
                 self.style.WARNING(
-                    f"Created super admin `{SUPER_ADMIN_USERNAME}` / {super_admin_temp_password()} — change this password."
+                    f"Created super admin `{SUPER_ADMIN_USERNAME}` — set SUPER_ADMIN_TEMP_PASSWORD in env and change after first login."
                 )
             )
         else:
@@ -176,7 +179,7 @@ class Command(BaseCommand):
                 },
             )
             if created:
-                user.set_password("ChangeMe#2026")
+                user.set_password(nhms_seed_staff_password())
                 user.save()
             elif user.role != UserRole.PROVINCE_ADMIN:
                 user.role = UserRole.PROVINCE_ADMIN
@@ -228,7 +231,7 @@ class Command(BaseCommand):
                 },
             )
             if created:
-                user.set_password("ChangeMe#2026")
+                user.set_password(nhms_seed_staff_password())
                 user.save()
             HospitalAdmin.objects.get_or_create(
                 user=user,

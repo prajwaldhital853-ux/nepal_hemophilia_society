@@ -8,15 +8,14 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from apps.accounts.models import TotpBackupCode, UserRole
+from apps.core.seed_passwords import super_admin_temp_password
 
 SUPER_ADMIN_USERNAME = "SUPERADMIN2"
 LEGACY_SUPER_ADMIN_USERNAMES = ("SUPERADMIN", "superadmin", "super", "Superadmin", "SuperAdmin")
-DEFAULT_SUPER_ADMIN_TEMP_PASSWORD = "NhmsTemp#2026"
-SUPER_ADMIN_EMAIL = "superadmin@hemophilia.org.np"
 
 
-def super_admin_temp_password() -> str:
-    return os.getenv("SUPER_ADMIN_TEMP_PASSWORD", DEFAULT_SUPER_ADMIN_TEMP_PASSWORD).strip()
+def super_admin_email() -> str:
+    return os.getenv("SUPER_ADMIN_EMAIL", "superadmin@hemophilia.org.np").strip()
 
 
 def ensure_super_admin(*, reset_password: bool = True, reset_2fa: bool = True):
@@ -27,8 +26,9 @@ def ensure_super_admin(*, reset_password: bool = True, reset_2fa: bool = True):
     the account was newly created or renamed from a legacy super-admin username.
     """
     User = get_user_model()
-    temp_password = super_admin_temp_password()
+    temp_password = super_admin_temp_password() if reset_password else ""
     provisioned = False
+    email = super_admin_email()
 
     with transaction.atomic():
         user = User.objects.filter(username=SUPER_ADMIN_USERNAME).first()
@@ -46,7 +46,7 @@ def ensure_super_admin(*, reset_password: bool = True, reset_2fa: bool = True):
         elif not user:
             user = User(
                 username=SUPER_ADMIN_USERNAME,
-                email=SUPER_ADMIN_EMAIL,
+                email=email,
                 first_name="Super",
                 last_name="Admin",
                 staff_id="SADM-00001",
@@ -58,7 +58,7 @@ def ensure_super_admin(*, reset_password: bool = True, reset_2fa: bool = True):
             legacy.is_active_account = False
             legacy.save(update_fields=["is_active", "is_active_account"])
 
-        user.email = user.email or SUPER_ADMIN_EMAIL
+        user.email = user.email or email
         user.role = UserRole.SUPER_ADMIN
         user.is_staff = True
         user.is_superuser = True

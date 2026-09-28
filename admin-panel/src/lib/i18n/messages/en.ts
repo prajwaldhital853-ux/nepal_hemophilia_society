@@ -95,6 +95,8 @@ export const en: MessageTree = {
     darkMode: "Switch to dark mode",
     openMenu: "Open navigation menu",
     closeMenu: "Close navigation menu",
+    enterFullscreen: "Full screen",
+    exitFullscreen: "Exit full screen",
   },
   status: {
     Active: "Active",

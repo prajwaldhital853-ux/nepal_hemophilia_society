@@ -16,10 +16,10 @@ from apps.core.demo_media import make_portrait_jpeg, make_simple_pdf
 from apps.core.demo_seed_catalog import (
     CENTER_ADMINS,
     DEMO_MARKER,
-    DEMO_PASSWORD,
     PATIENTS,
     TREATMENT_ADMINS,
 )
+from apps.core.seed_passwords import nhms_demo_password
 from apps.factors.models import FactorMedicine, FactorType
 from apps.hospitals.models import Hospital
 from apps.injections.models import InjectionIndication, InjectionRecord, InjectionStatus
@@ -83,7 +83,8 @@ class Command(BaseCommand):
                 self._seed_clinical_history(patient, actor)
 
         self.stdout.write(self.style.SUCCESS("\nDemo seed complete.\n"))
-        self.stdout.write(f"Password for all demo accounts: {DEMO_PASSWORD}\n")
+        demo_password = nhms_demo_password()
+        self.stdout.write(f"Password for all demo accounts: {demo_password}\n")
         self.stdout.write(f"  Center admins:     {len(center_users)}")
         self.stdout.write(f"  Treatment admins:  {len(treatment_users)}")
         self.stdout.write(f"  Patients:          {len(patients)}\n")
@@ -147,7 +148,7 @@ class Command(BaseCommand):
                 "fullName": item["fullName"],
                 "email": item["email"],
                 "phone": item["phone"],
-                "temporaryPassword": DEMO_PASSWORD,
+                "temporaryPassword": nhms_demo_password(),
                 "treatmentCenter": item["hospital"],
                 "dateOfBirth": item.get("dateOfBirth"),
                 "gender": item.get("gender", ""),
@@ -191,7 +192,7 @@ class Command(BaseCommand):
                 "fullName": item["fullName"],
                 "email": item["email"],
                 "phone": item["phone"],
-                "temporaryPassword": DEMO_PASSWORD,
+                "temporaryPassword": nhms_demo_password(),
                 "treatmentCenter": item["hospital"],
                 "dateOfBirth": item.get("dateOfBirth"),
                 "gender": item.get("gender", ""),
@@ -231,7 +232,7 @@ class Command(BaseCommand):
             user.gender = item["gender"]
         user.must_change_password = False
         user.notes = DEMO_MARKER
-        user.set_password(DEMO_PASSWORD)
+        user.set_password(nhms_demo_password())
         user.save()
         profile = getattr(user, "hospital_admin", None)
         if profile and item.get("hospital"):
@@ -309,7 +310,7 @@ class Command(BaseCommand):
             user = User.objects.create_user(
                 username=patient.unique_patient_id,
                 email=patient.email,
-                password=DEMO_PASSWORD,
+                password=nhms_demo_password(),
                 role=UserRole.PATIENT,
                 mobile=patient.mobile,
                 first_name=first,

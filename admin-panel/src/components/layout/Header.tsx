@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronDown, Menu, Moon, Sun } from "lucide-react";
 
 import { AppointmentInbox } from "@/components/layout/AppointmentInbox";
+import { FullScreenToggleButton } from "@/components/layout/FullScreenModeContext";
 import { GlobalSearch } from "@/components/layout/GlobalSearch";
 import { KeyboardShortcutsButton } from "@/components/layout/KeyboardShortcutsProvider";
 import { NotificationBell } from "@/components/layout/NotificationBell";
@@ -47,6 +48,7 @@ export function Header() {
 
       <div className="ml-auto flex items-center gap-1.5 overflow-visible">
         <KeyboardShortcutsButton />
+        <FullScreenToggleButton />
         <NotificationBell />
         <AppointmentInbox />
 

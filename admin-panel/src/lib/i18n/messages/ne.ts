@@ -95,6 +95,8 @@ export const ne: MessageTree = {
     darkMode: "अँध्यारो मोडमा जानुहोस्",
     openMenu: "नेभिगेसन मेनु खोल्नुहोस्",
     closeMenu: "नेभिगेसन मेनु बन्द गर्नुहोस्",
+    enterFullscreen: "पूर्ण स्क्रिन",
+    exitFullscreen: "पूर्ण स्क्रिनबाट बाहिर निस्कनुहोस्",
   },
   status: {
     Active: "सक्रिय",

@@ -13,7 +13,9 @@ National-level system. Do not go live until every item is done and signed off.
 - [ ] `DJANGO_CORS_ALLOWED_ORIGINS` limited to the real admin and website origins
 - [ ] Cloudinary or equivalent for uploads; no world-readable media bucket
 - [ ] Super Admin password rotated from any seed/demo account; seed users disabled
-- [ ] Default `superadmin` / demo passwords removed
+- [ ] `SUPER_ADMIN_TEMP_PASSWORD`, `NHMS_SEED_STAFF_PASSWORD`, and `NHMS_DEMO_PASSWORD` set only in Render/Vercel env (never in git)
+- [ ] Gmail / SMTP app password (`EMAIL_HOST_PASSWORD`) rotated if GitGuardian or GitHub secret scanning flagged the repo
+- [ ] Default `superadmin` / demo passwords removed; `RUN_DEMO_SEED_ON_START=false` on production when demo data is not needed
 - [ ] Admin tokens: 8h access / 12h refresh. Patient: 7d / 30d. No multi-year JWTs
 - [ ] Device lock live: 3 failed logins → 5 minute **device** lock; unused attempts reset after 1 hour
 - [ ] Login throttle live (`login_device` 12/minute). Not IP-based lockout
