@@ -79,7 +79,10 @@ export function GlobalSearch() {
           }}
           className="w-full min-w-0 bg-transparent text-[12px] text-ink outline-none placeholder:text-faint"
           placeholder={t("common.searchPatients")}
+          role="combobox"
           aria-label="Global search"
+          aria-autocomplete="list"
+          aria-haspopup="listbox"
           aria-expanded={open}
           aria-controls="global-search-results"
         />
@@ -88,6 +91,7 @@ export function GlobalSearch() {
       {open && debounced.length >= 2 ? (
         <div
           id="global-search-results"
+          role="listbox"
           className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-80 overflow-auto panel shadow-lg"
         >
           {loading ? (
@@ -100,6 +104,7 @@ export function GlobalSearch() {
                 <li key={`${hit.kind}-${hit.id}`}>
                   <Link
                     href={hit.href}
+                    role="option"
                     className="block px-3 py-2 hover:bg-elevated"
                     onClick={() => {
                       setOpen(false);
