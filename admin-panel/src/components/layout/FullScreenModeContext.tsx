@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { useMobileNav } from "@/components/layout/MobileNavContext";
 import { useLocale } from "@/lib/i18n";
 
 type FullScreenModeContextValue = {
