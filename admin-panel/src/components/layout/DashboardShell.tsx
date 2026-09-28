@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
-
 import { AdminNotificationAlerts } from "@/components/layout/AdminNotificationAlerts";
 import { BackupAutoDownload } from "@/components/layout/BackupAutoDownload";
 import { NotificationPageSync } from "@/components/layout/NotificationPageSync";
@@ -17,13 +15,9 @@ function DashboardFrame({ children }: { children: React.ReactNode }) {
   const { open, closeNav } = useMobileNav();
   const { immersive } = useFullScreenMode();
 
-  useEffect(() => {
-    if (immersive) closeNav();
-  }, [immersive, closeNav]);
-
   return (
     <div className="flex h-dvh overflow-hidden bg-page">
-      {open && !immersive ? (
+      {open ? (
         <button
           type="button"
           aria-label="Close navigation menu"
@@ -31,7 +25,7 @@ function DashboardFrame({ children }: { children: React.ReactNode }) {
           onClick={closeNav}
         />
       ) : null}
-      {!immersive ? <Sidebar /> : null}
+      <Sidebar />
       <div className="isolate flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {!immersive ? <Header /> : null}
         <FullScreenExitFloating />

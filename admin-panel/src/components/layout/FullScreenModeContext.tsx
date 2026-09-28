@@ -1,6 +1,6 @@
 "use client";
 
-import { Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Menu, Minimize2 } from "lucide-react";
 import {
   createContext,
   useCallback,
@@ -110,19 +110,32 @@ export function FullScreenToggleButton({ className = "" }: { className?: string 
 
 export function FullScreenExitFloating() {
   const { immersive, exitImmersive } = useFullScreenMode();
+  const { toggleNav } = useMobileNav();
   const { t } = useLocale();
 
   if (!immersive) return null;
 
   return (
-    <button
-      type="button"
-      onClick={() => void exitImmersive()}
-      className="fixed right-3 top-3 z-[60] flex items-center gap-1.5 rounded-full border border-line bg-card/95 px-3 py-1.5 text-[11px] font-semibold text-ink shadow-lg backdrop-blur-sm hover:bg-elevated"
-      aria-label={t("common.exitFullscreen")}
-    >
-      <Minimize2 className="size-3.5" />
-      {t("common.exitFullscreen")}
-    </button>
+    <div className="pointer-events-none fixed inset-x-0 top-3 z-[60] flex items-center justify-between px-3">
+      <button
+        type="button"
+        onClick={toggleNav}
+        className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-line bg-card/95 p-2 text-ink shadow-lg backdrop-blur-sm hover:bg-elevated lg:hidden"
+        aria-label={t("common.openMenu")}
+        title={t("common.openMenu")}
+      >
+        <Menu className="size-4" />
+      </button>
+      <span className="hidden lg:block" />
+      <button
+        type="button"
+        onClick={() => void exitImmersive()}
+        className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-line bg-card/95 px-3 py-1.5 text-[11px] font-semibold text-ink shadow-lg backdrop-blur-sm hover:bg-elevated"
+        aria-label={t("common.exitFullscreen")}
+      >
+        <Minimize2 className="size-3.5" />
+        {t("common.exitFullscreen")}
+      </button>
+    </div>
   );
 }
