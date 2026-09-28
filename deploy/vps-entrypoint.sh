@@ -37,8 +37,12 @@ if [[ "${RUN_SEED_ON_START:-false}" == "true" ]]; then
 fi
 
 if [[ "${RUN_DEMO_SEED_ON_START:-false}" == "true" ]]; then
-  echo "==> seed_demo_data + seed_cms"
+  echo "==> seed_demo_data (requires NHMS_DEMO_PASSWORD in production)"
   python manage.py seed_demo_data
+fi
+
+if [[ "${RUN_CMS_SEED_ON_START:-true}" == "true" ]]; then
+  echo "==> seed_cms --update"
   python manage.py seed_cms --update
 fi
 

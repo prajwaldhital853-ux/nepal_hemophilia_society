@@ -44,7 +44,7 @@ echo "==> Collecting static files"
 mkdir -p staticfiles
 python manage.py collectstatic --noinput
 
-echo "==> render.sh build: demo-seed-v2 (RUN_SEED_ON_START=${RUN_SEED_ON_START:-true}, RUN_DEMO_SEED_ON_START=${RUN_DEMO_SEED_ON_START:-true})"
+echo "==> render.sh build: demo-seed-v3 (RUN_SEED_ON_START=${RUN_SEED_ON_START:-true}, RUN_DEMO_SEED_ON_START=${RUN_DEMO_SEED_ON_START:-false})"
 
 if [[ "${RUN_SEED_ON_START:-true}" == "true" ]]; then
   echo "==> Seeding reference data (seed_nhms)"
@@ -53,13 +53,18 @@ else
   echo "==> Skipping seed_nhms (RUN_SEED_ON_START=false)"
 fi
 
-if [[ "${RUN_DEMO_SEED_ON_START:-true}" == "true" ]]; then
-  echo "==> Seeding demo patients/admins (seed_demo_data)"
+if [[ "${RUN_DEMO_SEED_ON_START:-false}" == "true" ]]; then
+  echo "==> Seeding demo patients/admins (seed_demo_data; requires NHMS_DEMO_PASSWORD in production)"
   python manage.py seed_demo_data
+else
+  echo "==> Skipping demo seed (RUN_DEMO_SEED_ON_START=false)"
+fi
+
+if [[ "${RUN_CMS_SEED_ON_START:-true}" == "true" ]]; then
   echo "==> Seeding CMS content + PDFs (seed_cms --update)"
   python manage.py seed_cms --update
 else
-  echo "==> Skipping demo seed (RUN_DEMO_SEED_ON_START=false)"
+  echo "==> Skipping CMS seed (RUN_CMS_SEED_ON_START=false)"
 fi
 
 if [[ -n "${CLOUDINARY_URL:-}" || -n "${CLOUDINARY_CLOUD_NAME:-}" ]]; then

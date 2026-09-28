@@ -27,15 +27,35 @@ def super_admin_temp_password() -> str:
     return _required_env("SUPER_ADMIN_TEMP_PASSWORD")
 
 
-def nhms_seed_staff_password() -> str:
-    """Initial password for province/center staff created by seed_nhms."""
+def nhms_seed_staff_password_optional() -> str | None:
+    value = os.getenv("NHMS_SEED_STAFF_PASSWORD", "").strip()
+    if value:
+        return value
     if settings.DEBUG:
         return os.getenv("NHMS_SEED_STAFF_PASSWORD", "local-dev-only").strip() or "local-dev-only"
+    return None
+
+
+def nhms_seed_staff_password() -> str:
+    """Initial password for province/center staff created by seed_nhms."""
+    optional = nhms_seed_staff_password_optional()
+    if optional:
+        return optional
     return _required_env("NHMS_SEED_STAFF_PASSWORD")
+
+
+def nhms_demo_password_optional() -> str | None:
+    value = os.getenv("NHMS_DEMO_PASSWORD", "").strip()
+    if value:
+        return value
+    if settings.DEBUG:
+        return os.getenv("NHMS_DEMO_PASSWORD", "local-demo-only").strip() or "local-demo-only"
+    return None
 
 
 def nhms_demo_password() -> str:
     """Shared password for demo seed accounts (seed_demo_data)."""
-    if settings.DEBUG:
-        return os.getenv("NHMS_DEMO_PASSWORD", "local-demo-only").strip() or "local-demo-only"
+    optional = nhms_demo_password_optional()
+    if optional:
+        return optional
     return _required_env("NHMS_DEMO_PASSWORD")

@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta, time
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
@@ -19,7 +20,7 @@ from apps.core.demo_seed_catalog import (
     PATIENTS,
     TREATMENT_ADMINS,
 )
-from apps.core.seed_passwords import nhms_demo_password
+from apps.core.seed_passwords import nhms_demo_password_optional
 from apps.factors.models import FactorMedicine, FactorType
 from apps.hospitals.models import Hospital
 from apps.injections.models import InjectionIndication, InjectionRecord, InjectionStatus
@@ -62,6 +63,16 @@ class Command(BaseCommand):
             if options["clear"] and not options["force"]:
                 return
 
+        demo_password = nhms_demo_password_optional()
+        if demo_password is None:
+            self.stdout.write(
+                self.style.WARNING(
+                    "Demo seed skipped: set NHMS_DEMO_PASSWORD in production, "
+                    "or set RUN_DEMO_SEED_ON_START=false on Render."
+                )
+            )
+            return
+
         call_command("seed_nhms", verbosity=0)
 
         User = get_user_model()
@@ -83,7 +94,6 @@ class Command(BaseCommand):
                 self._seed_clinical_history(patient, actor)
 
         self.stdout.write(self.style.SUCCESS("\nDemo seed complete.\n"))
-        demo_password = nhms_demo_password()
         self.stdout.write(f"Password for all demo accounts: {demo_password}\n")
         self.stdout.write(f"  Center admins:     {len(center_users)}")
         self.stdout.write(f"  Treatment admins:  {len(treatment_users)}")
@@ -134,9 +144,16 @@ class Command(BaseCommand):
         except (ValidationError, OSError, ValueError) as exc:
             self.stdout.write(self.style.WARNING(f"  Photo skipped for {full_name}: {exc}"))
 
+    def _demo_password(self) -> str:
+        password = nhms_demo_password_optional()
+        if not password:
+            raise ImproperlyConfigured("NHMS_DEMO_PASSWORD is required for demo seed.")
+        return password
+
     def _seed_center_admins(self, actor):
         User = get_user_model()
         created = []
+        demo_password = self._demo_password()
         for item in CENTER_ADMINS:
             user = User.objects.filter(email__iexact=item["email"]).first()
             if user:
@@ -148,7 +165,7 @@ class Command(BaseCommand):
                 "fullName": item["fullName"],
                 "email": item["email"],
                 "phone": item["phone"],
-                "temporaryPassword": nhms_demo_password(),
+                "temporaryPassword": demo_password,
                 "treatmentCenter": item["hospital"],
                 "dateOfBirth": item.get("dateOfBirth"),
                 "gender": item.get("gender", ""),
@@ -179,6 +196,7 @@ class Command(BaseCommand):
     def _seed_treatment_admins(self, actor):
         User = get_user_model()
         created = []
+        demo_password = self._demo_password()
         for item in TREATMENT_ADMINS:
             user = User.objects.filter(email__iexact=item["email"]).first()
             if user:
@@ -192,7 +210,7 @@ class Command(BaseCommand):
                 "fullName": item["fullName"],
                 "email": item["email"],
                 "phone": item["phone"],
-                "temporaryPassword": nhms_demo_password(),
+                "temporaryPassword": demo_password,
                 "treatmentCenter": item["hospital"],
                 "dateOfBirth": item.get("dateOfBirth"),
                 "gender": item.get("gender", ""),
@@ -232,7 +250,7 @@ class Command(BaseCommand):
             user.gender = item["gender"]
         user.must_change_password = False
         user.notes = DEMO_MARKER
-        user.set_password(nhms_demo_password())
+        user.set_password(self._demo_password())
         user.save()
         profile = getattr(user, "hospital_admin", None)
         if profile and item.get("hospital"):
@@ -262,6 +280,7 @@ class Command(BaseCommand):
 
     def _seed_patients(self, actor):
         patients = []
+        demo_password = self._demo_password()
         for item in PATIENTS:
             if Patient.objects.filter(email__iexact=item["email"]).exists():
                 patient = Patient.objects.get(email__iexact=item["email"])
@@ -310,7 +329,7 @@ class Command(BaseCommand):
             user = User.objects.create_user(
                 username=patient.unique_patient_id,
                 email=patient.email,
-                password=nhms_demo_password(),
+                password=demo_password,
                 role=UserRole.PATIENT,
                 mobile=patient.mobile,
                 first_name=first,
